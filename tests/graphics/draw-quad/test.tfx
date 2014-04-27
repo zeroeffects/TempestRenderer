@@ -1,0 +1,30 @@
+vertex shader VS
+{
+    in vec2 VertexData;
+
+    invariant gl_Position;
+
+    void main()
+    {
+        gl_Position = vec4(VertexData.xy + vec2(gl_VertexID % 2, gl_VertexID / 2), 0.0, 1.0);
+    }
+}
+
+fragment shader FS
+{
+    out vec4 FragmentColor;
+
+    void main()
+    {
+        FragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+}
+
+technique General
+{
+    pass P0
+    {
+        SetVertexShader(CompileShader(glsl_1_4_0, VS()));
+        SetFragmentShader(CompileShader(glsl_1_4_0, FS()));
+    }
+}
