@@ -31,6 +31,7 @@ namespace Tempest
 {
 struct GLVertexAttributeDescription
 {
+    int       Binding;
     GLenum    Type;
     int       Size;
     GLboolean Normalized;

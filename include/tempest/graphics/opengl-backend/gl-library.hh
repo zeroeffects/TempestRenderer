@@ -465,6 +465,9 @@ extern PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
 
 extern PFNGLBINDVERTEXBUFFERPROC glBindVertexBuffer;
 
+extern PFNGLVERTEXATTRIBBINDINGPROC glVertexAttribBinding;
+extern PFNGLENABLEVERTEXATTRIBARRAYARBPROC glEnableVertexAttribArrayARB;
+
 #ifdef _WIN32
 #   define GL_GET_PROC_ADDRESS(func) wglGetProcAddress(func)
 #elif defined(LINUX)

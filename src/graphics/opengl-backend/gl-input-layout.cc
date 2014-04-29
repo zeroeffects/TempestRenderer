@@ -100,6 +100,7 @@ GLInputLayout::GLInputLayout(const VertexAttributeDescription* arr, size_t count
         GLenum type;
         GLboolean normalized;
         TranslateDataFormat(arr[i].Format, &elements, &type, &normalized);
+        vert_attr.Binding = arr[i].BufferId;
         vert_attr.Normalized = normalized;
         vert_attr.Offset = arr[i].Offset;
         vert_attr.Size = elements;

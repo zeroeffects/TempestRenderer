@@ -168,6 +168,7 @@ enum class UniformValueType
 
 struct VertexAttributeDescription
 {
+    int         BufferId;
     string      Name; // For annoying validation purposes.
     DataFormat  Format;
     int         Stride;

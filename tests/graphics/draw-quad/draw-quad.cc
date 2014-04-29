@@ -15,16 +15,11 @@ TGE_TEST("Testing the off-screen rendering context")
     Tempest::GLRenderingBackend backend;
     auto command_buf = Tempest::CreateCommandBuffer(&backend);
     
-    /*std::vector<Vector2> arr{ Vector2(-0.5f, -0.5f),
+    std::vector<Vector2> arr{ Vector2(-0.5f, -0.5f),
                               Vector2(-0.5f, +0.5f),
                               Vector2(+0.5f, -0.5f),
                               Vector2(+0.5f, +0.5f) };
-    */
-    std::vector<Vector2> arr{ Vector2(0.0f, 0.0f),
-                              Vector2(0.0f, 0.0f),
-                              Vector2(0.0f, 0.0f),
-                              Vector2(0.0f, 0.0f) };
-                              
+      
     std::vector<Tempest::uint16> idx_arr{ 0, 1, 2, 3};
     
     auto vertex_buf = Tempest::CreateBuffer(&backend, arr, Tempest::VBType::VertexBuffer);
@@ -34,7 +29,7 @@ TGE_TEST("Testing the off-screen rendering context")
     auto shader = Tempest::CreateShader(&compiler, CURRENT_SOURCE_DIR "/test.tfx");
     TGE_ASSERT(shader, "Could not create shader file");
     
-    std::vector<Tempest::VertexAttributeDescription> layout_arr{ Tempest::VertexAttributeDescription{"VertexData", Tempest::DataFormat::RG32F, sizeof(Vector2), 0} };
+    std::vector<Tempest::VertexAttributeDescription> layout_arr{ Tempest::VertexAttributeDescription{ 0, "VertexData", Tempest::DataFormat::RG32F, sizeof(Vector2), 0} };
     
     auto input_layout = Tempest::CreateInputLayout(&backend, shader.get(), layout_arr);
     

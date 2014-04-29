@@ -6,7 +6,7 @@ vertex shader VS
 
     void main()
     {
-        gl_Position = vec4(VertexData.xy + vec2(gl_VertexID % 2, gl_VertexID / 2), 0.0, 1.0);
+        gl_Position = vec4(VertexData.xy, 0.0, 1.0);
     }
 }
 

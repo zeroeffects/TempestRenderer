@@ -162,6 +162,8 @@ void GLShaderProgram::setupInputLayout(GLInputLayout* layout)
         auto* vert_attr = layout->getAttribute(i);
         glVertexAttribFormat(i, vert_attr->Size, vert_attr->Type, vert_attr->Normalized, vert_attr->Offset);
         glBindVertexBuffer(i, 0, 0, vert_attr->Stride);
+        glVertexAttribBinding(i, vert_attr->Binding);
+        glEnableVertexAttribArrayARB(i);
     }
     CheckOpenGL();
 }

@@ -307,6 +307,9 @@ PFNGLDISABLECLIENTSTATEPROC glDisableClientState = nullptr;
 
 PFNGLBINDVERTEXBUFFERPROC glBindVertexBuffer = nullptr;
 
+PFNGLVERTEXATTRIBBINDINGPROC glVertexAttribBinding = nullptr;
+PFNGLENABLEVERTEXATTRIBARRAYARBPROC glEnableVertexAttribArrayARB = nullptr;
+
 string ConvertGLErrorToString(GLenum err)
 {
     switch(err)
@@ -653,6 +656,8 @@ bool GLLibrary::initGL()
     GL_LOAD_FUNCTION(glDisableClientState);
 
     GL_LOAD_FUNCTION(glBindVertexBuffer);
+    GL_LOAD_FUNCTION(glVertexAttribBinding);
+    GL_LOAD_FUNCTION(glEnableVertexAttribArrayARB);
     
     return true;
 }
