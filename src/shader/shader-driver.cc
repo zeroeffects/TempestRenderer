@@ -666,26 +666,16 @@ struct GetType<void, idx>
  *
  *  \tparam idx     the index of the currently generated element inside the
  *                  function set.
- *  \tparam TRet    the return type from the prototype used for generating the
- *                  function set.
- *  \tparam TArg0   the first argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg1   the second argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg2   the third argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg3   the fourth argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg4   the fifth argument of the prototype used for generating the
- *                  function set.
+ *  \tparam T
+ *  \tparam TArgs   
  */
-template<size_t idx, class TArg0, class TArg1, class TArg2, class TArg3, class TArg4>
+template<size_t idx, class T, class... TArgs>
 struct GenList
 {
     inline static NodeT<List> generate(AST::ObjectPoolType& obj_pool, AST::StackType& _stack)
     {
-        return CreateNodeTyped<ListElement>(TGE_DEFAULT_LOCATION, TGE_AST_SEMICOLON_SEPARATED_LIST, CreateDeclaration<TArg0, idx>::pointer(obj_pool, _stack),
-                                            GenList<idx, TArg1, TArg2, TArg3, TArg4, void>::generate(obj_pool, _stack));
+        return CreateNodeTyped<ListElement>(TGE_DEFAULT_LOCATION, TGE_AST_SEMICOLON_SEPARATED_LIST, CreateDeclaration<T, idx>::pointer(obj_pool, _stack),
+                                            GenList<idx, TArgs...>::generate(obj_pool, _stack));
     }
 };
 
@@ -693,25 +683,15 @@ struct GenList
  *
  *  \tparam idx     the index of the currently generated element inside the
  *                  function set.
- *  \tparam TRet    the return type from the prototype used for generating the
- *                  function set.
- *  \tparam TArg0   the first argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg1   the second argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg2   the third argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg3   the fourth argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg4   the fifth argument of the prototype used for generating the
- *                  function set.
+ *  \tparam T
  */
-template<size_t idx>
-struct GenList<idx, void, void, void, void, void>
+template<size_t idx, class T>
+struct GenList<idx, T>
 {
     inline static NodeT<List> generate(AST::ObjectPoolType& obj_pool, AST::StackType& _stack)
     {
-        return NodeT<List>();
+        return CreateNodeTyped<ListElement>(TGE_DEFAULT_LOCATION, TGE_AST_SEMICOLON_SEPARATED_LIST, CreateDeclaration<T, idx>::pointer(obj_pool, _stack),
+                                            NodeT<List>());
     }
 };
 
@@ -722,18 +702,9 @@ struct GenList<idx, void, void, void, void, void>
  *                  function set.
  *  \tparam TRet    the return type from the prototype used for generating the
  *                  function set.
- *  \tparam TArg0   the first argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg1   the second argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg2   the third argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg3   the fourth argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg4   the fifth argument of the prototype used for generating the
- *                  function set.
+ *  \tparam TArgs
  */
-template<size_t idx, class TRet, class TArg0, class TArg1, class TArg2, class TArg3, class TArg4>
+template<size_t idx, class TRet, class... TArgs>
 struct GenFunction
 {
     /*! \brief Generates the function with the specified index in the function
@@ -747,34 +718,40 @@ struct GenFunction
      */
     inline static void generate(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, FunctionSet* func_set)
     {
-        auto var_list = GenList<idx, TArg0, TArg1, TArg2, TArg3, TArg4>::generate(obj_pool, _stack);
+        auto var_list = GenList<idx, TArgs...>::generate(obj_pool, _stack);
         auto func = CreateNodeTyped<FunctionDeclaration>(TGE_DEFAULT_LOCATION, GetType<TRet, idx>::pointer(obj_pool, _stack), func_set->getNodeName(), std::move(var_list));
         func_set->pushFunction(std::move(func));
     };
+};
+
+template<size_t idx, class... TArgs> struct ValidGeneratorType;
+
+template<size_t idx, class T, class... TArgs>
+struct ValidGeneratorType<idx, T, TArgs...>
+{
+    static const bool value = GeneratorType<T, idx>::valid_element | ValidGeneratorType<idx, TArgs...>::value;
+};
+
+template<size_t idx, class T>
+struct ValidGeneratorType<idx, T>
+{
+    static const bool value = GeneratorType<T, idx>::valid_element;
 };
 
 /*! \brief A template class which generates the N-th function of the function
  *         set and executes the operation for the next function that must be
  *         generated.
  *
+ *  \tparam not_end indicates whether it is the end of the function set
+ *                  (assumed 'true' for this specialization of the template).
  *  \tparam idx     the index of the currently generated element inside the
  *                  function set.
  *  \tparam TRet    the return type from the prototype used for generating the
  *                  function set.
- *  \tparam TArg0   the first argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg1   the second argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg2   the third argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg3   the fourth argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg4   the fifth argument of the prototype used for generating the
- *                  function set.
- *  \tparam not_end indicates whether it is the end of the function set
- *                  (assumed 'true' for this specialization of the template).
+ *  \tparam TArgs   the types of the arguments to the functions that are going
+ *                  to be generated.
  */
-template<size_t idx, class TRet, class TArg0, class TArg1, class TArg2, class TArg3, class TArg4, bool not_end>
+template<bool not_end, size_t idx, class TRet, class... TArgs>
 struct GenFSet
 {
     /*! \brief Generates the function with the specified index in the function
@@ -788,17 +765,12 @@ struct GenFSet
      */
     inline static void generate(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, FunctionSet* func_set)
     {
-        GenFunction<idx, TRet, TArg0, TArg1, TArg2, TArg3, TArg4>::generate(obj_pool, _stack, func_set);
+        GenFunction<idx, TRet, TArgs...>::generate(obj_pool, _stack, func_set);
         const size_t nidx = idx+1;
         // determines whether there are still types associated with specified
         // ones in the profile and executes the right specialization of the
         // template used for generating the function set.
-        GenFSet<nidx, TRet, TArg0, TArg1, TArg2, TArg3, TArg4, GeneratorType<TRet,  nidx>::valid_element ||
-                                                               GeneratorType<TArg0, nidx>::valid_element ||
-                                                               GeneratorType<TArg1, nidx>::valid_element ||
-                                                               GeneratorType<TArg2, nidx>::valid_element ||
-                                                               GeneratorType<TArg3, nidx>::valid_element ||
-                                                               GeneratorType<TArg4, nidx>::valid_element>::generate(obj_pool, _stack, func_set);
+        GenFSet<ValidGeneratorType<nidx, TRet, TArgs...>::value, nidx, TRet, TArgs...>::generate(obj_pool, _stack, func_set);
     }
 };
 
@@ -808,19 +780,11 @@ struct GenFSet
  *                  function set.
  *  \tparam TRet    the return type from the prototype used for generating the
  *                  function set.
- *  \tparam TArg0   the first argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg1   the second argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg2   the third argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg3   the fourth argument of the prototype used for generating the
- *                  function set.
- *  \tparam TArg4   the fifth argument of the prototype used for generating the
- *                  function set.
+ *  \tparam TArgs   the types of the arguments to the functions that are going
+ *                  to be generated.
  */
-template<size_t idx, class TRet, class TArg0, class TArg1, class TArg2, class TArg3, class TArg4>
-struct GenFSet<idx, TRet, TArg0, TArg1, TArg2, TArg3, TArg4, false>
+template<size_t idx, class TRet, class... TArgs>
+struct GenFSet<false, idx, TRet, TArgs...>
 {
     /*! \brief Does not generate anything because all functions associated with the
      *         specified prototype were generated.
@@ -836,19 +800,11 @@ template<class T> struct BuiltInFunction;
  *  It wraps GenFSet with a more convenient interface.
  *  \tparam TRet        the return type of the functions that are going to be
  *                      generated to populate the function set.
- *  \tparam TArg0       the first argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg1       the second argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg2       the third argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg3       the fourth argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg4       the fifth argument of the functions that are going to
- *                      populate the function set.
+ *  \tparam TArgs       the types of the arguments to the functions that are going
+ *                      to be generated.
  */
-template<class TRet, class TArg0, class TArg1, class TArg2, class TArg3, class TArg4>
-struct BuiltInFunction<TRet(TArg0, TArg1, TArg2, TArg3, TArg4)>
+template<class TRet, class... TArgs>
+struct BuiltInFunction<TRet(TArgs...)>
 {
     /*! \brief Adds the functions with the specified prototype to the function
      *         set.
@@ -859,119 +815,7 @@ struct BuiltInFunction<TRet(TArg0, TArg1, TArg2, TArg3, TArg4)>
      */
     inline static void addTo(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, FunctionSet* elem)
     {
-        GenFSet<0, TRet, TArg0, TArg1, TArg2, TArg3, TArg4, true>::generate(obj_pool, _stack, elem);
-    }
-};
-
-/*! \brief Used for populating a function set with functions with the specified
- *         arguments.
- *
- *  It wraps GenFSet with a more convenient interface.
- *  \tparam TRet        the return type of the functions that are going to be
- *                      generated to populate the function set.
- *  \tparam TArg0       the first argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg1       the second argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg2       the third argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg3       the fourth argument of the functions that are going to
- *                      populate the function set.
- */
-template<class TRet, class TArg0, class TArg1, class TArg2, class TArg3>
-struct BuiltInFunction<TRet(TArg0, TArg1, TArg2, TArg3)>
-{
-    /*! \brief Adds the functions with the specified prototype to the function
-     *         set.
-     *  \param _stack   the stack object which includes the types used during
-     *                  the generation of the functions with the specified
-     *                  prototype.
-     *  \param elem     the function set that must be populated.
-     */
-    inline static void addTo(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, FunctionSet* elem)
-    {
-        GenFSet<0, TRet, TArg0, TArg1, TArg2, TArg3, void, true>::generate(obj_pool, _stack, elem);
-    }
-};
-
-/*! \brief Used for populating a function set with functions with the specified
- *         arguments.
- *
- *  It wraps GenFSet with a more convenient interface.
- *  \tparam TRet        the return type of the functions that are going to be
- *                      generated to populate the function set.
- *  \tparam TArg0       the first argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg1       the second argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg2       the third argument of the functions that are going to
- *                      populate the function set.
- */
-template<class TRet, class TArg0, class TArg1, class TArg2>
-struct BuiltInFunction<TRet(TArg0, TArg1, TArg2)>
-{
-    /*! \brief Adds the functions with the specified prototype to the function
-     *         set.
-     *  \param _stack   the stack object which includes the types used during
-     *                  the generation of the functions with the specified
-     *                  prototype.
-     *  \param elem     the function set that must be populated.
-     */
-    inline static void addTo(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, FunctionSet* elem)
-    {
-        GenFSet<0, TRet, TArg0, TArg1, TArg2, void, void, true>::generate(obj_pool, _stack, elem);
-    }
-};
-
-/*! \brief Used for populating a function set with functions with the specified
- *         arguments.
- *
- *  It wraps GenFSet with a more convenient interface.
- *  \tparam TRet        the return type of the functions that are going to be
- *                      generated to populate the function set.
- *  \tparam TArg0       the first argument of the functions that are going to
- *                      populate the function set.
- *  \tparam TArg1       the second argument of the functions that are going to
- *                      populate the function set.
- */
-template<class TRet, class TArg0, class TArg1>
-struct BuiltInFunction<TRet(TArg0, TArg1)>
-{
-    /*! \brief Adds the functions with the specified prototype to the function
-     *         set.
-     *  \param _stack   the stack object which includes the types used during
-     *                  the generation of the functions with the specified
-     *                  prototype.
-     *  \param elem     the function set that must be populated.
-     */
-    inline static void addTo(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, FunctionSet* elem)
-    {
-        GenFSet<0, TRet, TArg0, TArg1, void, void, void, true>::generate(obj_pool, _stack, elem);
-    }
-};
-
-/*! \brief Used for populating a function set with functions with the specified
- *         arguments.
- *
- *  It wraps GenFSet with a more convenient interface.
- *  \tparam TRet        the return type of the functions that are going to be
- *                      generated to populate the function set.
- *  \tparam TArg0       the first argument of the functions that are going to
- *                      populate the function set.
- */
-template<class TRet, class TArg0>
-struct BuiltInFunction<TRet(TArg0)>
-{
-    /*! \brief Adds the functions with the specified prototype to the function
-     *         set.
-     *  \param _stack   the stack object which includes the types used during
-     *                  the generation of the functions with the specified
-     *                  prototype.
-     *  \param elem     the function set that must be populated.
-     */
-    inline static void addTo(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, FunctionSet* elem)
-    {
-        GenFSet<0, TRet, TArg0, void, void, void, void, true>::generate(obj_pool, _stack, elem);
+        GenFSet<true, 0, TRet, TArgs...>::generate(obj_pool, _stack, elem);
     }
 };
 

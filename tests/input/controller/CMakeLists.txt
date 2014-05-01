@@ -23,13 +23,7 @@
 #   THE SOFTWARE.
 ##################################################################################
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
-                    ${CMAKE_BINARY_DIR}/include
-                    ${CMAKE_SOURCE_DIR}/external)
+ADD_EXECUTABLE(ControllerTest controller-test.cc)
+ADD_TEST(ControllerTest ControllerTest)
 
-ADD_DEFINITIONS("-DTempest_TESTS_DIR=\"${CMAKE_BINARY_DIR}\"")
-
-ADD_SUBDIRECTORY(graphics)
-ADD_SUBDIRECTORY(utils)
-ADD_SUBDIRECTORY(shader)
-ADD_SUBDIRECTORY(input)
+TARGET_LINK_LIBRARIES(ControllerTest tempest-static tempest-main)

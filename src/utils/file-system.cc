@@ -226,7 +226,8 @@ bool Directory::open(const Path& path)
     if(!dir)
         return false;
     while((p_dirent = readdir(dir)) != 0)
-        m_Nodes.push_back(Path(path.get() + "/" + p_dirent->d_name));
+        if(strcmp(p_dirent->d_name, ".") && strcmp(p_dirent->d_name, ".."))
+            m_Nodes.push_back(Path(path.get() + "/" + p_dirent->d_name));
     closedir(dir);
     m_DirNode = path;
     return true;

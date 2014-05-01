@@ -70,6 +70,14 @@ SET(TEMPEST_GRAPHICS_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-utils.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-definitions.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-backend.hh
+   )
+
+SET(TEMPEST_INPUT_SRC
+    input/controller-linux.cc
+   )
+
+SET(TEMPEST_INPUT_INC
+    ${CMAKE_SOURCE_DIR}/include/tempest/input/controller.hh
    ) 
 
 BISON_TARGET(TempestParser "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader-parser.y"
@@ -116,6 +124,8 @@ SET(TEMPEST_LIBRARY_FILES
     ${TEMPEST_SHADER_INC}
     ${TEMPEST_PARSER_SRC}
     ${TEMPEST_PARSER_INC}
+    ${TEMPEST_INPUT_SRC}
+    ${TEMPEST_INPUT_INC}
    )
 
 IF(UNIX)

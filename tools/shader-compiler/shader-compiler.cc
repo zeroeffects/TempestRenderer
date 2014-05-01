@@ -93,6 +93,7 @@ bool BuildTextShaderSimple(const string& input_file, std::ostream& output_file, 
         output_file << "// " << shader.getName() << "\n"
                     << shader.getContent() << std::endl;
     }
+    return true;
 }
 
 bool BuildTextShaderSimple(const string& input_file, const string& output_file, uint32 flags)

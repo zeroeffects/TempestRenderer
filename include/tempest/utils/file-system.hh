@@ -49,10 +49,10 @@ class Path
     string m_Path;
 public:
     //! Default constructor.
-    Path();
+    explicit Path();
 
     //! Constructor.
-    Path(const string& path);
+    explicit Path(const string& path);
 
     //! Copy constructor.
     Path(const Path& path);
@@ -112,12 +112,12 @@ public:
     typedef std::list<Path>::const_iterator iterator;
 
     //! Default constructor.
-    Directory();
+    explicit Directory();
     
     /*! \brief Constructor.
      *  \param path     the path to this directory.
      */
-    Directory(const Path& path);
+    explicit Directory(const Path& path);
 
     /*! \brief Opens the specified directory.
      *  \param path     the new path that must be used for this directory.

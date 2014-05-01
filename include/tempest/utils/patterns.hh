@@ -80,7 +80,29 @@ template<class T> T* Singleton<T>::m_Instance = nullptr;
 
 template<class T, class TDeleter> class ScopedObject;
 
-// TODO: Replace function with lambda. It might be faster.
+template<class T, class TDeleter> 
+class ScopedObject
+{
+    T                   m_Desc;
+    TDeleter            m_Deleter;
+public:
+    ScopedObject() {}
+    
+    ScopedObject(T desc, TDeleter deleter)
+        :   m_Desc(desc),
+            m_Deleter(deleter) {}
+    
+    ScopedObject(TDeleter deleter)
+        :   m_Deleter(deleter) {}
+        
+     ~ScopedObject() { if(m_Desc) m_Deleter(m_Desc); }
+
+    ScopedObject& operator=(T t) { m_Desc = t; return *this; }
+
+    T get() { return m_Desc; }
+    const T get() const { return m_Desc; }
+};
+
 template<class T, class TDeleter>
 class ScopedObject<T*, TDeleter>
 {
@@ -156,7 +178,7 @@ ScopedObject<T, TDeleter> CreateScoped(TDeleter deleter) { return ScopedObject<T
 template<typename T, typename TDeleter>
 ScopedObject<T, TDeleter> CreateScoped(T ptr, TDeleter deleter) { return ScopedObject<T, TDeleter>(ptr, deleter); }
 
-#define CREATE_SCOPED(_type, _func) CreateScoped<_type>([](_type t) { _func(t); })
+#define CREATE_SCOPED(_type, _func) Tempest::CreateScoped<_type>([](_type t) { _func(t); })
 }
 
 #endif /* PATTERNS_HH_ */
