@@ -25,8 +25,11 @@
 #ifndef _TEMPEST_VECTOR3_HH_
 #define _TEMPEST_VECTOR3_HH_
 
+#include "tempest/math/vector2.hh"
 #include "tempest/math/functions.hh"
 
+namespace Tempest
+{
 //! 3-dimensional vector
 /*! \ingroup TempestMath
 */
@@ -62,7 +65,10 @@ struct Vector3
     //! Default constructor
     explicit Vector3() { static_assert(sizeof(Vector3) == 3*sizeof(float), "Vector3 has the wrong size"); }
 
-    Vector3(const Vector3& v);
+    Vector3(const Vector3& v)
+    {
+        coordinate.x = v.coordinate.x, coordinate.y = v.coordinate.y, coordinate.z = v.coordinate.z;
+    }
     
     //! Constructor
     /*!
@@ -228,5 +234,6 @@ inline Vector3 v3abs(Vector3& v)
 inline Vector3 to_degrees(const Vector3& vec) { return Vector3(to_degrees(vec.coordinate.x), to_degrees(vec.coordinate.y), to_degrees(vec.coordinate.z)); }
 
 inline Vector3 to_radians(const Vector3& vec) { return Vector3(to_radians(vec.coordinate.x), to_radians(vec.coordinate.y), to_radians(vec.coordinate.z)); }
+}
 
 #endif // _TEMPEST_VECTOR3_HH_

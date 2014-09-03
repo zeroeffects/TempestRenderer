@@ -26,6 +26,7 @@
 #define TEMPEST_RENDERING_DEFS_HH
 
 #include "tempest/utils/types.hh"
+#include "tempest/utils/assert.hh"
 
 namespace Tempest
 {
@@ -165,6 +166,41 @@ enum class UniformValueType
     Matrix4x3,
     Texture
 };
+
+inline size_t UniformValueTypeSize(UniformValueType uniform_value)
+{
+    switch(uniform_value)
+    {
+    case UniformValueType::Float: return sizeof(float);
+    case UniformValueType::Vector2: return 2*sizeof(float);
+    case UniformValueType::Vector3: return 3*sizeof(float);
+    case UniformValueType::Vector4: return 4*sizeof(float);
+    case UniformValueType::Integer: return sizeof(int32);
+    case UniformValueType::IntegerVector2: return 2*sizeof(int32);
+    case UniformValueType::IntegerVector3: return 3*sizeof(int32);
+    case UniformValueType::IntegerVector4: return 4*sizeof(int32);
+    case UniformValueType::UnsignedInteger: return sizeof(uint32);
+    case UniformValueType::UnsignedIntegerVector2: return 2*sizeof(uint32);
+    case UniformValueType::UnsignedIntegerVector3: return 3*sizeof(uint32);
+    case UniformValueType::UnsignedIntegerVector4: return 4*sizeof(uint32);
+    case UniformValueType::Boolean: return sizeof(int32);
+    case UniformValueType::BooleanVector2: return 2*sizeof(int32);
+    case UniformValueType::BooleanVector3: return 3*sizeof(int32);
+    case UniformValueType::BooleanVector4: return 4*sizeof(int32);
+    case UniformValueType::Matrix2: return 2*2*sizeof(float);
+    case UniformValueType::Matrix3: return 3*3*sizeof(float);
+    case UniformValueType::Matrix4: return 4*4*sizeof(float);
+    case UniformValueType::Matrix2x3: return 2*3*sizeof(float);
+    case UniformValueType::Matrix2x4: return 2*4*sizeof(float);
+    case UniformValueType::Matrix3x2: return 3*2*sizeof(float);
+    case UniformValueType::Matrix3x4: return 3*4*sizeof(float);
+    case UniformValueType::Matrix4x2: return 4*2*sizeof(float);
+    case UniformValueType::Matrix4x3: return 4*3*sizeof(float);
+    case UniformValueType::Texture: return sizeof(uint64);
+    default: TGE_ASSERT(false, "Unsupported uniform value type"); break;
+    }
+    return 0;
+}
 
 struct VertexAttributeDescription
 {

@@ -296,6 +296,7 @@ enum BuiltInTechnique
     TGE_EFFECT_BUILTIN_GLSL_4_1_0,
     TGE_EFFECT_BUILTIN_GLSL_4_2_0,
     TGE_EFFECT_BUILTIN_GLSL_4_3_0,
+    TGE_EFFECT_BUILTIN_GLSL_4_4_0,
 
     TGE_EFFECT_BUILTINS_TECHNIQUE
 };
@@ -550,7 +551,9 @@ struct _Arr<T[size]>
      */
     inline static void apply(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, Variable* var)
     {
-        _stack.push_back(CreateTypeNode<ArrayType>(var->getType(), CreateNode<Value<unsigned>>(TGE_DEFAULT_LOCATION, size)));
+        size_t pool_idx = obj_pool.size();
+        obj_pool.push_back(CreateTypeNode<ArrayType>(var->getType(), CreateNode<Value<unsigned>>(TGE_DEFAULT_LOCATION, size)));
+        _stack.push_back(pool_idx);
         var->setType(obj_pool[_stack.back()].extract<Type>());
     }
 };
@@ -1442,6 +1445,7 @@ Driver::Driver()
     m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_1_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_1_0");
     m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_2_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_2_0");
     m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_3_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_3_0");
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_4_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_4_0");
     TGE_ASSERT(std::find_if(m_TechniqueBuiltIns.begin(), m_TechniqueBuiltIns.end(), [this](size_t idx){ return !this->m_ObjectPool[idx]; }) == m_TechniqueBuiltIns.end(), "Unfilled technique built-ins");
 }
 
@@ -1460,7 +1464,7 @@ void Driver::beginShader(ShaderType shader_type)
     {
         size_t current_size = m_Stack.size();
         m_Stack.resize(m_Stack.size() + TGE_EFFECT_BUILTINS_VS);
-        StackType::iterator::pointer vs_p = &m_Stack[0] + current_size;
+        StackType::iterator::pointer vs_p = &m_Stack[current_size];
         vs_p[TGE_EFFECT_BUILTIN_OUT_GL_VERTEX_ID] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_VertexID");
         vs_p[TGE_EFFECT_BUILTIN_OUT_GL_INSTANTGE_ID] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_InstanceID");
         vs_p[TGE_EFFECT_BUILTIN_OUT_GL_POSITION] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC4), "gl_Position");
@@ -1476,7 +1480,7 @@ void Driver::beginShader(ShaderType shader_type)
     {
         size_t current_size = m_Stack.size();
         m_Stack.resize(m_Stack.size() + TGE_EFFECT_BUILTINS_FS);
-        StackType::iterator::pointer fs_p = &m_Stack[0] + current_size;
+        StackType::iterator::pointer fs_p = &m_Stack[current_size];
         fs_p[TGE_EFFECT_BUILTIN_DFDX] = m_FSBuiltIns[TGE_EFFECT_BUILTIN_DFDX];
         fs_p[TGE_EFFECT_BUILTIN_DFDY] = m_FSBuiltIns[TGE_EFFECT_BUILTIN_DFDY];
         fs_p[TGE_EFFECT_BUILTIN_FWIDTH] = m_FSBuiltIns[TGE_EFFECT_BUILTIN_FWIDTH];

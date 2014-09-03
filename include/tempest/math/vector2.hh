@@ -32,6 +32,8 @@
 #include <cstddef>
 #include <cmath>
 
+namespace Tempest
+{
 //! 2-dimensional vector
 /*! \ingroup TempestMath
 */
@@ -180,5 +182,6 @@ inline Vector2 operator/(const Vector2& vec, float a) { return Vector2(vec.coord
 //! Divides a vector with a float-pointing variable and replaces the vector
 /*! \related Vector2 */
 inline Vector2& operator/=(Vector2& vec, float a) { vec.coordinate.x /= a; vec.coordinate.y /= a; return vec; }
+}
 
 #endif // _TEMPEST_VECTOR2_HH_

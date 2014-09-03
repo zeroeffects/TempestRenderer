@@ -113,6 +113,7 @@
 %token <Identifier>     T_IDENTIFIER                "identifier"
 %token                  T_SAMPLER                   "sampler"
 %token                  T_BUFFER_QUALIFIER          "buffer qualifier"
+%token                  T_INSTANCE_QUALIFIER        "instance qualifier"
 %token <SamplerRef>     T_SAMPLER_PROXY             "sampler instance"
 
 %type <List>                        translation_unit shader_body technique_body pass_body function_variables_list statement_list switch_statement_list
@@ -121,7 +122,7 @@
 %type <void>                        external_declaration statement iteration_statement for_init_statement block_statement layout_id else_statement
 %type <void>                        selection_statement switch_statement case_statement default_statement expression_statement jump_statement
 %type <void>                        definition_pair definition_value effect_file
-%type <Buffer>                      buffer
+%type <Buffer>                      buffer buffer_declaration
 %type <Import>                      import
 %type <TypeRef>                     shader
 %type <Technique>                   technique
@@ -140,7 +141,7 @@
 %type <VarDeclList>                 variable_declaration
 %type <Declaration>                 declaration_statement
 %type <InvariantDeclaration>        invariant_declaration
-%type <ValueShaderType>         shader_type
+%type <ValueShaderType>             shader_type
 
 //%printer { if($$) debug_stream() << $$->getValue(); } "identifier"
 //%printer { if($$) debug_stream() << $$->getNodeName(); } "variable" "function" "type" "sampler instance"
@@ -191,7 +192,13 @@ external_declaration
     | buffer                                                { $$ = $1; }
     ;
 
+
 buffer
+    : "instance qualifier" buffer_declaration               { auto buf = $2; buf->setBufferType(BufferType::Instance); $$ = std::move(buf); }
+    | buffer_declaration                                    { $$ = $1; }
+    ;
+
+buffer_declaration
     : "buffer qualifier" "identifier" '{'
           buffer_list
        '}'                                                  {

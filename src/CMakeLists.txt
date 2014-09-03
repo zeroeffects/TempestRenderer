@@ -24,6 +24,7 @@
 ##################################################################################
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
+                    ${CMAKE_BINARY_DIR}/include
                     ${CMAKE_SOURCE_DIR}/external
                     ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -115,6 +116,19 @@ SET(TEMPEST_PARSER_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/parser/ast.hh
    )
 
+SET(TEMPEST_MATH_SRC
+    math/matrix4.cc
+    math/quaternion.cc
+    math/dual-quaternion.cc
+   )
+
+SET(TEMPEST_MATH_INC
+    ${CMAKE_SOURCE_DIR}/include/tempest/math/matrix4.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/math/vector4.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/math/vector3.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/math/vector2.hh
+   )
+
 SET(TEMPEST_LIBRARY_FILES
     ${TEMPEST_UTILS_SRC}
     ${TEMPEST_LIB_INC}
@@ -126,6 +140,8 @@ SET(TEMPEST_LIBRARY_FILES
     ${TEMPEST_PARSER_INC}
     ${TEMPEST_INPUT_SRC}
     ${TEMPEST_INPUT_INC}
+    ${TEMPEST_MATH_SRC}
+    ${TEMPEST_MATH_INC}
    )
 
 IF(UNIX)

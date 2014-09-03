@@ -26,6 +26,7 @@
 #define _TEMPEST_EFFECT_COMMON_HH_
 
 #include "tempest/utils/types.hh"
+#include "tempest/graphics/rendering-definitions.hh"
 
 #include <vector>
 
@@ -42,38 +43,46 @@ enum class ShaderType
     GeometryShader,
     FragmentShader,
     ComputeShader
-    // TGE_EFFECT_FETCH_SHADER // <-- I bet that Mantle is going to have one
+    // , FetchShader <-- It is something that exists. However, have some doubts that it is going to persist.
+    //                   Probably going to be replaced by direct vertex pulling.
 };
 
-enum TypeEnum
+enum class ElementType
 {
-    TGE_EFFECT_SCALAR_TYPE,
-    TGE_EFFECT_VECTOR_TYPE,
-    TGE_EFFECT_MATRIX_TYPE,
-    TGE_EFFECT_ARRAY_TYPE,
-    TGE_EFFECT_SAMPLER_TYPE,
-    TGE_EFFECT_STRUCT_TYPE,
-    TGE_EFFECT_SHADER_TYPE,
-    TGE_EFFECT_PROFILE_TYPE,
-    TGE_EFFECT_COMPILED_SHADER_TYPE
+    Scalar,
+    Vector,
+    Matrix,
+    Array,
+    Sampler,
+    Struct,
+    Shader,
+    Profile,
+    CompiledShader
+};
+
+enum class BufferType
+{
+    Instance
 };
 
 class PassShaderDescription
 {
-    string                  m_Name;
+    size_t                  m_ShaderIndex;
     string                  m_AdditionalOpts;
 public:
-    PassShaderDescription(string name, string additional_opts);
+    PassShaderDescription(size_t shader_index, string additional_opts);
      ~PassShaderDescription();
 
-    string getName() const { return m_Name; }
+    size_t getShaderIndex() const { return m_ShaderIndex; }
     string getAdditionalOptions() const { return m_AdditionalOpts; }
 };
 
+typedef std::vector<PassShaderDescription> PassShaderVector;
+
 class PassDescription
 {
-    string                              m_Name;
-    std::vector<PassShaderDescription>  m_StageShaders;
+    string                  m_Name;
+    PassShaderVector        m_StageShaders;
 public:
     PassDescription(string name)
         :   m_Name(name) {}
@@ -84,24 +93,28 @@ public:
     size_t getAttachedShaderCount() const { return m_StageShaders.size(); }
 };
 
-struct InputParameter
+class InputParameter
 {
-    TypeEnum                m_Type;
+    ElementType             m_Type;
     string                  m_Name;
     string                  m_Semantic;
 public:
-    InputParameter(TypeEnum _type, string name, string _semantic);
+    InputParameter(ElementType _type, string name, string _semantic)
+        :   m_Type(_type),
+            m_Name(name),
+            m_Semantic(_semantic) {}
 
-    TypeEnum getType() const { return m_Type; }
+    ElementType getType() const { return m_Type; }
     string getName() const { return m_Name; }
     string getSemantic() const { return m_Semantic; }
 };
 
+typedef std::vector<PassDescription>      PassVector;
+
 class TechniqueDescription
 {
-    typedef std::vector<PassDescription> PassList;
     string                  m_Name;
-    PassList                m_Passes;
+    PassVector              m_Passes;
 public:
     TechniqueDescription(string name)
         :   m_Name(name) {}
@@ -113,7 +126,7 @@ public:
     void addPass(PassDescription pass) { m_Passes.push_back(pass); }
 };
 
-struct ParameterDescription
+class ParameterDescription
 {
     string                  m_Name;
     string                  m_Value;
@@ -125,11 +138,13 @@ public:
     string getName() const { return m_Name; }
     string getValue() const { return m_Value; }
 };
+
+typedef std::vector<ParameterDescription> ParameterVector;
+
 struct SamplerDescription
 {
-    typedef std::vector<ParameterDescription> ParameterList;
-    string                  m_Name;
-    ParameterList           m_Parameters;
+    string                    m_Name;
+    ParameterVector           m_Parameters;
 public:
     SamplerDescription(string name)
         :   m_Name(name) {}
@@ -141,52 +156,86 @@ public:
     size_t getParameterCount() const { return m_Parameters.size(); }
 };
 
-struct ShaderDescription
+class BufferElement
 {
-    typedef std::vector<InputParameter> SamplerList;
-    typedef std::vector<InputParameter> InputParameterList;
+    UniformValueType        m_Type;
+    string                  m_Name;
+    size_t                  m_ElementCount;
+public:
+    BufferElement(UniformValueType _type, string name, size_t elem_count)
+        :   m_Type(_type),
+            m_Name(name),
+            m_ElementCount(elem_count) {}
+    
+    string getElementName() const { return m_Name; }
+    UniformValueType getElementType() const { return m_Type; }
+    size_t getElementCount() const { return m_ElementCount; }
+};
+
+typedef std::vector<BufferElement>        BufferElementVector;
+
+class BufferDescription
+{
+    BufferType             m_BufferType;
+    string                 m_Name;
+    BufferElementVector    m_Elements;
+public:
+    BufferDescription(BufferType buffer_type, string name)
+        :   m_BufferType(buffer_type),
+            m_Name(name) {}
+    
+    void addBufferElement(BufferElement elem) { m_Elements.push_back(elem); }
+    
+    string getBufferName() const { return m_Name; }
+    const BufferElement& getElement(size_t idx) const { return m_Elements[idx]; }
+    size_t getElementCount() const { return m_Elements.size(); }
+    BufferType getBufferType() const { return m_BufferType; }
+};
+
+typedef std::vector<InputParameter>       InputParameterVector;
+
+class ShaderDescription
+{
     ShaderType              m_ShaderType;
     string                  m_Name;
     string                  m_Content;
-    SamplerList             m_Samplers;
-    InputParameterList      m_InputSignature;
+    InputParameterVector    m_InputSignature;
 public:
     ShaderDescription(ShaderType shader_type, string name)
         :   m_ShaderType(shader_type),
             m_Name(name) {}
 
     void addInputParameter(InputParameter param) { m_InputSignature.push_back(param); }
-    void addSampler(string name, string texture) { m_Samplers.push_back(InputParameter(TGE_EFFECT_SAMPLER_TYPE, name, texture)); }
     void appendContent(string content) { m_Content += content; }
 
     ShaderType getShaderType() const { return m_ShaderType; }
     string getName() const { return m_Name; }
     string getContent() const { return m_Content; }
 
-    string getSamplerName(size_t idx) const { return m_Samplers[idx].getName(); }
-    string getSamplerTexture(size_t idx) const { return m_Samplers[idx].getSemantic(); }
-    size_t getSamplerCount() const { return m_Samplers.size(); }
-
     size_t getInputParameterCount() const { return m_InputSignature.size(); }
     const InputParameter& getInputParameter(size_t idx) const { return m_InputSignature[idx]; }
 };
 
+typedef std::vector<BufferDescription>    BufferVector;
+typedef std::vector<SamplerDescription>   SamplerVector;
+typedef std::vector<ShaderDescription>    ShaderVector;
+typedef std::vector<TechniqueDescription> TechniqueVector;
+typedef std::vector<string>               ImportedVector;
+
 class EffectDescription
 {
-    typedef std::vector<ShaderDescription>    ShaderList;
-    typedef std::vector<TechniqueDescription> TechniqueList;
-    typedef std::vector<SamplerDescription>   SamplerList;
-    typedef std::vector<string>               ImportedList;
-    ShaderList              m_Shaders;
-    SamplerList             m_Samplers;
-    TechniqueList           m_Techniques;
-    ImportedList            m_Imported;
+    ShaderVector            m_Shaders;
+    SamplerVector           m_Samplers;
+    TechniqueVector         m_Techniques;
+    ImportedVector          m_Imported;
+    BufferVector            m_Buffers;
 public:
     EffectDescription() {}
      ~EffectDescription() {}
 
     void clear();
 
+    void addBuffer(BufferDescription buffer) { m_Buffers.push_back(buffer); }
     void addShader(ShaderDescription shader) { m_Shaders.push_back(shader); }
     void addSampler(SamplerDescription sampler) { m_Samplers.push_back(sampler); }
     void addTechnique(TechniqueDescription technique) { m_Techniques.push_back(technique); }
@@ -200,7 +249,8 @@ public:
     size_t getSamplerCount() const { return m_Samplers.size(); }
     string getImportedFile(size_t idx) const { return m_Imported[idx]; }
     size_t getImportedFileCount() const { return m_Imported.size(); }
-
+    const BufferDescription& getBuffer(size_t idx) const { return m_Buffers[idx]; }
+    size_t getBufferCount() const { return m_Buffers.size(); }
 };
 }
 }

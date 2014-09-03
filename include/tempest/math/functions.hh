@@ -28,6 +28,8 @@
 #include <limits>
 #include <cmath>
 
+namespace Tempest
+{
 //! Mathematical constant
 constexpr float math_pi = 3.141592f;
 
@@ -49,5 +51,6 @@ inline float approx_neq(float lhs, float rhs)
 inline float to_radians(float val) { return (val * math_pi) / 180.0f; }
 
 inline float to_degrees(float val) { return (val * 180.0f) / math_pi; }
+}
 
 #endif // _TEMPEST_MATH_FUNCTIONS_HH_

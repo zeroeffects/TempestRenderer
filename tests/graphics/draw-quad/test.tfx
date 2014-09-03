@@ -1,3 +1,8 @@
+instance buffer Globals
+{
+    mat4 Transform;
+}
+
 vertex shader VS
 {
     in vec2 VertexData;
@@ -6,7 +11,7 @@ vertex shader VS
 
     void main()
     {
-        gl_Position = vec4(VertexData.xy, 0.0, 1.0);
+        gl_Position = Transform*vec4(VertexData.xy, 0.0, 1.0);
     }
 }
 
@@ -24,7 +29,7 @@ technique General
 {
     pass P0
     {
-        SetVertexShader(CompileShader(glsl_1_4_0, VS()));
-        SetFragmentShader(CompileShader(glsl_1_4_0, FS()));
+        SetVertexShader(CompileShader(glsl_4_4_0, VS()));
+        SetFragmentShader(CompileShader(glsl_4_4_0, FS()));
     }
 }

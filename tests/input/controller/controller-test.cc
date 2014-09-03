@@ -17,7 +17,7 @@ TGE_TEST("Testing controller capabilities")
 
     Tempest::ControllerState state;
     
-    while(true)
+    for(;;)
     {
         for(auto& cont : controllers)
         {

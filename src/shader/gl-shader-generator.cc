@@ -28,22 +28,102 @@
 #include "tempest/shader/file-loader.hh"
 #include "tempest/utils/patterns.hh"
 
+#include <unordered_map>
+#include <boost/iterator/iterator_concepts.hpp>
+
 namespace Tempest
 {
 namespace GLFX
 {
+typedef std::unordered_map<string, const Shader::Buffer*> VariableMap;
+   
+class ShaderPrinter;
+
+void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, VariableMap* vars, size_t* binding_counter);
+
+class ShaderPrinter: public Shader::VisitorInterface
+{
+    // Because we have scope, we must initialize a new variables map
+    VariableMap                m_Variables;
+    AST::PrinterInfrastructure m_Printer;
+    
+    VariableMap                m_ContextSensitiveVariables;
+    size_t                     m_BindingCounter = 0;
+    
+public:
+    ShaderPrinter(std::ostream& os, size_t flags, VariableMap vars = VariableMap())
+        :   m_ContextSensitiveVariables(vars),
+            m_Printer(os, flags) {}
+    virtual ~ShaderPrinter()=default;
+
+    VariableMap getContextSensitiveVariables() { return m_ContextSensitiveVariables; }
+    
+    std::ostream& stream() { return m_Printer.stream(); }
+
+    virtual void visit(const AST::Value<float>* value) final { AST::PrintNode(&m_Printer, value); }
+    virtual void visit(const AST::Value<int>* value) final { AST::PrintNode(&m_Printer, value); }
+    virtual void visit(const AST::Value<unsigned>* value) final { AST::PrintNode(&m_Printer, value); }
+    virtual void visit(const AST::Value<bool>* value) final { AST::PrintNode(&m_Printer, value); }
+    virtual void visit(const AST::Value<string>* value) final { AST::PrintNode(&m_Printer, value); }
+    virtual void visit(const AST::ListElement* lst) final { AST::PrintNode(this, &m_Printer, lst); }
+    virtual void visit(const AST::Block* _block) final { AST::PrintNode(this, &m_Printer, _block);}
+    virtual void visit(const AST::StringLiteral* value) final { AST::PrintNode(&m_Printer, value); }
+    virtual void visit(const Shader::Typedef* _typedef) final { Shader::PrintNode(this, &m_Printer, _typedef);}
+    virtual void visit(const Shader::Parentheses* parentheses) final { Shader::PrintNode(this, &m_Printer, parentheses);}
+    virtual void visit(const Shader::FunctionDeclaration* func_decl) final { Shader::PrintNode(this, &m_Printer, func_decl); }
+    virtual void visit(const Shader::FunctionDefinition* func_def) final { Shader::PrintNode(this, &m_Printer, func_def); }
+    virtual void visit(const Shader::FunctionCall* func_call) final { Shader::PrintNode(this, &m_Printer, func_call); }
+    virtual void visit(const Shader::ConstructorCall* constructor) final { Shader::PrintNode(this, &m_Printer, constructor); }
+    virtual void visit(const Shader::ScalarType* scalar_type) final { Shader::PrintNode(&m_Printer, scalar_type); }
+    virtual void visit(const Shader::VectorType* vector_type) final { Shader::PrintNode(&m_Printer, vector_type); }
+    virtual void visit(const Shader::MatrixType* matrix_type) final { Shader::PrintNode(&m_Printer, matrix_type); }
+    virtual void visit(const Shader::SamplerType* sampler_type) final { Shader::PrintNode(&m_Printer, sampler_type); }
+    virtual void visit(const Shader::ArrayType* array_type) final { Shader::PrintNode(this, &m_Printer, array_type); }
+    virtual void visit(const Shader::Variable* var) final;
+    virtual void visit(const Shader::Declaration* decl) final { Shader::PrintNode(this, &m_Printer, decl); }
+    virtual void visit(const Shader::MemberVariable* mem_var) final { Shader::PrintNode(this, &m_Printer, mem_var); }
+    virtual void visit(const Shader::ArrayElementVariable* array_elem) final { Shader::PrintNode(this, &m_Printer, array_elem); }
+    virtual void visit(const Shader::InvariantDeclaration* invar_decl) final { Shader::PrintNode(this, &m_Printer, invar_decl); }
+    virtual void visit(const Shader::BinaryOperator* binop) final { Shader::PrintNode(this, &m_Printer, binop); }
+    virtual void visit(const Shader::UnaryOperator* unaryop) final { Shader::PrintNode(this, &m_Printer, unaryop); }
+    virtual void visit(const Shader::TernaryIf* ternary_if) final { Shader::PrintNode(this, &m_Printer, ternary_if); }
+    virtual void visit(const Shader::WhileStatement* while_stmt) final { Shader::PrintNode(this, &m_Printer, while_stmt); }
+    virtual void visit(const Shader::ForStatement* for_stmt) final { Shader::PrintNode(this, &m_Printer, for_stmt); }
+    virtual void visit(const Shader::SwitchStatement* switch_stmt) final { Shader::PrintNode(this, &m_Printer, switch_stmt); }
+    virtual void visit(const Shader::CaseStatement* case_stmt) final { Shader::PrintNode(this, &m_Printer, case_stmt); }
+    virtual void visit(const Shader::JumpStatement* jump_stmt) final { Shader::PrintNode(&m_Printer, jump_stmt); }
+    virtual void visit(const Shader::ReturnStatement* return_stmt) final { Shader::PrintNode(this, &m_Printer, return_stmt); }
+    virtual void visit(const Shader::Profile* _profile) final { Shader::PrintNode(&m_Printer, _profile); }
+    virtual void visit(const Shader::Technique* _technique) final { _technique->printList(this, &m_Printer, "technique"); }
+    virtual void visit(const Shader::Sampler* _sampler) final { _sampler->printList(this, &m_Printer, "sampler"); }
+    virtual void visit(const Shader::Import* _import) final { _import->printList(this, &m_Printer, "import"); }
+    virtual void visit(const Shader::Shader* _shader) final { Shader::PrintNode(this, &m_Printer, _shader); }
+    virtual void visit(const Shader::CompiledShader* compiled_shader) final { Shader::PrintNode(&m_Printer, compiled_shader); }
+    virtual void visit(const Shader::Pass* _pass) final { _pass->printList(this, &m_Printer, "pass"); }
+    virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
+    virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
+    virtual void visit(const Shader::Buffer* buffer) final { PrintBuffer(this, &m_Printer, buffer, &m_ContextSensitiveVariables, &m_BindingCounter); }
+    // Some types that should not appear in AST
+    virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Expression*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::FuncDeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::DeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::VarDeclList*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const AST::Value<Shader::ShaderType>*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+};
+
 class Generator: public Shader::VisitorInterface
 {
     std::stringstream          m_RawImportStream;
-    Shader::Printer            m_RawImport;
+    ShaderPrinter              m_RawImport;
 
     bool                       m_Valid;
     Shader::EffectDescription  m_Effect;
-    FileLoader*             m_FileLoader;
+    FileLoader*                m_FileLoader;
 public:
     Generator(FileLoader* include_loader);
     virtual ~Generator();
-
+    
     virtual void visit(const AST::Value<float>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<int>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<unsigned>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -100,6 +180,19 @@ public:
     Shader::EffectDescription getEffect() const { return m_Effect; }
 };
 
+void ShaderPrinter::visit(const Shader::Variable* var)
+{
+    auto iter = m_ContextSensitiveVariables.find(var->getNodeName());
+    if(iter != m_ContextSensitiveVariables.end())
+    {
+        m_Printer.stream() << iter->second->getNodeName() << "[gl_DrawIDARB]." << var->getNodeName();
+    }
+    else
+    {
+        Shader::PrintNode(&m_Printer, var);
+    }
+}
+
 Generator::Generator(FileLoader* include_loader)
     :   m_RawImport(m_RawImportStream, AST::TGE_AST_PRINT_LINE_LOCATION),
         m_Valid(true),
@@ -122,16 +215,170 @@ string TranslateGLSLVersion(const string& profile_name)
         return "#version 410\n";
     else if(profile_name == "glsl_4_2_0")
         return "#version 420\n";
+    else if(profile_name == "glsl_4_4_0")
+        return "#version 440\n"
+               "#extension GL_ARB_shader_draw_parameters : require\n";
     
     Log(LogLevel::Error, "Unknown profile: ", profile_name);
     return "";
 }
 
+void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, VariableMap* vars, size_t* binding_counter)
+{
+    // layout(std140, binding = 0)
+    printer->stream() << "struct " << buffer->getNodeName() << "_StructType\n";
+    for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
+        printer->stream() << "\t";
+    printer->stream() << "{\n";
+        auto* list = buffer->getBody();
+        visitor->visit(list);
+        for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
+        {
+            auto* decl = iter->extract<Shader::Declaration>();
+            auto* var = decl->getVariables()->extract<Shader::Variable>();
+            (*vars)[var->getNodeName()] = buffer;
+        }
+    printer->stream() << "};\n"
+                         "layout(std430, binding = " << (*binding_counter)++ << ") buffer " << buffer->getNodeName() << "_Buffer" << "\n"
+                         "{\n";
+    for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
+        printer->stream() << "\t";
+    printer->stream() <<
+        buffer->getNodeName() << "_StructType " << buffer->getNodeName() << "[];\n";
+    for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
+        printer->stream() << "\t";    
+    printer->stream() << "};\n";
+}
+
+static void ConvertType(const Shader::Type* _type, UniformValueType* uniform_type, size_t* array_size)
+{
+    *array_size = 1;
+    switch(_type->getTypeEnum())
+    {
+    case Shader::ElementType::Vector:
+    {
+        auto* vector_type = _type->extract<Shader::VectorType>();
+        auto* basic_type = vector_type->getBasicType()->extract<Shader::ScalarType>();
+        switch(vector_type->getDimension())
+        {
+        case 2: 
+        {
+            if(basic_type->getNodeName() == "int")
+                *uniform_type = UniformValueType::IntegerVector2;
+            else if(basic_type->getNodeName() == "bool")
+                *uniform_type = UniformValueType::BooleanVector2;
+            else if(basic_type->getNodeName() == "uint")
+                *uniform_type = UniformValueType::UnsignedIntegerVector2;
+            else if(basic_type->getNodeName() == "float")
+                *uniform_type = UniformValueType::Vector2;
+            else
+                TGE_ASSERT(false, "Unknown vector type");
+        } break;
+        case 3:
+        {
+            if(basic_type->getNodeName() == "int")
+                *uniform_type = UniformValueType::IntegerVector3;
+            else if(basic_type->getNodeName() == "bool")
+                *uniform_type = UniformValueType::BooleanVector3;
+            else if(basic_type->getNodeName() == "uint")
+                *uniform_type = UniformValueType::UnsignedIntegerVector3;
+            else if(basic_type->getNodeName() == "float")
+                *uniform_type = UniformValueType::Vector3;
+            else
+                TGE_ASSERT(false, "Unknown vector type");
+        } break;
+        case 4:
+        {
+            if(basic_type->getNodeName() == "int")
+                *uniform_type = UniformValueType::IntegerVector4;
+            else if(basic_type->getNodeName() == "bool")
+                *uniform_type = UniformValueType::BooleanVector4;
+            else if(basic_type->getNodeName() == "uint")
+                *uniform_type = UniformValueType::UnsignedIntegerVector4;
+            else if(basic_type->getNodeName() == "float")
+                *uniform_type = UniformValueType::Vector4;
+            else
+                TGE_ASSERT(false, "Unknown vector type");
+        } break;
+        default:
+            TGE_ASSERT(false, "Unknown vector type");
+        }
+    } break;
+    case Shader::ElementType::Matrix:
+    {
+        auto* matrix_type = _type->extract<Shader::MatrixType>();
+        size_t rows = matrix_type->getRows();
+        size_t columns = matrix_type->getColumns();
+        switch(columns)
+        {
+        case 2:
+            switch(rows)
+            {
+            case 2: *uniform_type = UniformValueType::Matrix2; break;
+            case 3: *uniform_type = UniformValueType::Matrix2x3; break;
+            case 4: *uniform_type = UniformValueType::Matrix2x4; break;
+            default: TGE_ASSERT(false, "Unsupported matrix type"); break;
+            }
+            break;
+        case 3:
+            switch(rows)
+            {
+            case 2: *uniform_type = UniformValueType::Matrix3x2; break;
+            case 3: *uniform_type = UniformValueType::Matrix3; break;
+            case 4: *uniform_type = UniformValueType::Matrix3x4; break;
+            default: TGE_ASSERT(false, "Unsupported matrix type"); break;
+            }
+            break;
+        case 4:
+            switch(rows)
+            {
+            case 2: *uniform_type = UniformValueType::Matrix4x2; break;
+            case 3: *uniform_type = UniformValueType::Matrix4x3; break;
+            case 4: *uniform_type = UniformValueType::Matrix4; break;
+            default: TGE_ASSERT(false, "Unsupported matrix type"); break;
+            }
+            break;
+        default: TGE_ASSERT(false, "Unsupported matrix type"); break;
+        }
+    } break;
+    case Shader::ElementType::Array:
+    {
+        auto* array_type = _type->extract<Shader::ArrayType>();
+        ConvertType(array_type->getBasicType(), uniform_type, array_size);
+        TGE_ASSERT(*array_size == 1, "Arrays of arrays are unsupported");
+        auto* size = array_type->getSize();
+        if(size)
+            *array_size = size->extract<AST::Value<int>>()->getValue();
+        else
+            *array_size = 0; // infinite
+    } break;
+    case Shader::ElementType::Sampler:
+    {
+        auto* sampler_type = _type->extract<Shader::SamplerType>();
+        
+    } break;
+    default:
+        TGE_ASSERT(false, "Unsupported type"); break;
+    }
+}
+
 void Generator::visit(const Shader::Buffer* buffer)
 {
-    m_RawImportStream << "buffer " << buffer->getNodeName() << " {\n";
-        m_RawImport.visit(buffer->getBody());
-    m_RawImportStream << "};";
+    m_RawImport.visit(buffer);
+    
+    Shader::BufferDescription buf_desc(buffer->getBufferType(), buffer->getNodeName());
+    auto* list = buffer->getBody();
+    for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
+    {
+        auto* decl = iter->extract<Shader::Declaration>();
+        auto* var = decl->getVariables()->extract<Shader::Variable>();
+        
+        UniformValueType uniform_value_type;
+        size_t array_size;
+        ConvertType(var->getType(), &uniform_value_type, &array_size);
+        buf_desc.addBufferElement(Shader::BufferElement(uniform_value_type , var->getNodeName(), array_size));
+    }
+    m_Effect.addBuffer(buf_desc);
 }
 
 void Generator::visit(const AST::ListElement* lst)
@@ -168,17 +415,29 @@ void Generator::visit(const Shader::Technique* _technique)
         auto func_name = function_call->getNodeName();
         Shader::ShaderType current_shader_type;
         if(func_name == "SetVertexShader")
+        {
             current_shader_type = Shader::ShaderType::VertexShader;
+        }
         else if(func_name == "SetTessControlShader")
+        {
             current_shader_type = Shader::ShaderType::TessellationControlShader;
+        }
         else if(func_name == "SetTessEvaluationShader")
+        {
             current_shader_type = Shader::ShaderType::TessellationEvaluationShader;
+        }
         else if(func_name == "SetGeometryShader")
+        {
             current_shader_type = Shader::ShaderType::GeometryShader;
+        }
         else if(func_name == "SetFragmentShader")
+        {
             current_shader_type = Shader::ShaderType::FragmentShader;
+        }
         else if(func_name == "SetComputeShader")
+        {
             current_shader_type = Shader::ShaderType::ComputeShader;
+        }
         else
         {
             Log(LogLevel::Error, "Unexpected function call in technique \"", _technique->getNodeName(), "\": ", func_name);
@@ -228,7 +487,7 @@ void Generator::visit(const Shader::Technique* _technique)
             return;
         }
 
-        Shader::PassShaderDescription shader_desc(shader_name, _version);
+        Shader::PassShaderDescription shader_desc(i, _version);
         pass_desc.addShader(shader_desc);
     }
     technique_desc.addPass(pass_desc);
@@ -298,7 +557,7 @@ void Generator::visit(const Shader::Import* _import)
 
 void Generator::visit(const Shader::Type* type_stmt)
 {
-    TGE_ASSERT(type_stmt->getTypeEnum() == Shader::TGE_EFFECT_SHADER_TYPE, "Unexpected top level type declaration");
+    TGE_ASSERT(type_stmt->getTypeEnum() == Shader::ElementType::Shader, "Unexpected top level type declaration");
     type_stmt->accept(this);
 }
 
@@ -306,10 +565,11 @@ void Generator::visit(const Shader::Shader* _shader)
 {
     Shader::ShaderDescription shader_desc(_shader->getType(), _shader->getNodeName());
     std::stringstream ss;
-    Shader::Printer shader_printer(ss, AST::TGE_AST_PRINT_LINE_LOCATION);
+    ss << m_RawImportStream.str();
+    ShaderPrinter shader_printer(ss, AST::TGE_AST_PRINT_LINE_LOCATION, m_RawImport.getContextSensitiveVariables());
     for(auto j = _shader->getBody()->current(); j != _shader->getBody()->end(); ++j)
     {
-        j->printLocation(ss);
+        j->printLocation(shader_printer.stream());
         
         TGE_ASSERT(*j, "Valid node expected. Bad parsing beforehand.");
         if(j->getNodeType() != Shader::TGE_EFFECT_DECLARATION)
@@ -349,18 +609,6 @@ void Generator::visit(const Shader::Shader* _shader)
                         Shader::InputParameter param(var->getType()->getTypeEnum(), var->getNodeName(), semantic_name_val->getValue());
                         shader_desc.addInputParameter(param);
                     }
-                    else if(layout_id == "samplerExt")
-                    {
-                        if(var->getType()->getTypeEnum() != Shader::TGE_EFFECT_SAMPLER_TYPE)
-                        {
-                            Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Sampler layout qualifier applied on variable that is not a texture: ", var->getNodeName(), " of type: ", var->getType());
-                            m_Valid = false;
-                            return;
-                        }
-                        
-                        auto* sampler = binop->getRHSOperand()->extract<Shader::Sampler>();
-                        shader_desc.addSampler(sampler->getNodeName(), var->getNodeName());
-                    }
                     else
                     {
                         if(!layout_started)
@@ -374,17 +622,17 @@ void Generator::visit(const Shader::Shader* _shader)
                     }
                 }
                 if(layout_started)
-                    ss << ") ";
+                    shader_printer.stream() << ") ";
             }
             switch(var->getStorage())
             {
             case Shader::TGE_EFFECT_DEFAULT_STORAGE: break;
-            case Shader::TGE_EFFECT_CONST_STORAGE: ss << "const "; break;
-            case Shader::TGE_EFFECT_IN_STORAGE: ss << "in "; break;
-            case Shader::TGE_EFFECT_CENTROID_IN_STORAGE:ss << "centroid in ";break;
+            case Shader::TGE_EFFECT_CONST_STORAGE: shader_printer.stream() << "const "; break;
+            case Shader::TGE_EFFECT_IN_STORAGE: shader_printer.stream() << "in "; break;
+            case Shader::TGE_EFFECT_CENTROID_IN_STORAGE: shader_printer.stream() << "centroid in ";break;
             case Shader::TGE_EFFECT_SAMPLE_IN_STORAGE: TGE_ASSERT(false, "sample out "); break;
-            case Shader::TGE_EFFECT_OUT_STORAGE: ss << "out "; break;
-            case Shader::TGE_EFFECT_CENTROID_OUT_STORAGE: ss << "centroid out "; break;
+            case Shader::TGE_EFFECT_OUT_STORAGE: shader_printer.stream() << "out "; break;
+            case Shader::TGE_EFFECT_CENTROID_OUT_STORAGE: shader_printer.stream() << "centroid out "; break;
             case Shader::TGE_EFFECT_SAMPLE_OUT_STORAGE: TGE_ASSERT(false, "sample in "); break;
             case Shader::TGE_EFFECT_INOUT_STORAGE: TGE_ASSERT(false, "Unexpected storage format.");
             default:
@@ -392,10 +640,10 @@ void Generator::visit(const Shader::Shader* _shader)
             }
             
             var->getType()->accept(&shader_printer);
-            ss << " " << var->getNodeName();
+            shader_printer.stream() << " " << var->getNodeName();
         }
         if(!j->isBlockStatement())
-           ss << ";\n";
+           shader_printer.stream() << ";\n";
      }
     
     shader_desc.appendContent(ss.str());

@@ -72,16 +72,23 @@ struct DataDescription
 
 class GLBakedResourceTable
 {
-    std::unique_ptr<char[]> m_Table;
+    char*                   m_Table;
     size_t                  m_Size;
 public:
+    GLBakedResourceTable(size_t size)
+        :   m_Table(new char[size]),
+            m_Size(size) {}
+    ~GLBakedResourceTable() { delete m_Table; }
+    
     template<class T>
     void setValue(size_t offset, const T& val)
     {
-        *reinterpret_cast<T*>(m_Table[offset]) = val;
+        *reinterpret_cast<T*>(m_Table + offset) = val;
     }
     
     operator bool() const { return m_Table != nullptr; }
+    
+    const char* get() const { return m_Table; }
     
     size_t getSize() const { return m_Size; }
 };
@@ -91,7 +98,7 @@ struct ResourceTableDescription
     string          Name;
     uint32          BindPoint;
     uint32          Count;
-    uint32          ResourceTableSize;
+    uint32          BufferSize;
     DataDescription UniformValue[];
 };
 
@@ -101,6 +108,10 @@ class GLResourceTable
 
     GLBakedResourceTable m_BakedResourceTable;
 public:
+    GLResourceTable(ResourceTableDescription* desc)
+        :   m_ResourceTable(desc),
+            m_BakedResourceTable(desc->BufferSize) {}
+    
     typedef GLBakedResourceTable BakedResourceTableType;
     
     inline size_t getResourceIndex(const string& name)
@@ -158,7 +169,7 @@ public:
     typedef GLInputLayout InputLayoutType;
     typedef GLResourceTable ResourceTableType;
     
-    explicit GLShaderProgram(GLuint id);
+    explicit GLShaderProgram(GLuint id, ResourceTableDescription* resource_tables[]);
      ~GLShaderProgram();
     
     GLShaderProgram(const GLShaderProgram&)=delete;

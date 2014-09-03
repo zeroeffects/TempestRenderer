@@ -145,7 +145,7 @@ bool ShaderPrinter::TranslateTexelFetch(const Shader::FunctionCall* func_call)
     auto sampler_expr = expr_list->current();
     auto texcoord_expr = sampler_expr+1;
     auto* texcoord_type = texcoord_expr->extract<Shader::Declaration>()->getVariables()->extract<Shader::Variable>()->getType();
-    if(texcoord_type->getTypeEnum() == Shader::TGE_EFFECT_SCALAR_TYPE)
+    if(texcoord_type->getTypeEnum() == Shader::ElementType::Scalar)
     {
         if(sampler_expr->getNodeName() == "samplerBuffer"  ||
             sampler_expr->getNodeName() == "isamplerBuffer" ||
@@ -166,7 +166,7 @@ bool ShaderPrinter::TranslateTexelFetch(const Shader::FunctionCall* func_call)
             os << ")";
         }
     }
-    else if(texcoord_type->getTypeEnum() == Shader::TGE_EFFECT_VECTOR_TYPE)
+    else if(texcoord_type->getTypeEnum() == Shader::ElementType::Vector)
     {
         auto* vector_type = texcoord_type->extract<Shader::VectorType>();
         auto sampler_name = sampler_expr->extract<Shader::Declaration>()->getVariables()->extract<Shader::Variable>()->getType()->getNodeName();
@@ -491,7 +491,7 @@ void Generator::visit(const Shader::Technique* _technique)
             return;
         }
 
-        Shader::PassShaderDescription shader_desc(shader_name, _version);
+        Shader::PassShaderDescription shader_desc(i, _version);
         pass_desc.addShader(shader_desc);
     }
     technique_desc.addPass(pass_desc);
@@ -513,7 +513,7 @@ void Generator::visit(const AST::ListElement* lst)
 
 void Generator::visit(const Shader::Type* type_stmt)
 {
-    TGE_ASSERT(type_stmt->getTypeEnum() == Shader::TGE_EFFECT_SHADER_TYPE, "Unexpected top level type declaration");
+    TGE_ASSERT(type_stmt->getTypeEnum() == Shader::ElementType::Shader, "Unexpected top level type declaration");
     type_stmt->accept(this);
 }
 
@@ -660,26 +660,6 @@ void Generator::visit(const Shader::Shader* _shader)
                         string semantic = semantic_name_val->getValue();
                         suffix = ": " + semantic;
                     }
-                    else if(layout_id == "samplerExt")
-                    {
-                        if(var->getType()->getTypeEnum() != Shader::TGE_EFFECT_SAMPLER_TYPE)
-                        {
-                            Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Sampler layout qualifier applied on variable that is not a texture: ", var->getNodeName(), " of type: ", var->getType());
-                            m_Valid = false;
-                            return;
-                        }
-                        
-                        auto* sampler = binop->getRHSOperand()->extract<Shader::Sampler>();
-                        shader_desc.addSampler(sampler->getNodeName(), var->getNodeName());
-                        string sampler_name = sampler->getNodeName();
-                        common_printer.setSamplerTextureAssociation(var->getNodeName(), sampler_name);
-                        auto i = sampler_state.begin(), iend = sampler_state.end();
-                        for(; i != iend; ++i)
-                            if(*i == sampler_name)
-                                break;
-                        if(i == iend)
-                            sampler_state.push_back(sampler_name);
-                    }
                     else
                     {
                         Log(LogLevel::Error, k->getDeclarationLocation(), ": Unsupported layout qualifier: ", layout_id);
@@ -745,104 +725,8 @@ void Generator::visit(const Shader::Shader* _shader)
             
             if(!prefix.empty())
                 *current_ss << prefix << " ";
-            if(var->getType()->getTypeEnum() == Shader::TGE_EFFECT_SAMPLER_TYPE)
-            {
-                string texture_type = var->getType()->getNodeName();
-                // TODO: hash table
-                if(texture_type == "sampler1D")
-                    texture_type = "Texture1D";
-                else if(texture_type == "sampler2D")
-                    texture_type = "Texture2D";
-                else if(texture_type == "sampler3D")
-                    texture_type = "Texture3D";
-                else if(texture_type == "samplerCube")
-                    texture_type = "TextureCube";
-                else if(texture_type == "sampler1DShadow")
-                    texture_type = "Texture1D";
-                else if(texture_type == "sampler2DShadow")
-                    texture_type = "Texture2D";
-                else if(texture_type == "samplerCubeShadow")
-                    texture_type = "TextureCube";
-                else if(texture_type == "sampler1DArray")
-                    texture_type = "Texture1DArray";
-                else if(texture_type == "sampler2DArray")
-                    texture_type = "Texture2DArray";
-                else if(texture_type == "sampler1DArrayShadow")
-                    texture_type = "Texture1DArray";
-                else if(texture_type == "sampler2DArrayShadow")
-                    texture_type = "Texture2DArray";
-                else if(texture_type == "isampler1D")
-                    texture_type = "Texture1D<int>";
-                else if(texture_type == "isampler2D")
-                    texture_type = "Texture2D<int>";
-                else if(texture_type == "isampler3D")
-                    texture_type = "Texture3D<int>";
-                else if(texture_type == "isamplerCube")
-                    texture_type = "TextureCube<int>";
-                else if(texture_type == "isampler1DArray")
-                    texture_type = "Texture1DArray<int>";
-                else if(texture_type == "isampler2DArray")
-                    texture_type = "Texture2DArray<int>";
-                else if(texture_type == "usampler1D")
-                    texture_type = "Texture1D<uint>";
-                else if(texture_type == "usampler2D")
-                    texture_type = "Texture2D<uint>";
-                else if(texture_type == "usampler3D")
-                    texture_type = "Texture3D<uint>";
-                else if(texture_type == "usamplerCube")
-                    texture_type = "TextureCube<uint>";
-                else if(texture_type == "usampler1DArray")
-                    texture_type = "Texture1DArray<uint>";
-                else if(texture_type == "usampler2DArray")
-                    texture_type = "Texture2DArray<uint>";
-                else if(texture_type == "sampler2DRect")
-                    texture_type = "Texture2D";
-                else if(texture_type == "sampler2DRectShadow")
-                    texture_type = "Texture2D";
-                else if(texture_type == "isampler2DRect")
-                    texture_type = "Texture2D<int>";
-                else if(texture_type == "usampler2DRect")
-                    texture_type = "Texture2D<uint>";
-                else if(texture_type == "samplerBuffer")
-                    texture_type = "Buffer";
-                else if(texture_type == "isamplerBuffer")
-                    texture_type = "Buffer<int>";
-                else if(texture_type == "usamplerBuffer")
-                    texture_type = "Buffer<uint>";
-                else if(texture_type == "sampler2DMS")
-                    texture_type = "Texture2DMS";
-                else if(texture_type == "isampler2DMS")
-                    texture_type = "Texture2DMS<int>";
-                else if(texture_type == "usampler2DMS")
-                    texture_type = "Texture2DMS<uint>";
-                else if(texture_type == "sampler2DMSArray")
-                    texture_type = "Texture2DMSArray";
-                else if(texture_type == "isampler2DMSArray")
-                    texture_type = "Texture2DArray<int>";
-                else if(texture_type == "usampler2DMSArray")
-                    texture_type = "Texture2DMSArray<uint>";
-                else if(texture_type == "samplerCubeArray")
-                    texture_type = "TextureCubeArray";
-                else if(texture_type == "samplerCubeArrayShadow")
-                    texture_type = "TextureCubeArray";
-                else if(texture_type == "isamplerCubeArray")
-                    texture_type = "TextureCubeArray<int>";
-                else if(texture_type == "usamplerCubeArray")
-                    texture_type = "TextureCubeArray<uint>";
-                else
-                {
-                    Log(LogLevel::Error, "Unsupported sampler type: ", texture_type);
-                    m_Valid = false;
-                    return;
-                }
-                
-                *current_ss << texture_type << " " << var->getNodeName() << suffix << ";\n";
-            }
-            else
-            {
-                var->getType()->accept(current_printer);
-                *current_ss << " " << var->getNodeName() << suffix << ";\n";
-            }
+            var->getType()->accept(current_printer);
+            *current_ss << " " << var->getNodeName() << suffix << ";\n";
         }
         else
         {

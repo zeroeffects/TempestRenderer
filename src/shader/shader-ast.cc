@@ -221,7 +221,7 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
 {
     switch(operandB->getTypeEnum())
     {
-    case TGE_EFFECT_SCALAR_TYPE:
+    case ElementType::Scalar:
     {
         switch(binop)
         {
@@ -264,7 +264,7 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    case TGE_EFFECT_VECTOR_TYPE:
+    case ElementType::Vector:
     {
         const VectorType* opBtype = operandB->extract<VectorType>();
         switch(binop)
@@ -297,7 +297,7 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    case TGE_EFFECT_MATRIX_TYPE:
+    case ElementType::Matrix:
     {
         switch(binop)
         {
@@ -315,7 +315,7 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    // TGE_EFFECT_ARRAY_TYPE
+    // ElementType::Array
     default:
         break;
     }
@@ -325,7 +325,7 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
     
     switch(operandB->getTypeEnum())
     {
-    case TGE_EFFECT_SCALAR_TYPE:
+    case ElementType::Scalar:
     {
         switch(binop)
         {
@@ -351,7 +351,7 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    case TGE_EFFECT_VECTOR_TYPE:
+    case ElementType::Vector:
     {
         const VectorType* opBtype = operandB->extract<VectorType>();
         switch(binop)
@@ -397,11 +397,11 @@ bool ScalarType::hasValidConstructor(const List* var_list) const
     else
     {
 		auto* expr = var_list->current_front()->extract<Expression>();
-		TypeEnum type_enum = expr->getFirst()->getTypeEnum();
-        if(type_enum != TGE_EFFECT_VECTOR_TYPE &&
-           type_enum != TGE_EFFECT_SCALAR_TYPE &&
-           type_enum != TGE_EFFECT_MATRIX_TYPE &&
-           type_enum != TGE_EFFECT_ARRAY_TYPE)
+		ElementType type_enum = expr->getFirst()->getTypeEnum();
+        if(type_enum != ElementType::Vector &&
+           type_enum != ElementType::Scalar &&
+           type_enum != ElementType::Matrix &&
+           type_enum != ElementType::Array)
             return false;
     }
     return true;
@@ -409,7 +409,7 @@ bool ScalarType::hasValidConstructor(const List* var_list) const
 
 bool ScalarType::hasImplicitConversionTo(const Type* _type) const
 {
-    return m_Integer && _type->getTypeEnum() == TGE_EFFECT_SCALAR_TYPE && _type->getNodeName() == "float";
+    return m_Integer && _type->getTypeEnum() == ElementType::Scalar && _type->getNodeName() == "float";
 }
 
 const Type* ScalarType::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
@@ -449,7 +449,7 @@ bool ArrayType::hasValidConstructor(const List* var_list) const
 
 bool ArrayType::hasImplicitConversionTo(const Type* _type) const
 {
-    if(_type->getTypeEnum() != TGE_EFFECT_ARRAY_TYPE)
+    if(_type->getTypeEnum() != ElementType::Array)
         return false;
     return _type->extract<ArrayType>()->getArrayElementType() == m_Type;
 }
@@ -481,7 +481,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
 {
     switch(operandB->getTypeEnum())
     {
-    case TGE_EFFECT_SCALAR_TYPE:
+    case ElementType::Scalar:
     {
         switch(binop)
         {
@@ -519,7 +519,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    case TGE_EFFECT_VECTOR_TYPE:
+    case ElementType::Vector:
     {
         switch(binop)
         {
@@ -554,7 +554,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    case TGE_EFFECT_MATRIX_TYPE:
+    case ElementType::Matrix:
     {
         const MatrixType* opBtype = operandB->extract<MatrixType>();
         switch(binop)
@@ -574,7 +574,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    // TGE_EFFECT_ARRAY_TYPE
+    // ElementType::Array
     default:
         break;
     }
@@ -584,7 +584,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
     
     switch(operandB->getTypeEnum())
     {
-    case TGE_EFFECT_SCALAR_TYPE:
+    case ElementType::Scalar:
     {
         switch(binop)
         {
@@ -610,7 +610,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    case TGE_EFFECT_VECTOR_TYPE:
+    case ElementType::Vector:
     {
         const VectorType* opBtype = operandB->extract<VectorType>();
         switch(binop)
@@ -704,17 +704,17 @@ bool VectorType::hasValidConstructor(const List* var_list) const
                 Tempest::Log(LogLevel::Error, "Request for invalid constructor call. Probable consequence of previous error.");
                 return false;
             }
-			TypeEnum type_enum = expr->getFirst()->getTypeEnum();
+			ElementType type_enum = expr->getFirst()->getTypeEnum();
             switch(type_enum)
             {
-            case TGE_EFFECT_SCALAR_TYPE: ++total_element; break;
-            case TGE_EFFECT_VECTOR_TYPE: total_element += expr->getFirst()->extract<VectorType>()->getDimension(); break;
-            case TGE_EFFECT_MATRIX_TYPE:
+            case ElementType::Scalar: ++total_element; break;
+            case ElementType::Vector: total_element += expr->getFirst()->extract<VectorType>()->getDimension(); break;
+            case ElementType::Matrix:
             {
                 const MatrixType* mat = expr->getFirst()->extract<MatrixType>();
                 total_element += mat->getRows()*mat->getColumns();
             } break;
-//          case TGE_EFFECT_ARRAY_TYPE:
+//          case ElementType::Array:
 //          {
 //              ArrayType& arr = static_cast<ArrayType&>(*i);
 //              total_element // TODO: constants
@@ -734,11 +734,11 @@ bool VectorType::hasValidConstructor(const List* var_list) const
             Tempest::Log(LogLevel::Error, "Request for invalid constructor call. Probable consequence of previous error.");
             return false;
         }
-        TypeEnum type_enum = expr->getFirst()->getTypeEnum();
-        if(type_enum != TGE_EFFECT_VECTOR_TYPE &&
-           type_enum != TGE_EFFECT_SCALAR_TYPE &&
-           type_enum != TGE_EFFECT_MATRIX_TYPE &&
-           type_enum != TGE_EFFECT_ARRAY_TYPE)
+        ElementType type_enum = expr->getFirst()->getTypeEnum();
+        if(type_enum != ElementType::Vector &&
+           type_enum != ElementType::Scalar &&
+           type_enum != ElementType::Matrix &&
+           type_enum != ElementType::Array)
             return false;
     }
     return true;
@@ -747,7 +747,7 @@ bool VectorType::hasValidConstructor(const List* var_list) const
 bool VectorType::hasImplicitConversionTo(const Type* _type) const
 {
     return m_Type->extract<ScalarType>()->isInteger() &&
-           _type->getTypeEnum() == TGE_EFFECT_VECTOR_TYPE &&
+           _type->getTypeEnum() == ElementType::Vector &&
            _type->extract<VectorType>()->getDimension() == m_VecDim &&
            _type->extract<VectorType>()->getBasicType()->getNodeName() == "float";
 }
@@ -779,7 +779,7 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
     const Type* result_type = nullptr;
     switch(operandB->getTypeEnum())
     {
-    case TGE_EFFECT_SCALAR_TYPE:
+    case ElementType::Scalar:
     {
         switch(binop)
         {
@@ -801,7 +801,7 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    case TGE_EFFECT_VECTOR_TYPE:
+    case ElementType::Vector:
     {
         const VectorType* opBtype = operandB->extract<VectorType>();
         switch(binop)
@@ -821,7 +821,7 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    case TGE_EFFECT_MATRIX_TYPE:
+    case ElementType::Matrix:
     {
         const MatrixType* opBtype = operandB->extract<MatrixType>();
         switch(binop)
@@ -858,7 +858,7 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
             break;
         }
     } break;
-    // TGE_EFFECT_ARRAY_TYPE
+    // ElementType::Array
     default:
         break;
     }
@@ -889,17 +889,17 @@ bool MatrixType::hasValidConstructor(const List* var_list) const
         for(List::const_iterator i = var_list->current(), iend = var_list->end(); i != iend; ++i)
         {
             auto* expr = i->extract<Expression>();
-			TypeEnum type_enum = expr->getFirst()->getTypeEnum();
+			ElementType type_enum = expr->getFirst()->getTypeEnum();
             switch(type_enum)
             {
-            case TGE_EFFECT_SCALAR_TYPE: ++total_element; break;
-            case TGE_EFFECT_VECTOR_TYPE: total_element += expr->getFirst()->extract<VectorType>()->getDimension(); break;
-            case TGE_EFFECT_MATRIX_TYPE:
+            case ElementType::Scalar: ++total_element; break;
+            case ElementType::Vector: total_element += expr->getFirst()->extract<VectorType>()->getDimension(); break;
+            case ElementType::Matrix:
             {
                 const MatrixType* mat = expr->getFirst()->extract<MatrixType>();
                 total_element += mat->getRows()*mat->getColumns();
             } break;
-//          case TGE_EFFECT_ARRAY_TYPE:
+//          case ElementType::Array:
 //          {
 //              ArrayType& arr = static_cast<ArrayType&>(*i);
 //              total_element // TODO: constants
@@ -914,11 +914,11 @@ bool MatrixType::hasValidConstructor(const List* var_list) const
     else
     {
 		auto expr = var_list->current_front()->extract<Expression>();
-		TypeEnum type_enum = expr->getFirst()->getTypeEnum();
-        if(type_enum != TGE_EFFECT_VECTOR_TYPE &&
-           type_enum != TGE_EFFECT_SCALAR_TYPE &&
-           type_enum != TGE_EFFECT_MATRIX_TYPE &&
-           type_enum != TGE_EFFECT_ARRAY_TYPE)
+		ElementType type_enum = expr->getFirst()->getTypeEnum();
+        if(type_enum != ElementType::Vector &&
+           type_enum != ElementType::Scalar &&
+           type_enum != ElementType::Matrix &&
+           type_enum != ElementType::Array)
             return false;
     }
     return true;
@@ -1336,7 +1336,7 @@ bool Shader::hasBase(const Type* _type) const
 
 bool Shader::hasImplicitConversionTo(const Type* _type) const
 {
-    return (_type->getTypeEnum() == TGE_EFFECT_SHADER_TYPE && _type->getNodeName() == "shader");
+    return (_type->getTypeEnum() == ElementType::Shader && _type->getNodeName() == "shader");
 }
 
 bool Shader::hasValidConstructor(const List* var_list) const
@@ -1555,7 +1555,7 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
         PrintType(visitor, printer, var);
         if(!var->getNodeName().empty())
             os << " ";
-        if(var->getType()->getTypeEnum() == TGE_EFFECT_ARRAY_TYPE)
+        if(var->getType()->getTypeEnum() == ElementType::Array)
         {
             auto* array_type = var->getType()->extract<ArrayType>();
             visitor->visit(var);
@@ -1572,7 +1572,7 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
         auto* var = binop->getLHSOperand()->extract<Variable>();
         PrintType(visitor, printer, var);
         os << " ";
-        if(var->getType()->getTypeEnum() == TGE_EFFECT_ARRAY_TYPE)
+        if(var->getType()->getTypeEnum() == ElementType::Array)
         {
             auto* array_type = var->getType()->extract<ArrayType>();
             visitor->visit(var);
@@ -1608,7 +1608,7 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
             {
                 auto* ref_var = i->extract<Variable>();
                 visitor->visit(ref_var);
-                if(ref_var->getType()->getTypeEnum() == TGE_EFFECT_ARRAY_TYPE)
+                if(ref_var->getType()->getTypeEnum() == ElementType::Array)
                 {
                     os << "[";
                     ref_var->getType()->extract<ArrayType>()->getSize()->accept(visitor);
@@ -1620,7 +1620,7 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
                 const BinaryOperator* binop = i->extract<BinaryOperator>();
                 var = binop->getLHSOperand()->extract<Variable>();
                 visitor->visit(var);
-                if(var->getType()->getTypeEnum() == TGE_EFFECT_ARRAY_TYPE)
+                if(var->getType()->getTypeEnum() == ElementType::Array)
                 {
                     os << "[";
                     var->getType()->extract<ArrayType>()->getSize()->accept(visitor);

@@ -77,7 +77,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         for(size_t shader_idx = 0, end_shader_idx = effect.getShaderCount(); shader_idx < end_shader_idx; ++shader_idx)
         {
             shader = &effect.getShader(shader_idx);
-            if(shader->getName() == shader_desc.getName())
+            if(shader->getName() == effect.getShader(shader_desc.getShaderIndex()).getName())
                 break;
         }
         auto source = shader_desc.getAdditionalOptions() + shader->getContent();
@@ -135,7 +135,38 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         glGetProgramInfoLog(shader_prog, len, nullptr, &error.front());
         Log(LogLevel::Error, "Shader program link error: ", error);
     }
-    return new GLShaderProgram(shader_prog);
+    
+    auto buf_count = effect.getBufferCount();
+    std::unique_ptr<ResourceTableDescription*[]> res_tables(new ResourceTableDescription*[buf_count]);
+    
+    for(size_t buffer_idx = 0; buffer_idx < buf_count; ++buffer_idx)
+    {
+        auto& buffer = effect.getBuffer(buffer_idx);
+        auto& res_table = res_tables[buffer_idx];
+        
+        auto type = buffer.getBufferType();
+        auto elem_count = buffer.getElementCount();
+        
+        res_table = new (malloc(sizeof(ResourceTableDescription) + elem_count*sizeof(DataDescription))) ResourceTableDescription;
+        res_table->Name = buffer.getBufferName();
+        res_table->Count = elem_count;
+        res_table->BindPoint = buffer_idx; // TODO: probably not completely right.
+        auto offset = 0;
+        for(size_t el_idx = 0; el_idx < elem_count; ++el_idx)
+        {
+            auto& elem_desc = buffer.getElement(el_idx);
+            auto& uval = res_table->UniformValue[el_idx];
+            new (&uval) DataDescription;
+            uval.Name = elem_desc.getElementName();
+            uval.Type = elem_desc.getElementType();
+            uval.ElementCount = elem_desc.getElementCount();
+            uval.Offset = offset;
+            offset += uval.ElementCount*UniformValueTypeSize(uval.Type);
+        }
+        res_table->BufferSize = offset;
+    }
+    
+    return new GLShaderProgram(shader_prog, res_tables.release());
 }
 
 void GLShaderCompiler::destroyRenderResource(GLShaderProgram* shader_program)

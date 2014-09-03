@@ -132,7 +132,7 @@ bool Controller::getState(ControllerState* state)
     
     int evt_last = 0;
     bool ret = false;
-    while(1)
+    for(;;)
     {
         int read_bytes = read(m_FD, &evt, sizeof(js_event));
         if(read_bytes != sizeof(js_event))

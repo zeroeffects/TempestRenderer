@@ -28,16 +28,11 @@ namespace Tempest
 {
 namespace Shader
 {
-PassShaderDescription::PassShaderDescription(string name, string additional_opts)
-    :   m_Name(name),
+PassShaderDescription::PassShaderDescription(size_t shader_idx, string additional_opts)
+    :   m_ShaderIndex(shader_idx),
         m_AdditionalOpts(additional_opts) {}
 PassShaderDescription::~PassShaderDescription() {}
-
-InputParameter::InputParameter(TypeEnum _type, string name, string _semantic)
-    :   m_Type(_type),
-        m_Name(name),
-        m_Semantic(_semantic) {}
-
+ 
 void EffectDescription::clear()
 {
     m_Shaders.clear();

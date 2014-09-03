@@ -1,5 +1,6 @@
 #include "tempest/utils/testing.hh"
 #include "tempest/math/vector2.hh"
+#include "tempest/math/matrix4.hh"
 #include "tempest/graphics/rendering-convenience.hh"
 #include "tempest/graphics/opengl-backend/gl-all.hh"
 
@@ -15,11 +16,11 @@ TGE_TEST("Testing the off-screen rendering context")
     Tempest::GLRenderingBackend backend;
     auto command_buf = Tempest::CreateCommandBuffer(&backend);
     
-    std::vector<Vector2> arr{ Vector2(-0.5f, -0.5f),
-                              Vector2(-0.5f, +0.5f),
-                              Vector2(+0.5f, -0.5f),
-                              Vector2(+0.5f, +0.5f) };
-      
+    std::vector<Tempest::Vector2> arr{ Tempest::Vector2(0.0f, 0.0f),
+                                       Tempest::Vector2(0.0f, 1.0f),
+                                       Tempest::Vector2(1.0f, 0.0f),
+                                       Tempest::Vector2(1.0f, 1.0f) };
+    
     std::vector<Tempest::uint16> idx_arr{ 0, 1, 2, 3};
     
     auto vertex_buf = Tempest::CreateBuffer(&backend, arr, Tempest::VBType::VertexBuffer);
@@ -27,16 +28,26 @@ TGE_TEST("Testing the off-screen rendering context")
     
     Tempest::GLShaderCompiler compiler;
     auto shader = Tempest::CreateShader(&compiler, CURRENT_SOURCE_DIR "/test.tfx");
+    auto res_table = shader->createResourceTable("Globals");
+    Tempest::Matrix4 mat;
+    mat.identity();
+    mat.translate(Tempest::Vector2(-0.5f, -0.5f));
+    res_table->setResource("Transform", mat);
+    auto baked_table = Tempest::ExtractBakedResourceTable(res_table);
+    
     TGE_ASSERT(shader, "Could not create shader file");
     
-    std::vector<Tempest::VertexAttributeDescription> layout_arr{ Tempest::VertexAttributeDescription{ 0, "VertexData", Tempest::DataFormat::RG32F, sizeof(Vector2), 0} };
+    std::vector<Tempest::VertexAttributeDescription> layout_arr
+    {
+        { 0, "VertexData", Tempest::DataFormat::RG32F, sizeof(Tempest::Vector2), 0}
+    };
     
     auto input_layout = Tempest::CreateInputLayout(&backend, shader.get(), layout_arr);
     
     Tempest::GLDrawBatch batch;
     batch.PrimitiveType = Tempest::DrawModes::TriangleStrip;
     batch.VertexCount = idx_arr.size();
-    batch.ResourceTable = nullptr;
+    batch.ResourceTable = baked_table.get();
     batch.ShaderProgram = shader.get();
     batch.IndexBuffer = index_buf.get();
     batch.InputLayout = input_layout.get();
@@ -47,7 +58,7 @@ TGE_TEST("Testing the off-screen rendering context")
     
     sys_obj->Window.show();
     
-    while(true)
+    for(;;)
     {
         backend.submitCommandBuffer(command_buf.get());
         

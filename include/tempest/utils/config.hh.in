@@ -24,7 +24,6 @@
 
 #define Tempest_VERSION_MAJOR @Tempest_VERSION_MAJOR@
 #define Tempest_VERSION_MINOR @Tempest_VERSION_MINOR@
-#define Tempest_TESTS_DIR "@Tempest_TESTS_DIR@"
 
 #cmakedefine HAS_QT4
 #cmakedefine HAS_SSE

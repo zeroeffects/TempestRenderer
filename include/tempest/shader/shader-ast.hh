@@ -209,7 +209,7 @@ class Driver;
 template<class T> struct TypeInfo {};
 #define TGE_EFFECT_TYPE_INFO(_type, _type_enum, vis_type) \
     template<> struct TypeInfo<_type> { \
-        static const TypeEnum type_enum = _type_enum; \
+        static const ElementType type_enum = _type_enum; \
         typedef vis_type visitor_type; \
     };
 
@@ -223,14 +223,14 @@ class Shader;
 class Profile;
 class CompiledShader;
 
-TGE_EFFECT_TYPE_INFO(ScalarType, TGE_EFFECT_SCALAR_TYPE, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(VectorType, TGE_EFFECT_VECTOR_TYPE, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(MatrixType, TGE_EFFECT_MATRIX_TYPE, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(ArrayType, TGE_EFFECT_ARRAY_TYPE, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(SamplerType, TGE_EFFECT_SAMPLER_TYPE, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(Shader, TGE_EFFECT_SHADER_TYPE, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(Profile, TGE_EFFECT_PROFILE_TYPE, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(CompiledShader, TGE_EFFECT_COMPILED_SHADER_TYPE, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(ScalarType, ElementType::Scalar, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(VectorType, ElementType::Vector, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(MatrixType, ElementType::Matrix, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(ArrayType, ElementType::Array, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(SamplerType, ElementType::Sampler, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(Shader, ElementType::Shader, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(Profile, ElementType::Profile, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(CompiledShader, ElementType::CompiledShader, VisitorInterface)
 
 // The reasoning behind passing this_type is that we can't guarantee that it
 // is going to be preserved because it is used as a facade to hide the polymorphism
@@ -247,7 +247,7 @@ public:
     
     virtual bool hasBase(const Type* _type) const=0;
 
-    virtual TypeEnum getTypeEnum() const=0;
+    virtual ElementType getTypeEnum() const=0;
 
     virtual bool hasImplicitConversionTo(const Type* _type) const=0;
 
@@ -273,7 +273,7 @@ struct TypeImplModel: public TypeImpl
 
     virtual bool hasBase(const Type* _type) const override { return m_Data.hasBase(_type); }
 
-    virtual TypeEnum getTypeEnum() const override { return TypeInfo<T>::type_enum; }
+    virtual ElementType getTypeEnum() const override { return TypeInfo<T>::type_enum; }
 
     virtual bool hasImplicitConversionTo(const Type* _type) const override { return m_Data.hasImplicitConversionTo(_type); }
 
@@ -323,7 +323,7 @@ public:
 
     bool hasBase(const Type* _type) const { return this == _type ? true : m_Impl->hasBase(_type); }
 
-    TypeEnum getTypeEnum() const { return m_Impl->getTypeEnum(); }
+    ElementType getTypeEnum() const { return m_Impl->getTypeEnum(); }
 
     template<class U>
     U* extract() { TGE_ASSERT(m_Impl->getTypeEnum() == TypeInfo<U>::type_enum, "Unexpected node"); return m_Impl ? &static_cast<TypeImplModel<U>*>(m_Impl)->m_Data : nullptr; }
@@ -1036,9 +1036,13 @@ public:
 
 class Buffer: public AST::NamedList<Buffer>
 {
+    BufferType         m_BufferType;
 public:
     Buffer(string name, NodeT<List> body);
      ~Buffer();
+     
+    void setBufferType(BufferType buffer_type) { m_BufferType = buffer_type; }
+    BufferType getBufferType() const { return m_BufferType; }
 };
 
 class Shader: public AST::NamedList<Shader>

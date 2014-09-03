@@ -90,6 +90,7 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 "invariant"                             *yylval = AST::Node(); return Parser::token::T_INVARIANT_QUALIFIER;
 "sampler"                               *yylval = AST::Node(); return Parser::token::T_SAMPLER;
 "buffer"                                *yylval = AST::Node(); return Parser::token::T_BUFFER_QUALIFIER;
+"instance"                              *yylval = AST::Node(); return Parser::token::T_INSTANCE_QUALIFIER;
 {IDENTIFIER}                            {
                                             auto node = driver.findIdentifier(yytext);
                                             if(node)
@@ -105,7 +106,6 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
                                                     TGE_ASSERT(false, "Unexpected type bound to identifier"); break;
                                                 }
                                             }
-
                                             *yylval = CreateNode<Value<string>>(ToLocation(*yylloc), yytext);
                                             return Parser::token::T_IDENTIFIER;
                                         }

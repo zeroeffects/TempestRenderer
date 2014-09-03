@@ -159,7 +159,9 @@ void GLCommandBuffer::_executeCommandBuffer()
     
     // Naive to start with. TODO: Ring buffer.
     char *cmd_buf = reinterpret_cast<char*>(m_GPUCommandBufferPtr),
-         *cmd_start = cmd_buf;
+         *cmd_start = cmd_buf,
+         *res_buf = reinterpret_cast<char*>(m_ConstantBufferPtr),
+         *res_start = res_buf;
     size_t cnt = 0;
     auto& first = m_CommandBuffer.front();
     GLShaderProgram* prev_prog = first.ShaderProgram;
@@ -178,11 +180,17 @@ void GLCommandBuffer::_executeCommandBuffer()
         {
             size_t layout_size = layout ? layout->getAttributeCount() : 0;
             
+            if(res_buf != res_start)
+            {
+                glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, m_ConstantBufferRing, res_start - reinterpret_cast<char*>(m_ConstantBufferPtr), res_buf - res_start);
+            }
+            
             glMultiDrawElementsIndirectBindlessNV(TranslateDrawMode(mode), GL_UNSIGNED_SHORT,
                                                   (char*)nullptr + (cmd_start - reinterpret_cast<char*>(m_GPUCommandBufferPtr)),
                                                   cnt, 0, layout_size);
             CheckOpenGL();
             cmd_start = cmd_buf;
+            res_start = res_buf;
             cnt = 0;
             mode = cpu_cmd.PrimitiveType;
             layout = cpu_cmd.InputLayout;
@@ -196,7 +204,12 @@ void GLCommandBuffer::_executeCommandBuffer()
         
         size_t layout_size = cpu_cmd.InputLayout ? cpu_cmd.InputLayout->getAttributeCount() : 0;
         
-        // TODO: SSBO, stride
+        if(cpu_cmd.ResourceTable)
+        {
+            auto size = cpu_cmd.ResourceTable->getSize();
+            std::copy_n(cpu_cmd.ResourceTable->get(), size, res_buf);
+            res_buf += size;
+        }
         
         gpu_cmd.cmd.count = cpu_cmd.VertexCount;
         gpu_cmd.cmd.instanceCount = 1;
@@ -226,6 +239,12 @@ void GLCommandBuffer::_executeCommandBuffer()
     {
         auto* layout = m_CommandBuffer.back().InputLayout;
         auto offset = (char*)nullptr + (cmd_start - reinterpret_cast<char*>(m_GPUCommandBufferPtr));
+        
+        if(res_buf != res_start)
+        {
+            glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, m_ConstantBufferRing, res_start - reinterpret_cast<char*>(m_ConstantBufferPtr), res_buf - res_start);
+        }
+        
         glMultiDrawElementsIndirectBindlessNV(TranslateDrawMode(mode), GL_UNSIGNED_SHORT,
                                               offset, cnt, 0, layout ? layout->getAttributeCount() : 0);
         CheckOpenGL();

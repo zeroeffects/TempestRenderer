@@ -25,6 +25,8 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
+INCLUDE(CheckCXXCompilerFlag)
+
 SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake_modules)
 
 PROJECT(Tempest)
@@ -42,6 +44,28 @@ ELSEIF(UNIX)
     SET(WINDOW_SYSTEM_INCLUDE_DIR ${X11_INCLUDE_DIR})
     SET(WINDOW_SYSTEM_LIBRARIES ${X11_LIBRARIES})
 ENDIF()
+
+IF(MSVC)
+    SET(SIMD_FLAGS "/arch:SSE")
+    SET(HAS_SSE on)
+ELSE(MSVC)
+    CHECK_CXX_COMPILER_FLAG(-msse HAS_SSE)
+    IF(HAS_SSE)
+        SET(SIMD_FLAGS "-msse")
+    ELSE(HAS_SSE)
+        CHECK_CXX_COMPILER_FLAG(-mfpu=neon HAS_ARM_NEON)
+        IF(HAS_ARM_NEON)
+            SET(SIMD_FLAGS -mfpu=neon)
+        ELSE(HAS_ARM_NEON)
+            MESSAGE(WARNING "No supported SIMD instruction set has been found.")
+        ENDIF(HAS_ARM_NEON)
+    ENDIF(HAS_SSE)
+ENDIF(MSVC)
+
+CONFIGURE_FILE(
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/tempest/utils/config.hh.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/tempest/utils/config.hh"
+    )
 
 ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(share)
