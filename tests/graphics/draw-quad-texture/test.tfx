@@ -1,0 +1,48 @@
+struct GlobalsDesc
+{
+    mat4        Transform;
+    sampler2D   Texture;
+};
+
+buffer GlobalsBuffer
+{
+    GlobalsDesc Globals[];
+}
+
+vertex shader VS
+{
+    in vec2      VertexData;
+
+    flat out int DrawIndex;
+    out vec2     TexCoord;
+    
+    void main()
+    {
+        DrawIndex = tge_DrawID;
+        TexCoord = VertexData;
+        gl_Position = Globals[tge_DrawID].Transform*vec4(VertexData.xy, 0.0, 1.0);
+    }
+}
+
+fragment shader FS
+{
+    flat in int DrawIndex;
+    in vec2     TexCoord;
+
+    out vec4    FragmentColor;
+
+    void main()
+    {
+        vec3 color = texture(Globals[DrawIndex].Texture, TexCoord).xyz;
+        FragmentColor = vec4(color, 1.0);
+    }
+}
+
+technique General
+{
+    pass P0
+    {
+        SetVertexShader(CompileShader(glsl_4_4_0, VS()));
+        SetFragmentShader(CompileShader(glsl_4_4_0, FS()));
+    }
+}

@@ -1,0 +1,179 @@
+/*   The MIT License
+ *
+ *   Tempest Engine
+ *   Copyright (c) 2014 Zdravko Velinov
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy
+ *   of this software and associated documentation files (the "Software"), to deal
+ *   in the Software without restriction, including without limitation the rights
+ *   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *   copies of the Software, and to permit persons to whom the Software is
+ *   furnished to do so, subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in
+ *   all copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ *   THE SOFTWARE.
+ */
+
+subroutine vec3 IlluminationModel(vec3 eye, vec3 light, vec3 normal, vec4 ambient, vec4 diffuse, vec4 specular);
+
+subroutine(IlluminationModel)
+vec3 DiffuseDirectLight(vec3 eye, vec3 light, vec3 normal, vec4 ambient, vec4 diffuse, vec4 specular)
+{
+    return diffuse.xyz*dot(light, normal);
+}
+
+subroutine(IlluminationModel)
+vec3 AmbientAndDiffuseDirectLight(vec3 eye, vec3 light, vec3 normal, vec4 ambient, vec4 diffuse, vec4 specular)
+{
+    return ambient.xyz + DiffuseDirectLight(eye, light, normal, ambient, diffuse, specular);
+}
+
+subroutine(IlluminationModel)
+vec3 BlinnPhongDirectLight(vec3 eye, vec3 light, vec3 normal, vec4 ambient, vec4 diffuse, vec4 specular)
+{
+    vec3 half_vec = normalize(eye + normal);
+    vec3 specular_color = specular.xyz*pow(dot(half_vec, light), specular.w);
+    return specular_color + AmbientAndDiffuseDirectLight(eye, light, normal, ambient, diffuse, specular);
+}
+
+// Don't support anything more
+
+constant buffer SceneParams
+{
+    vec3 CameraPosition;
+    vec3 SunDirection;
+}
+
+uniform subroutine IlluminationModel Illum;
+
+struct GlobalsDesc
+{
+    mat4      Transform;
+    vec4      AmbientDissolve;          // Ka, d (alpha)
+    vec4      DiffuseReflectivity;      // Kd, sharpness
+    vec4      Specular;                 // Ks, Ns
+//  vec4      Transmission;             // Tf, Ni
+    sampler2D AmbientReflectivityMap;   // map_Ka
+    sampler2D DiffuseReflectivityMap;   // map_Kd
+    sampler2D SpecularReflectivityMap;  // map_Ks
+    sampler2D SpecularExponentMap;      // map_Ns
+    sampler2D DissolveMap;              // map_d
+};
+
+buffer GlobalsBuffer
+{
+    GlobalsDesc Globals[];
+}
+
+// TODO: Position should be vec3
+
+vertex shader VS_PTN
+{
+    in vec4 Position;
+    in vec2 TexCoord;
+    in vec3 Normal;
+    
+    out vec2 InterpTexCoord;
+    out vec3 InterpNormal;
+    out vec3 InterpView;
+    
+    flat out int DrawIndex;
+    
+    void main()
+    {
+        DrawIndex = tge_DrawID;
+        InterpTexCoord = TexCoord;
+        InterpNormal = Normal;
+        InterpView = CameraPosition - Position.xyz/Position.w;
+        gl_Position = Globals[tge_DrawID].Transform*Position;
+    }
+}
+
+fragment shader FS_PTN
+{
+    flat in int DrawIndex;
+    in vec2 InterpTexCoord;
+    in vec3 InterpNormal;
+    in vec3 InterpView;
+    
+    out vec4 FragmentColor;
+    
+    void main()
+    {
+        vec3 eye = normalize(InterpView);
+        vec4 ambient, diffuse, specular;
+        ambient.xyz = Globals[DrawIndex].AmbientDissolve.xyz*texture(Globals[DrawIndex].AmbientReflectivityMap, InterpTexCoord).xyz;
+        diffuse.xyz = Globals[DrawIndex].DiffuseReflectivity.xyz*texture(Globals[DrawIndex].DiffuseReflectivityMap, InterpTexCoord).xyz;
+        specular.xyz = Globals[DrawIndex].Specular.xyz*texture(Globals[DrawIndex].SpecularReflectivityMap, InterpTexCoord).xyz;
+        ambient.w = Globals[DrawIndex].AmbientDissolve.x*texture(Globals[DrawIndex].DissolveMap, InterpTexCoord).x;
+        diffuse.w = Globals[DrawIndex].DiffuseReflectivity.w;
+        specular.w = texture(Globals[DrawIndex].SpecularExponentMap, InterpTexCoord).x;
+        vec3 normal = normalize(InterpNormal);
+        
+        FragmentColor = vec4(Illum(eye, SunDirection, normal, ambient, diffuse, specular), ambient.w);
+    }
+}
+
+vertex shader VS_PN
+{
+    in vec4 Position;
+    in vec3 Normal;
+    
+    flat out int DrawIndex;
+    out vec3 InterpNormal;
+    out vec3 InterpView;
+    
+    void main()
+    {
+        DrawIndex = tge_DrawID;
+        InterpNormal = Normal;
+        InterpView = CameraPosition - Position.xyz/Position.w;
+        gl_Position = Globals[tge_DrawID].Transform*Position;
+    }
+}
+
+fragment shader FS_PN
+{
+    flat in int DrawIndex;
+    in vec3 InterpNormal;
+    in vec3 InterpView;
+    
+    out vec4 FragmentColor;
+    
+    void main()
+    {
+        vec3 eye = normalize(InterpView);
+        vec4 ambient = Globals[DrawIndex].AmbientDissolve;
+        vec4 diffuse = Globals[DrawIndex].DiffuseReflectivity;
+        vec4 specular = Globals[DrawIndex].Specular;
+        vec3 normal = normalize(InterpNormal);
+        
+        FragmentColor = vec4(Illum(eye, SunDirection, normal, ambient, diffuse, specular), Globals[DrawIndex].AmbientDissolve.x);
+    }
+}
+
+technique PTN
+{
+    pass p0
+    {
+        SetVertexShader(CompileShader(glsl_4_4_0, VS_PTN()));
+        SetFragmentShader(CompileShader(glsl_4_4_0, FS_PTN()));
+    }
+}
+
+technique PN
+{
+    pass p0
+    {
+        SetVertexShader(CompileShader(glsl_4_4_0, VS_PN()));
+        SetFragmentShader(CompileShader(glsl_4_4_0, FS_PN()));
+    }
+}
