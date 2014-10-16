@@ -159,15 +159,15 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
     
     std::vector<Tempest::VertexAttributeDescription> layout_tex
     {
-        { 0, "Position", Tempest::DataFormat::RGBA32F, sizeof(Tempest::Vector4), 0},
-        { sizeof(Tempest::Vector4), "TexCoord", Tempest::DataFormat::RG32F, sizeof(Tempest::Vector2), 0},
-        { sizeof(Tempest::Vector4) + sizeof(Tempest::Vector2), "Normal", Tempest::DataFormat::RGB32F, sizeof(Tempest::Vector3), 0}
+        { 0, "Position", Tempest::DataFormat::RGBA32F, 0 },
+        { sizeof(Tempest::Vector4), "TexCoord", Tempest::DataFormat::RG32F, 0 },
+        { sizeof(Tempest::Vector4) + sizeof(Tempest::Vector2), "Normal", Tempest::DataFormat::RGB32F, 0 }
     };
     
     std::vector<Tempest::VertexAttributeDescription> layout_wo_tex
     {
-        { 0, "Position", Tempest::DataFormat::RGBA32F, sizeof(Tempest::Vector4), 0},
-        { sizeof(Tempest::Vector4), "Normal", Tempest::DataFormat::RGB32F, sizeof(Tempest::Vector3), 0}
+        { 0, "Position", Tempest::DataFormat::RGBA32F, 0 },
+        { sizeof(Tempest::Vector4), "Normal", Tempest::DataFormat::RGB32F, 0 }
     };
     
     auto input_layout_tex = CreateInputLayout(backend, progs[0], layout_tex);
@@ -224,11 +224,13 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
         {
             batch.LinkedShaderProgram = progs[0]->getUniqueLinkage(subr_baked_table.release());
             batch.InputLayout   = input_layout_tex.get();
+            batch.VertexBuffers[0].Stride = sizeof(Vector4) + sizeof(Vector2) + sizeof(Vector3);
         }
         else
         {
-            batch.LinkedShaderProgram = progs[1]->getUniqueLinkage(subr_baked_table.release());
-            batch.InputLayout   = input_layout_wo_tex.get();
+            batch.LinkedShaderProgram    = progs[1]->getUniqueLinkage(subr_baked_table.release());
+            batch.InputLayout            = input_layout_wo_tex.get();
+            batch.VertexBuffers[0].Stride = sizeof(Vector4) + sizeof(Vector3);
         }
         
         Matrix4 Imat;
@@ -255,8 +257,8 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
     for(size_t i = 0; i < *batch_count; ++i)
     {
         auto& batch = (*batches)[i];
-        batch.IndexBuffer      = vbo;
-        batch.VertexBuffers[0] = ibo;
+        batch.IndexBuffer                   = ibo;
+        batch.VertexBuffers[0].VertexBuffer = vbo;
     }
     
     return true;

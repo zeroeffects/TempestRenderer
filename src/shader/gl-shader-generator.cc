@@ -465,6 +465,7 @@ static void ConvertVariable(const string& base, const Shader::Variable* var, siz
     {
         auto* sampler_type = _type->extract<Shader::SamplerType>();
         uniform_type = UniformValueType::Texture;
+        elem_size = sizeof(uint64);
         // TODO
         
     } break;

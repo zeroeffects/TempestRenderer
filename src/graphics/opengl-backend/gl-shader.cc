@@ -39,7 +39,7 @@ void GLResourceTable::setResource(ResourceIndex index, const GLTexture& tex)
     TGE_ASSERT(index.ResourceTableIndex < m_ResourceTable->Uniforms.Count || m_ResourceTable->Uniforms.Count == std::numeric_limits<size_t>::max(), "Unknown index");
     if(index.ResourceTableIndex >= m_ResourceTable->Uniforms.Count)
         return;
-    TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize, "Buffer overflow");
+    TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize + m_ExtendedUnits*m_ResourceTable->ExtendablePart, "Buffer overflow");
     TGE_ASSERT(m_BakedResourceTable, "The baked table is already extracted");
     #ifndef NDEBUG
         TGE_ASSERT(UniformValueType::Texture == m_ResourceTable->Uniforms.Values[index.ResourceTableIndex].Type, "Mismatching uniform variable types.");

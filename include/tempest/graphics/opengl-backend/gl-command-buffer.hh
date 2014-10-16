@@ -47,18 +47,25 @@ class GLBuffer;
     #define MAX_VERTEX_BUFFERS 2
 #endif
 
+struct GLVertexBufferDescription
+{
+    GLBuffer*               VertexBuffer = nullptr;
+    uint32                  Stride = 0;
+    uint32                  Offset = 0;
+};
+
 // TODO: make it cache friendlier, by pool allocating and using offsets instead
 struct GLDrawBatch
 {
-    DrawModes               PrimitiveType       = DrawModes::TriangleList;
-    uint16                  VertexCount         = 0;
-    uint32                  BaseVertex          = 0;
-    uint64                  SortKey             = 0;
-    GLBakedResourceTable*   ResourceTable       = nullptr;
-    GLLinkedShaderProgram*  LinkedShaderProgram = nullptr;
-    GLInputLayout*          InputLayout         = nullptr;
-    GLBuffer*               IndexBuffer         = nullptr;
-    GLBuffer*               VertexBuffers[MAX_VERTEX_BUFFERS];
+    DrawModes                 PrimitiveType       = DrawModes::TriangleList;
+    uint16                    VertexCount         = 0;
+    uint32                    BaseVertex          = 0;
+    uint64                    SortKey             = 0;
+    GLBakedResourceTable*     ResourceTable       = nullptr;
+    GLLinkedShaderProgram*    LinkedShaderProgram = nullptr;
+    GLInputLayout*            InputLayout         = nullptr;
+    GLBuffer*                 IndexBuffer         = nullptr;
+    GLVertexBufferDescription VertexBuffers[MAX_VERTEX_BUFFERS];
 };
 
 class GLCommandBuffer

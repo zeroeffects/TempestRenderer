@@ -61,7 +61,7 @@ TGE_TEST("Testing the rendering context")
     // Vertex format. Nothing special about it.
     std::vector<Tempest::VertexAttributeDescription> layout_arr
     {
-        { 0, "VertexData", Tempest::DataFormat::RG32F, sizeof(Tempest::Vector2), 0}
+        { 0, "VertexData", Tempest::DataFormat::RG32F, 0 }
     };
     
     auto input_layout = Tempest::CreateInputLayout(&backend, shader.get(), layout_arr);
@@ -81,7 +81,8 @@ TGE_TEST("Testing the rendering context")
     batch.LinkedShaderProgram = linked_shader_prog;
     batch.IndexBuffer = index_buf.get();
     batch.InputLayout = input_layout.get();
-    batch.VertexBuffers[0] = vertex_buf.get();
+    batch.VertexBuffers[0].VertexBuffer = vertex_buf.get();
+    batch.VertexBuffers[0].Stride = sizeof(Tempest::Vector2);
     
     // Baking the command buffer.
     

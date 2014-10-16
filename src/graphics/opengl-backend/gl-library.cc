@@ -142,6 +142,7 @@ PFNGLCOPYTEXSUBIMAGE2DPROC glCopyTexSubImage2D = nullptr;
 PFNGLBLENDFUNCSEPARATEPROC glBlendFuncSeparate = nullptr;
 PFNGLMULTIDRAWARRAYSPROC glMultiDrawArrays = nullptr;
 PFNGLMULTIDRAWELEMENTSPROC glMultiDrawElements = nullptr;
+PFNGLMULTIDRAWELEMENTSINDIRECTPROC glMultiDrawElementsIndirect = nullptr;
 PFNGLPOINTPARAMETERFPROC glPointParameterf = nullptr;
 PFNGLPOINTPARAMETERFVPROC glPointParameterfv = nullptr;
 PFNGLPOINTPARAMETERIPROC glPointParameteri = nullptr;
@@ -509,6 +510,7 @@ bool GLLibrary::initGL()
     GL_LOAD_FUNCTION(glBlendFuncSeparate);
     GL_LOAD_FUNCTION(glMultiDrawArrays);
     GL_LOAD_FUNCTION(glMultiDrawElements);
+    GL_LOAD_FUNCTION(glMultiDrawElementsIndirect);
     GL_LOAD_FUNCTION(glPointParameterf);
     GL_LOAD_FUNCTION(glPointParameterfv);
     GL_LOAD_FUNCTION(glPointParameteri);

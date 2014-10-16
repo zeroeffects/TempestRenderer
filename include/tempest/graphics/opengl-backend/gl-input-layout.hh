@@ -38,7 +38,6 @@ struct GLVertexAttributeDescription
     GLenum    Type;
     int       Size;
     GLboolean Normalized;
-    GLsizei   Stride;
     int       Offset;
 };
 

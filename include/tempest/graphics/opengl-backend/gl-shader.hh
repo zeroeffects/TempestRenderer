@@ -148,7 +148,7 @@ public:
     GLResourceTable(ResourceTableDescription* desc, size_t extended)
         :   m_ResourceTable(desc),
             m_BakedResourceTable(desc->BufferSize + desc->ExtendablePart*extended),
-            m_ExtendedUnits(0) {}
+            m_ExtendedUnits(extended) {}
     
     typedef GLBakedResourceTable BakedResourceTableType;
     
@@ -161,7 +161,7 @@ public:
         TGE_ASSERT(index.ResourceTableIndex < m_ResourceTable->Uniforms.Count || m_ResourceTable->Uniforms.Count == std::numeric_limits<size_t>::max(), "Unknown index");
         if(index.ResourceTableIndex >= m_ResourceTable->Uniforms.Count)
             return;
-        TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize, "Buffer overflow");
+        TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize + m_ExtendedUnits*m_ResourceTable->ExtendablePart, "Buffer overflow");
         TGE_ASSERT(m_BakedResourceTable, "The baked table is already extracted");
         m_BakedResourceTable.setValue(index.BaseOffset, subroutine_func.ResourceTableIndex);
     }
@@ -179,7 +179,7 @@ public:
         TGE_ASSERT(index.ResourceTableIndex < m_ResourceTable->Uniforms.Count || m_ResourceTable->Uniforms.Count == std::numeric_limits<size_t>::max(), "Unknown index");
         if(index.ResourceTableIndex >= m_ResourceTable->Uniforms.Count)
             return;
-        TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize, "Buffer overflow");
+        TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize + m_ExtendedUnits*m_ResourceTable->ExtendablePart, "Buffer overflow");
         TGE_ASSERT(m_BakedResourceTable, "The baked table is already extracted");
     #ifndef NDEBUG
         TGE_ASSERT(UniformValueBinding<T>::value_type == m_ResourceTable->Uniforms.Values[index.ResourceTableIndex].Type, "Mismatching uniform variable types.");

@@ -64,13 +64,30 @@ GLBuffer::GLBuffer(size_t size, VBType vb_type, size_t usage, const void* data)
     glGenBuffers(1, &m_Buffer);
     glBindBuffer(gl_vbt, m_Buffer);
     glBufferData(gl_vbt, size, data, TranslateUsage(usage));
-    glGetBufferParameterui64vNV(gl_vbt, GL_BUFFER_GPU_ADDRESS_NV, &m_GPUAddress);
-    glMakeBufferResidentNV(gl_vbt, GL_READ_ONLY);
+    if(glGetBufferParameterui64vNV)
+    {
+        glGetBufferParameterui64vNV(gl_vbt, GL_BUFFER_GPU_ADDRESS_NV, &m_GPUAddress);
+        glMakeBufferResidentNV(gl_vbt, GL_READ_ONLY);
+    }
+    else
+    {
+        m_GPUAddress = 0;
+    }
     CheckOpenGL();
 }
 
 GLBuffer::~GLBuffer()
 {
     glDeleteBuffers(1, &m_Buffer);
+}
+
+void GLBuffer::bindVertexBuffer(GLuint bind_slot, GLintptr offset, GLintptr stride)
+{
+    glBindVertexBuffer(bind_slot, m_Buffer, offset, stride);
+}
+
+void GLBuffer::bindIndexBuffer()
+{
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Buffer);
 }
 }

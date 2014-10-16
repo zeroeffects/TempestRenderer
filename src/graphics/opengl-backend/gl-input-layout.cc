@@ -104,7 +104,6 @@ GLInputLayout::GLInputLayout(size_t count, const VertexAttributeDescription* arr
         vert_attr.Normalized = normalized;
         vert_attr.Offset = arr[i].Offset;
         vert_attr.Size = elements;
-        vert_attr.Stride = arr[i].Stride;
         vert_attr.Type = type;
     }
 }

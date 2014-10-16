@@ -196,6 +196,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
             auto cur_end = static_cast<uint32>(uval.Offset + uval.ElementCount*uval.ElementSize);
             res_table->BufferSize = std::max(res_table->BufferSize, cur_end);
         }
+        res_table->BufferSize -= buffer.getResiablePart();
     }
     auto& subr_res_table = res_tables[buf_count];
     subr_res_table = CreatePackedData<ResourceTableDescription>(subr_func_count + subr_count, 0, "$Subroutines", 0);
