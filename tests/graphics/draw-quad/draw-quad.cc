@@ -4,7 +4,7 @@
 #include "tempest/graphics/rendering-convenience.hh"
 #include "tempest/graphics/opengl-backend/gl-all.hh"
 
-TGE_TEST("Testing the off-screen rendering context")
+TGE_TEST("Testing the rendering context")
 {
     Tempest::WindowDescription wdesc;
     wdesc.Width = 800;

@@ -6,7 +6,7 @@
 
 // This one includes comments because it is used as proof of concept.
 
-TGE_TEST("Testing the off-screen rendering context")
+TGE_TEST("Testing the rendering context")
 {
     // Basically, you start by initializing a window. That's your usual engine init part.
     Tempest::WindowDescription wdesc;
@@ -85,10 +85,10 @@ TGE_TEST("Testing the off-screen rendering context")
     
     // Baking the command buffer.
     
-    // This is done on build thread.
+    // This is done on build thrad per batch.
     command_buf->enqueueBatch(batch);
     
-    // This one is more suitable for render thread.
+    // This one is done after everything is done on the build thread.
     command_buf->prepareCommandBuffer();
     
     sys_obj->Window.show();
