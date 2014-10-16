@@ -38,7 +38,7 @@ class GLBuffer
     GLuint          m_Buffer;
     GLuint64        m_GPUAddress;
 public:
-    explicit GLBuffer(size_t size, VBType vb_type, VBUsage usage, const void* data);
+    explicit GLBuffer(size_t size, VBType vb_type, size_t usage, const void* data);
      ~GLBuffer();
     
     GLuint64 getGPUAddress() const { return m_GPUAddress; }

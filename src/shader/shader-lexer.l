@@ -45,7 +45,7 @@ using namespace Tempest::Shader;
 using namespace Tempest;
 %}
 
-INTEGER     [0-9]+
+INTEGER     \-{0,1}[0-9]+
 MANTISA     (e|E)(\+|\-)?[0-9]*
 IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 
@@ -88,9 +88,18 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 "centroid"                              *yylval = AST::Node(); return Parser::token::T_CENTROID_QUALIFIER;
 "sample"                                *yylval = AST::Node(); return Parser::token::T_SAMPLE_QUALIFIER;
 "invariant"                             *yylval = AST::Node(); return Parser::token::T_INVARIANT_QUALIFIER;
-"sampler"                               *yylval = AST::Node(); return Parser::token::T_SAMPLER;
 "buffer"                                *yylval = AST::Node(); return Parser::token::T_BUFFER_QUALIFIER;
-"instance"                              *yylval = AST::Node(); return Parser::token::T_INSTANCE_QUALIFIER;
+"subroutine"                            *yylval = AST::Node(); return Parser::token::T_SUBROUTINE_QUALIFIER;
+"constant"                              *yylval = AST::Node(); return Parser::token::T_CONSTANT_QUALIFIER;
+"const"                                 *yylval = AST::Node(); return Parser::token::T_CONST_QUALIFIER;
+"uniform"                               *yylval = AST::Node(); return Parser::token::T_UNIFORM_QUALIFIER;
+"struct"                                *yylval = AST::Node(); return Parser::token::T_STRUCT_QUALIFIER;
+"highp"                                 *yylval = AST::Node(); return Parser::token::T_HIGHP_QUALIFIER;
+"mediump"                               *yylval = AST::Node(); return Parser::token::T_MEDIUMP_QUALIFIER;
+"lowp"                                  *yylval = AST::Node(); return Parser::token::T_LOWP_QUALIFIER;
+"flat"                                  *yylval = AST::Node(); return Parser::token::T_FLAT_QUALIFIER;
+"smooth"                                *yylval = AST::Node(); return Parser::token::T_SMOOTH_QUALIFIER;
+"noperspective"                         *yylval = AST::Node(); return Parser::token::T_NOPERSPECTIVE_QUALIFIER;
 {IDENTIFIER}                            {
                                             auto node = driver.findIdentifier(yytext);
                                             if(node)
@@ -101,7 +110,6 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
                                                 case TGE_EFFECT_VARIABLE: *yylval = CreateNode<VariableRef>(ToLocation(*yylloc), node->extract<Variable>()); return Parser::token::T_VARIABLE;
                                                 case TGE_EFFECT_TYPE: *yylval = CreateNode<TypeRef>(ToLocation(*yylloc), node->extract<Type>()); return Parser::token::T_TYPE;
                                                 case TGE_EFFECT_TYPEDEF: *yylval = CreateNode<TypeRef>(ToLocation(*yylloc), node->extract<Typedef>()->getType()); return Parser::token::T_TYPE;
-                                                case TGE_EFFECT_SAMPLER: *yylval = CreateNode<SamplerRef>(ToLocation(*yylloc), node->extract<Sampler>()); return Parser::token::T_SAMPLER_PROXY;
                                                 default:
                                                     TGE_ASSERT(false, "Unexpected type bound to identifier"); break;
                                                 }
@@ -152,6 +160,9 @@ namespace Tempest
 {
 namespace Shader
 {
+#define SCAN_BYTES shader__scan_bytes
+#define DELETE_BUFFER shader__delete_buffer
+#define SWITCH_TO_BUFFER shader__switch_to_buffer
 #include "shader/ast-driver-parse.impl.cc"
 }
 }

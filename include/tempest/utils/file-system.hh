@@ -40,6 +40,16 @@
 #	error "Unsupported platform"
 #endif
 
+#define TGE_PATH_DELIM '/'
+#ifdef _WIN32
+#   define TGE_INVALID_PATH_DELIM '/'
+#elif defined(LINUX)
+#   define TGE_INVALID_PATH_DELIM '\\'
+#else
+#   error "Unsupported platform"
+#endif
+
+
 namespace Tempest
 {
 //! Represents a path to file system object.
@@ -72,6 +82,9 @@ public:
     //! Returns the file name without extension.
     string filenameWOExt() const;
 
+    //! Returns the file extension.
+    string extension() const;
+    
     //! Extracts a relative path to the specified one.
     string relativePath(const Path& p) const;
 

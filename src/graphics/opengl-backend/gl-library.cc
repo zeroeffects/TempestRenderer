@@ -171,6 +171,7 @@ PFNGLSTENCILOPSEPARATEPROC glStencilOpSeparate = nullptr;
 PFNGLSTENCILFUNCSEPARATEPROC glStencilFuncSeparate = nullptr;
 PFNGLSTENCILMASKSEPARATEPROC glStencilMaskSeparate = nullptr;
 PFNGLATTACHSHADERPROC glAttachShader = nullptr;
+PFNGLPROGRAMPARAMETERIPROC glProgramParameteri = nullptr;
 PFNGLBINDATTRIBLOCATIONPROC glBindAttribLocation = nullptr;
 PFNGLCOMPILESHADERPROC glCompileShader = nullptr;
 PFNGLCREATEPROGRAMPROC glCreateProgram = nullptr;
@@ -309,6 +310,21 @@ PFNGLBINDVERTEXBUFFERPROC glBindVertexBuffer = nullptr;
 
 PFNGLVERTEXATTRIBBINDINGPROC glVertexAttribBinding = nullptr;
 PFNGLENABLEVERTEXATTRIBARRAYARBPROC glEnableVertexAttribArrayARB = nullptr;
+
+PFNGLGENPROGRAMPIPELINESPROC glGenProgramPipelines = nullptr;
+PFNGLUSEPROGRAMSTAGESPROC glUseProgramStages = nullptr;
+PFNGLBINDPROGRAMPIPELINEPROC glBindProgramPipeline = nullptr;
+PFNGLUNIFORMSUBROUTINESUIVPROC glUniformSubroutinesuiv = nullptr;
+
+PFNGLGETSUBROUTINEINDEXPROC glGetSubroutineIndex = nullptr;
+
+PFNGLTEXTUREPARAMETERIEXTPROC glTextureParameteriEXT = nullptr;
+PFNGLTEXTUREPARAMETERFEXTPROC glTextureParameterfEXT = nullptr;
+PFNGLTEXTUREPARAMETERFVEXTPROC glTextureParameterfvEXT = nullptr;
+
+PFNGLMAKETEXTUREHANDLERESIDENTARBPROC glMakeTextureHandleResidentARB = nullptr;
+PFNGLMAKETEXTUREHANDLENONRESIDENTARBPROC glMakeTextureHandleNonResidentARB = nullptr;
+PFNGLGETTEXTUREHANDLEARBPROC glGetTextureHandleARB = nullptr;
 
 string ConvertGLErrorToString(GLenum err)
 {
@@ -522,6 +538,7 @@ bool GLLibrary::initGL()
     GL_LOAD_FUNCTION(glStencilFuncSeparate);
     GL_LOAD_FUNCTION(glStencilMaskSeparate);
     GL_LOAD_FUNCTION(glAttachShader);
+    GL_LOAD_FUNCTION(glGetProgramiv);
     GL_LOAD_FUNCTION(glBindAttribLocation);
     GL_LOAD_FUNCTION(glCompileShader);
     GL_LOAD_FUNCTION(glCreateProgram);
@@ -658,6 +675,21 @@ bool GLLibrary::initGL()
     GL_LOAD_FUNCTION(glBindVertexBuffer);
     GL_LOAD_FUNCTION(glVertexAttribBinding);
     GL_LOAD_FUNCTION(glEnableVertexAttribArrayARB);
+
+    GL_LOAD_FUNCTION(glProgramParameteri);
+    GL_LOAD_FUNCTION(glUseProgramStages);
+    GL_LOAD_FUNCTION(glBindProgramPipeline);
+    GL_LOAD_FUNCTION(glGenProgramPipelines);
+    GL_LOAD_FUNCTION(glUniformSubroutinesuiv);
+    GL_LOAD_FUNCTION(glGetSubroutineIndex);
+    
+    GL_LOAD_FUNCTION(glTextureParameteriEXT);
+    GL_LOAD_FUNCTION(glTextureParameterfEXT);
+    GL_LOAD_FUNCTION(glTextureParameterfvEXT);
+
+    GL_LOAD_FUNCTION(glMakeTextureHandleResidentARB);
+    GL_LOAD_FUNCTION(glMakeTextureHandleNonResidentARB);
+    GL_LOAD_FUNCTION(glGetTextureHandleARB);
     
     return true;
 }

@@ -30,6 +30,8 @@
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/graphics/opengl-backend/gl-command-buffer.hh"
 #include "tempest/graphics/opengl-backend/gl-buffer.hh"
+#include "tempest/graphics/opengl-backend/gl-input-layout.hh"
+#include "tempest/graphics/opengl-backend/gl-texture.hh"
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
 #include "tempest/utils/logging.hh"
 
@@ -114,7 +116,7 @@ GLRenderingBackend::~GLRenderingBackend()
 {
 }
 
-GLRenderTarget* GLRenderingBackend::createRenderTarget(const TextureDescription& desc, size_t flags)
+GLRenderTarget* GLRenderingBackend::createRenderTarget(const TextureDescription& desc, uint32 flags)
 {
     TGE_ASSERT(false, "Stub");
     return nullptr;
@@ -138,7 +140,7 @@ GLCommandBuffer* GLRenderingBackend::createCommandBuffer()
     
 void GLRenderingBackend::submitCommandBuffer(GLCommandBuffer* cmd_buffer)
 {
-    cmd_buffer->_executeCommandBuffer();
+    cmd_buffer->_executeCommandBuffer(this);
 }
 
 void GLRenderingBackend::destroyRenderResource(GLCommandBuffer* buffer)
@@ -146,9 +148,9 @@ void GLRenderingBackend::destroyRenderResource(GLCommandBuffer* buffer)
     delete buffer;
 }
     
-GLBuffer* GLRenderingBackend::createBuffer(size_t size, VBType vb_type, VBUsage usage, const void* data)
+GLBuffer* GLRenderingBackend::createBuffer(size_t size, VBType vb_type, uint32 flags, const void* data)
 {
-    return new GLBuffer(size, vb_type, usage, data);
+    return new GLBuffer(size, vb_type, flags, data);
 }
     
 void GLRenderingBackend::destroyRenderResource(GLBuffer* buffer)
@@ -156,15 +158,14 @@ void GLRenderingBackend::destroyRenderResource(GLBuffer* buffer)
     delete buffer;
 }
     
-GLTexture* GLRenderingBackend::createTexture(const TextureDescription& desc, size_t flags, void* data)
+GLTexture* GLRenderingBackend::createTexture(const TextureDescription& desc, uint32 flags, const void* data)
 {
-    TGE_ASSERT(false, "Stub");
-    return nullptr;
+    return new GLTexture(desc, flags, data);
 }
     
 void GLRenderingBackend::destroyRenderResource(GLTexture* texture)
 {
-    TGE_ASSERT(false, "Stub");
+    delete texture;
 }
     
 GLStateObject* GLRenderingBackend::createStateObject(const RasterizerStates* rasterizer_states, const BlendStates* blend_states, const DepthStencilStates* depth_stencil_states)
@@ -197,5 +198,20 @@ void GLRenderingBackend::clearColorBuffer(size_t idx, const Vector4& color)
 void GLRenderingBackend::clearDepthStencilBuffer(float depth, uint8 stencil)
 {
     glClearBufferfi(GL_DEPTH_STENCIL, 0, depth, stencil);
+}
+
+void GLRenderingBackend::bindInputLayout(GLInputLayout* layout)
+{
+    if(!layout)
+        return;
+    for(size_t i = 0, iend = layout->getAttributeCount(); i < iend; ++i)
+    {
+        auto* vert_attr = layout->getAttribute(i);
+        glVertexAttribFormat(i, vert_attr->Size, vert_attr->Type, vert_attr->Normalized, vert_attr->Offset);
+        glBindVertexBuffer(i, 0, 0, vert_attr->Stride);
+        glVertexAttribBinding(i, vert_attr->Binding);
+        glEnableVertexAttribArrayARB(i);
+    }
+    CheckOpenGL();
 }
 }

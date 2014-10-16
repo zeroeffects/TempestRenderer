@@ -29,6 +29,7 @@
 #include "tempest/graphics/rendering-definitions.hh"
 
 #include <vector>
+#include <limits>
 
 namespace Tempest
 {
@@ -42,9 +43,10 @@ enum class ShaderType
     TessellationEvaluationShader,
     GeometryShader,
     FragmentShader,
-    ComputeShader
+    ComputeShader,
     // , FetchShader <-- It is something that exists. However, have some doubts that it is going to persist.
     //                   Probably going to be replaced by direct vertex pulling.
+    ShaderTypeCount
 };
 
 enum class ElementType
@@ -57,12 +59,14 @@ enum class ElementType
     Struct,
     Shader,
     Profile,
+    Subroutine,
     CompiledShader
 };
 
 enum class BufferType
 {
-    Instance
+    Regular,  //!< Generally this is buffer in memory. It comes with the expected latency and bandwidth limitations.
+    Constant  /*!< On some graphics cards its content might be assigned to registers. */
 };
 
 class PassShaderDescription
@@ -89,6 +93,8 @@ public:
 
     void addShader(PassShaderDescription shader) { m_StageShaders.push_back(shader); }
 
+    string getName() const { return m_Name; }
+    
     const PassShaderDescription& getAttachedShaderName(size_t idx) const { return m_StageShaders[idx]; }
     size_t getAttachedShaderCount() const { return m_StageShaders.size(); }
 };
@@ -126,49 +132,25 @@ public:
     void addPass(PassDescription pass) { m_Passes.push_back(pass); }
 };
 
-class ParameterDescription
-{
-    string                  m_Name;
-    string                  m_Value;
-public:
-    ParameterDescription(string name, string value)
-        :   m_Name(name),
-            m_Value(value) {}
-
-    string getName() const { return m_Name; }
-    string getValue() const { return m_Value; }
-};
-
-typedef std::vector<ParameterDescription> ParameterVector;
-
-struct SamplerDescription
-{
-    string                    m_Name;
-    ParameterVector           m_Parameters;
-public:
-    SamplerDescription(string name)
-        :   m_Name(name) {}
-
-    void addParameter(ParameterDescription param) { m_Parameters.push_back(param); }
-
-    string getName() const { return m_Name; }
-    const ParameterDescription& getParameter(size_t idx) const { return m_Parameters[idx]; }
-    size_t getParameterCount() const { return m_Parameters.size(); }
-};
-
 class BufferElement
 {
     UniformValueType        m_Type;
     string                  m_Name;
+    size_t                  m_BufferOffset;
+    size_t                  m_ELementSize;
     size_t                  m_ElementCount;
 public:
-    BufferElement(UniformValueType _type, string name, size_t elem_count)
-        :   m_Type(_type),
+    BufferElement(size_t offset, UniformValueType _type, string name, size_t elem_size, size_t elem_count)
+        :   m_BufferOffset(offset),
+            m_Type(_type),
             m_Name(name),
+            m_ELementSize(elem_size),
             m_ElementCount(elem_count) {}
     
+    size_t getBufferOffset() const { return m_BufferOffset; }
     string getElementName() const { return m_Name; }
     UniformValueType getElementType() const { return m_Type; }
+    size_t getElementSize() const { return m_ELementSize; }
     size_t getElementCount() const { return m_ElementCount; }
 };
 
@@ -178,13 +160,20 @@ class BufferDescription
 {
     BufferType             m_BufferType;
     string                 m_Name;
+    size_t                 m_ResizablePart;
     BufferElementVector    m_Elements;
 public:
     BufferDescription(BufferType buffer_type, string name)
         :   m_BufferType(buffer_type),
-            m_Name(name) {}
+            m_Name(name),
+            m_ResizablePart(std::numeric_limits<size_t>::max()) {}
     
     void addBufferElement(BufferElement elem) { m_Elements.push_back(elem); }
+    
+    void setResizablePart(size_t size) { TGE_ASSERT(m_ResizablePart == std::numeric_limits<size_t>::max(),
+                                                    "More than one resizable part is not supported because it creates ambiguity.");
+                                        m_ResizablePart = size; }
+    size_t getResiablePart() const { return m_ResizablePart; }
     
     string getBufferName() const { return m_Name; }
     const BufferElement& getElement(size_t idx) const { return m_Elements[idx]; }
@@ -217,27 +206,26 @@ public:
 };
 
 typedef std::vector<BufferDescription>    BufferVector;
-typedef std::vector<SamplerDescription>   SamplerVector;
 typedef std::vector<ShaderDescription>    ShaderVector;
 typedef std::vector<TechniqueDescription> TechniqueVector;
 typedef std::vector<string>               ImportedVector;
+typedef std::vector<string>               SubroutineFunctionVector;
 
 class EffectDescription
 {
-    ShaderVector            m_Shaders;
-    SamplerVector           m_Samplers;
-    TechniqueVector         m_Techniques;
-    ImportedVector          m_Imported;
-    BufferVector            m_Buffers;
+    ShaderVector             m_Shaders;
+    TechniqueVector          m_Techniques;
+    ImportedVector           m_Imported;
+    BufferVector             m_Buffers;
+    BufferElementVector      m_SubroutineUniformsBuffer;
+    SubroutineFunctionVector m_SubroutineFunctionsBuffer;
 public:
     EffectDescription() {}
      ~EffectDescription() {}
 
     void clear();
 
-    void addBuffer(BufferDescription buffer) { m_Buffers.push_back(buffer); }
     void addShader(ShaderDescription shader) { m_Shaders.push_back(shader); }
-    void addSampler(SamplerDescription sampler) { m_Samplers.push_back(sampler); }
     void addTechnique(TechniqueDescription technique) { m_Techniques.push_back(technique); }
     void addImportedFile(string name) { m_Imported.push_back(name); }
 
@@ -245,12 +233,20 @@ public:
     size_t getShaderCount() const { return m_Shaders.size(); }
     const TechniqueDescription& getTechnique(size_t idx) const { return m_Techniques[idx]; }
     size_t getTechniqueCount() const { return m_Techniques.size(); }
-    const SamplerDescription& getSampler(size_t idx) const { return m_Samplers[idx]; }
-    size_t getSamplerCount() const { return m_Samplers.size(); }
     string getImportedFile(size_t idx) const { return m_Imported[idx]; }
     size_t getImportedFileCount() const { return m_Imported.size(); }
+    
     const BufferDescription& getBuffer(size_t idx) const { return m_Buffers[idx]; }
     size_t getBufferCount() const { return m_Buffers.size(); }
+    void addBuffer(BufferDescription buffer) { m_Buffers.push_back(buffer); }
+
+    const BufferElement& getSubroutineUniform(size_t idx) const { return m_SubroutineUniformsBuffer[idx]; }
+    size_t getSubroutineUniformCount() const { return m_SubroutineUniformsBuffer.size(); }
+    void addSubroutineUniform(BufferElement subroutine) { m_SubroutineUniformsBuffer.push_back(subroutine); }
+    
+    const string& getSubroutineFunction(size_t idx) const { return m_SubroutineFunctionsBuffer[idx]; }
+    size_t getSubroutineFunctionCount() const { return m_SubroutineFunctionsBuffer.size(); }
+    void addSubroutineFunction(string subroutine_type) { m_SubroutineFunctionsBuffer.push_back(subroutine_type); }
 };
 }
 }

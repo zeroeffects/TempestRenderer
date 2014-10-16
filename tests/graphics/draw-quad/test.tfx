@@ -1,17 +1,20 @@
-instance buffer Globals
+struct GlobalsDesc
 {
     mat4 Transform;
+};
+
+buffer GlobalsBuffer
+{
+    GlobalsDesc Globals[];
 }
 
 vertex shader VS
 {
     in vec2 VertexData;
 
-    invariant gl_Position;
-
     void main()
     {
-        gl_Position = Transform*vec4(VertexData.xy, 0.0, 1.0);
+        gl_Position = Globals[tge_DrawID].Transform*vec4(VertexData.xy, 0.0, 1.0);
     }
 }
 

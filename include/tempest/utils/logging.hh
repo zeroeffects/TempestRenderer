@@ -75,8 +75,8 @@ class LogFile: public Singleton<LogFile>
     std::stringstream       m_MessageBuffer;
 #endif
 public:
-    LogFile(size_t flags);
-    LogFile(const string& filename, LogLevel log_level = LogLevel::Info, size_t flags = 0);
+    LogFile(uint32 flags);
+    LogFile(const string& filename, LogLevel log_level = LogLevel::Info, uint32 flags = 0);
      ~LogFile();
     
     void flush();

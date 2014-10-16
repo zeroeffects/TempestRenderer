@@ -29,3 +29,4 @@
 #include "tempest/graphics/opengl-backend/gl-command-buffer.hh"
 #include "tempest/graphics/opengl-backend/gl-convenience.hh"
 #include "tempest/graphics/opengl-backend/gl-compiler.hh"
+#include "tempest/graphics/opengl-backend/gl-texture.hh"

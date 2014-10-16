@@ -70,6 +70,7 @@
 %token                  T_INCR                      "++"
 %token                  T_DECR                      "--"
 
+%token                  T_STRUCT_QUALIFIER          "struct qualifier"
 %token                  T_IMPORT                    "import"
 %token                  T_IF                        "if"
 %token                  T_ELSE                      "else"
@@ -111,26 +112,26 @@
 %token                  T_SMOOTH_QUALIFIER          "smooth qualifier"
 %token                  T_NOPERSPECTIVE_QUALIFIER   "noperspective qualifier"
 %token <Identifier>     T_IDENTIFIER                "identifier"
-%token                  T_SAMPLER                   "sampler"
 %token                  T_BUFFER_QUALIFIER          "buffer qualifier"
-%token                  T_INSTANCE_QUALIFIER        "instance qualifier"
-%token <SamplerRef>     T_SAMPLER_PROXY             "sampler instance"
+%token                  T_SUBROUTINE_QUALIFIER      "subroutine qualifier"
+%token                  T_CONSTANT_QUALIFIER        "constant qualifier"
+%token                  T_UNIFORM_QUALIFIER         "uniform qualifier"
 
 %type <List>                        translation_unit shader_body technique_body pass_body function_variables_list statement_list switch_statement_list
-%type <List>                        layout_id_list layout_header sampler_body definitions_block definitions_list function_variables_non_empty_list
-%type <List>                        function_arg_list buffer_list
+%type <List>                        layout_id_list layout_header definitions_block definitions_list function_variables_non_empty_list
+%type <List>                        function_arg_list buffer_list subroutine_list subroutine_declaration struct_body
 %type <void>                        external_declaration statement iteration_statement for_init_statement block_statement layout_id else_statement
 %type <void>                        selection_statement switch_statement case_statement default_statement expression_statement jump_statement
 %type <void>                        definition_pair definition_value effect_file
 %type <Buffer>                      buffer buffer_declaration
 %type <Import>                      import
-%type <TypeRef>                     shader
+%type <TypeRef>                     shader struct_declaration
 %type <Technique>                   technique
-%type <SamplerRef>                  sampler
 %type <Pass>                        pass
 %type <VariableRef>                 variable output_variable interpolation_variable invariant_variable const_variable variable_with_layout
-%type <VariableRef>                 function_variable gvariable buffer_variable
-%type <void>                        function
+%type <VariableRef>                 function_variable gvariable buffer_variable subroutine
+%type <void>                        function subroutine_type
+%type <IntermFuncNode>              function_declaration function_definition function_statement
 %type <DeclarationInfo>             function_header
 %type <FuncDeclarationInfo>         declared_function_header
 %type <TypeRef>                     return_type
@@ -138,13 +139,14 @@
 %type <Expression>                  bitwise_and_expression bitwise_or_expression bitwise_xor_expression bitwise_shift_expression equality_expression
 %type <Expression>                  prefix_expression suffix_expression multiplicative_expression additive_expression parentheses_expression
 %type <Expression>                  condition conditionopt  logical_and_expression scalar_expression function_call relational_expression
-%type <VarDeclList>                 variable_declaration
+%type <Expression>                  optional_expression
+%type <VarDeclList>                 variable_declaration basic_variable_declaration
 %type <Declaration>                 declaration_statement
 %type <InvariantDeclaration>        invariant_declaration
 %type <ValueShaderType>             shader_type
 
 //%printer { if($$) debug_stream() << $$->getValue(); } "identifier"
-//%printer { if($$) debug_stream() << $$->getNodeName(); } "variable" "function" "type" "sampler instance"
+//%printer { if($$) debug_stream() << $$->getNodeName(); } "variable" "function" "type"
 
 %destructor { $$.destroy(); } <*>
 
@@ -161,11 +163,11 @@ namespace Tempest
 {
 namespace Shader
 {
-NodeT<Expression> CreateBinaryOperator(Driver& driver, AST::Location loc, BinaryOperatorType _type,
+NodeT<Expression> CreateBinaryOperator(Driver& driver, Location loc, BinaryOperatorType _type,
                                           NodeT<Expression> left_expr, NodeT<Expression> right_expr);
-NodeT<Expression> CreateUnaryOperator(Driver& driver, AST::Location loc, UnaryOperatorType _type,
+NodeT<Expression> CreateUnaryOperator(Driver& driver, Location loc, UnaryOperatorType _type,
                                          NodeT<Expression> expr);
-void ErrorRedefinition(Driver& driver, const Tempest::AST::Location& loc, NodeT<VariableRef> var);
+void ErrorRedefinition(Driver& driver, Location loc, NodeT<VariableRef> var);
 
 inline Location ToLocation(const location& loc) { return Location{ loc.begin.filename, loc.begin.line, loc.begin.column }; }
 }
@@ -187,14 +189,16 @@ external_declaration
     : import                                                { $$ = $1; }
     | shader                                                { $$ = $1; }
     | technique                                             { $$ = $1; }
-    | sampler                                               { $$ = $1; }
     | function                                              { $$ = $1; } // Some shared stuff between the shaders
     | buffer                                                { $$ = $1; }
+    | subroutine_type                                       { $$ = $1; }
+    | subroutine                                            { $$ = $1; }
+    | struct_declaration                                    { $$ = $1; }
     ;
 
 
 buffer
-    : "instance qualifier" buffer_declaration               { auto buf = $2; buf->setBufferType(BufferType::Instance); $$ = std::move(buf); }
+    : "constant qualifier" buffer_declaration               { auto buf = $2; buf->setBufferType(BufferType::Constant); $$ = std::move(buf); }
     | buffer_declaration                                    { $$ = $1; }
     ;
 
@@ -242,21 +246,6 @@ definition_value
     | "boolean"                                             { $$ = $1; }
     ;
 
-sampler
-    : "sampler" "identifier" '{'
-        sampler_body
-    '}' ';'                                                 {
-                                                                auto identifier = $2;
-                                                                TGE_ASSERT(identifier, "Valid identifier expected. Potential lexer bug.");
-                                                                $$ = driver.createStackNode<Sampler>(ToLocation(@$), identifier->getValue(), $4);
-                                                            }
-    ;
-
-sampler_body
-    : /* empty */                                           { $$ = NodeT<List>(); }
-    | "identifier" '=' "identifier" ';' sampler_body        { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, CreateNode<BinaryOperator>(ToLocation(@$), TGE_EFFECT_ASSIGN, $1, $3), $5); }
-    ;
-
 shader
     : shader_type "identifier" '{'
             shader_body
@@ -275,11 +264,29 @@ shader_type
     | "fragment qualifier" "shader"                         { driver.beginShader(ShaderType::FragmentShader); $$ = CreateNode<Value<ShaderType>>(ToLocation(@$), ShaderType::FragmentShader); }
     ;
 
+subroutine
+    : "uniform qualifier" "subroutine qualifier" variable ';'
+                                                            {
+                                                                auto var = $3;
+                                                                auto* _type = var->getType();
+                                                                if(_type->getTypeEnum() != ElementType::Subroutine && _type->getArrayElementType()->getTypeEnum() != ElementType::Subroutine)
+                                                                {
+                                                                    std::stringstream ss;
+                                                                    ss << "Unexpected subroutine type " << _type->getNodeName();
+                                                                    driver.error(ToLocation(@$), ss.str().c_str());
+                                                                    var = AST::Node();
+                                                                }
+                                                                $$ = CreateNode<Declaration>(ToLocation(@$), std::move(var));
+                                                            }
+    ;
+
 shader_body
     :   /* empty */                                         { $$ = NodeT<List>(); }
     | gvariable shader_body                                 { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, CreateNode<Declaration>(ToLocation(@$), $1), $2); }
     | function shader_body                                  { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
+    | subroutine_type shader_body                           { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
     | invariant_declaration ';'  shader_body                { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $3); }
+    | struct_declaration shader_body                        { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
     ;
 
 technique
@@ -315,50 +322,153 @@ pass_body
     ;
 
 function
+    : function_statement                                    { $$ = std::move($1->getFirst()); }
+    | subroutine_declaration function_statement             {
+                                                                auto func = $2;
+                                                                if(!func->getSecond()->setSubroutineTypes($1))
+                                                                {
+                                                                    std::stringstream ss;
+                                                                    Printer func_printer(ss, 0);
+                                                                    ss << "Invalid subroutine function list: " << func->getFirst().getNodeName() << "\n";
+                                                                    driver.error(ToLocation(@$), ss.str());
+                                                                }
+                                                                $$ = std::move(func->getFirst());
+                                                            }
+    ;
+    
+function_statement
+    : function_declaration                                  { $$ = $1; }
+    | function_definition                                   { $$ = $1; }
+    ;
+    
+subroutine_declaration
+    :  "subroutine qualifier" '(' subroutine_list ')'       { $$ = $3; }
+    ;
+
+subroutine_list
+    : "type"                                                {
+                                                                auto subroutine_type = $1;
+                                                                if(subroutine_type->getTypeEnum() != ElementType::Subroutine)
+                                                                {
+                                                                    std::stringstream ss;
+                                                                    ss << "Expecting subroutine type, but got " << subroutine_type->getNodeName() << " instead";
+                                                                    driver.error(ToLocation(@$), ss.str().c_str());
+                                                                    subroutine_type = AST::Node();
+                                                                }
+                                                                $$ = CreateNodeTyped<ListElement>(ToLocation(@$), TGE_AST_COMMA_SEPARATED_LIST, std::move(subroutine_type), NodeT<List>());
+                                                            }
+    | "type" ',' subroutine_list                            {
+                                                                auto subroutine_type = $1;
+                                                                if(subroutine_type->getTypeEnum() != ElementType::Subroutine)
+                                                                {
+                                                                    std::stringstream ss;
+                                                                    ss << "Expecting subroutine type, but got " << subroutine_type->getNodeName() << " instead";
+                                                                    driver.error(ToLocation(@$), ss.str().c_str());
+                                                                    subroutine_type = AST::Node();
+                                                                }
+                                                                $$ = CreateNodeTyped<ListElement>(ToLocation(@$), TGE_AST_COMMA_SEPARATED_LIST, std::move(subroutine_type), $3);
+                                                            }
+    ;
+
+struct_declaration
+    : "struct qualifier" "identifier" '{'                   { driver.beginBlock(); }
+        struct_body
+      '}'';'                                                {
+                                                                driver.endBlock();
+                                                                auto identifier = $2;
+                                                                $$ = CreateNode<Declaration>(ToLocation(@$), driver.createStackType<StructType>(ToLocation(@$), identifier ? identifier->getValue() : string(), $5));
+                                                            }
+    ;
+
+struct_body
+    : /* empty */                                           { $$ = AST::NodeT<List>(); }
+    | basic_variable_declaration ';' struct_body            {
+                                                                auto decl = $1;
+                                                                AST::Node result;
+                                                                if(decl && decl->getSecond())
+                                                                {
+                                                                    // Reduce nodes by removing lists of a single node and placing the node directly in the AST
+                                                                    AST::Node moved_decl;
+                                                                    if(*decl->getSecond()->next())
+                                                                        moved_decl = std::move(decl->getSecond());
+                                                                    else
+                                                                        moved_decl = std::move(*decl->getSecond()->current_front());
+                                                                    result = CreateNode<Declaration>(ToLocation(@$), std::move(moved_decl));
+                                                                }
+                                                                $$ = CreateNodeTyped<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, std::move(result), $3);
+                                                            }
+    ;
+
+subroutine_type
+    : "subroutine qualifier" function_header function_variables_list ')' ';'
+                                                            {
+                                                                driver.endBlock();
+                                                                auto func_decl_info = $2;
+                                                                auto func_var_list = $3;
+                                                                AST::Node result;
+                                                                if(func_decl_info && func_decl_info->getSecond())
+                                                                {
+                                                                    string func_name = func_decl_info->getSecond()->getValue();
+                                                                    auto func_decl = CreateNodeTyped<FunctionDeclaration>(ToLocation(@2), func_decl_info->getFirst(),
+                                                                                                                          func_name, std::move(func_var_list));
+                                                                    auto subr_type = driver.createStackType<Subroutine>(ToLocation(@$), std::move(func_decl));
+                                                                    result = CreateNode<Declaration>(ToLocation(@$), std::move(subr_type));
+                                                                }
+                                                                $$ = std::move(result);
+                                                            }
+    ;
+    
+function_declaration
     : function_header function_variables_list ')' ';'       {
                                                                 driver.endBlock();
                                                                 auto func_decl_info = $1;
                                                                 auto func_var_list = $2;
                                                                 NodeT<Reference<FunctionDeclaration>> result;
+                                                                FunctionDeclaration* func_decl_ptr = nullptr;
                                                                 if(func_decl_info && func_decl_info->getSecond())
                                                                 {
                                                                     string func_name = func_decl_info->getSecond()->getValue();
                                                                     auto func_decl = CreateNodeTyped<FunctionDeclaration>(ToLocation(@$), func_decl_info->getFirst(),
                                                                                                                           func_name,
                                                                                                                           std::move(func_var_list));
+                                                                    func_decl_ptr = func_decl.get();
                                                                     result = CreateNode<Reference<FunctionDeclaration>>(ToLocation(@$), func_decl.get());
                                                                     auto func_set = driver.createStackNode<FunctionSet>(ToLocation(@$), func_name);
                                                                     func_set->pushFunction(std::move(func_decl));
                                                                 }
-                                                                $$ = std::move(result);
+                                                                $$ = CreateNode<IntermFuncNode>(ToLocation(@$), std::move(result), func_decl_ptr);
                                                             }
     | declared_function_header
     	  function_variables_list ')' ';'                   {
                                                                 driver.endBlock();
-                                                                AST::Node func;
+                                                                NodeT<Reference<FunctionDeclaration>> func;
+                                                                FunctionDeclaration* func_decl_ptr = nullptr;
                                                                 auto func_decl_info = $1;
                                                                 auto arg_list = $2;
                                                                 if(func_decl_info)
                                                                 {
-                                                                    FunctionDeclaration* func_decl = func_decl_info->getSecond()->getFunction(arg_list.get());
-                                                                    if(!func_decl)
+                                                                    func_decl_ptr = func_decl_info->getSecond()->getFunction(arg_list.get());
+                                                                    if(!func_decl_ptr)
                                                                     {
                                                                         auto func_decl_node = CreateNodeTyped<FunctionDeclaration>(ToLocation(@$), func_decl_info->getFirst(), func_decl_info->getSecond()->getNodeName(), std::move(arg_list));
-                                                                        func_decl = func_decl_node.get();
+                                                                        func_decl_ptr = func_decl_node.get();
                                                                         func_decl_info->getSecond()->pushFunction(std::move(func_decl_node));
                                                                     }
-                                                                    
-                                                                    func = CreateNode<Reference<FunctionDeclaration>>(ToLocation(@$), func_decl);
+                                                                    func = CreateNode<Reference<FunctionDeclaration>>(ToLocation(@$), func_decl_ptr);
                                                                 }
-                                                                $$ = std::move(func);
+                                                                $$ = CreateNode<IntermFuncNode>(ToLocation(@$), std::move(func), func_decl_ptr);
                                                             }
-    | function_header function_variables_list ')' '{'   
+    ;
+    
+function_definition
+    : function_header function_variables_list ')' '{'   
              statement_list
       '}'                                                   {
                                                                 driver.endBlock();
                                                                 auto func_decl_info = $1;
                                                                 auto arg_list = $2;
                                                                 NodeT<FunctionDefinition> func;
+                                                                FunctionDeclaration* func_decl_ptr = nullptr;
                                                                 if(func_decl_info && func_decl_info->getSecond())
                                                                 {
                                                                     string func_name = func_decl_info->getSecond()->getValue();
@@ -366,11 +476,11 @@ function
                                                                                                                           func_name,
                                                                                                                           std::move(arg_list));
                                                                     func = CreateNodeTyped<FunctionDefinition>(ToLocation(@$), func_decl.get(), $5);
-                                                                    
+                                                                    func_decl_ptr = func_decl.get();
                                                                     auto func_set = driver.createStackNode<FunctionSet>(ToLocation(@$), func_name);
                                                                     func_set->pushFunction(std::move(func_decl));
                                                                 }
-                                                                $$ = std::move(func);
+                                                                $$ = CreateNode<IntermFuncNode>(ToLocation(@$), std::move(func), func_decl_ptr);
                                                             }
     | declared_function_header
     	  function_variables_list ')' '{'
@@ -380,20 +490,21 @@ function
                                                                 auto func_decl_info = $1;
                                                                 auto arg_list = $2;
                                                                 NodeT<FunctionDefinition> func;
+                                                                FunctionDeclaration* func_decl_ptr = nullptr;
                                                                 if(func_decl_info)
                                                                 {
-                                                                    FunctionDeclaration* func_decl = func_decl_info->getSecond()->getFunction(arg_list.get());
-                                                                    if(!func_decl)
+                                                                    func_decl_ptr = func_decl_info->getSecond()->getFunction(arg_list.get());
+                                                                    if(!func_decl_ptr)
                                                                     {
                                                                         auto func_decl_node = CreateNodeTyped<FunctionDeclaration>(ToLocation(@$), func_decl_info->getFirst(), func_decl_info->getSecond()->getNodeName(), std::move(arg_list));
-                                                                        func_decl = func_decl_node.get();
+                                                                        func_decl_ptr = func_decl_node.get();
                                                                         func_decl_info->getSecond()->pushFunction(std::move(func_decl_node));
                                                                     }
                                                                     
-                                                                    func = CreateNode<FunctionDefinition>(ToLocation(@$), func_decl, $5);
+                                                                    func = CreateNode<FunctionDefinition>(ToLocation(@$), func_decl_ptr, $5);
                                                                 }
 
-                                                                $$ = std::move(func);
+                                                                $$ = CreateNode<IntermFuncNode>(ToLocation(@$), std::move(func), func_decl_ptr);
                                                             }
     ;
 
@@ -555,7 +666,7 @@ declaration_statement
                                                                 {
                                                                     // Reduce nodes by removing lists of a single node and placing the node directly in the AST
                                                                     AST::Node moved_decl;
-                                                                    if(decl->getSecond()->next())
+                                                                    if(*decl->getSecond()->next())
                                                                         moved_decl = std::move(decl->getSecond());
                                                                     else
                                                                         moved_decl = std::move(*decl->getSecond()->current_front());
@@ -566,6 +677,23 @@ declaration_statement
     ;
 
 variable_declaration
+    : variable_declaration '=' conditional_expression       {
+                                                                auto var_decl = $1;
+                                                                auto rvalue = $3;
+                                                                if(var_decl && var_decl->getSecond())
+                                                                {
+                                                                    auto* ptr = var_decl->getSecond()->back();
+                                                                    // Here is the deal. We have acquired the actual variable in some of the previous steps.
+                                                                    // However, suddenly we have an assignment. We want to move it to the new assignment initialization
+                                                                    // and move the whole operation in its place.
+                                                                    *ptr = CreateNode<BinaryOperator>(ToLocation(@$), TGE_EFFECT_ASSIGN, std::move(*ptr), rvalue ? std::move(rvalue->getSecond()) : AST::Node());
+                                                                }
+                                                                $$ = std::move(var_decl);
+                                                            }
+    | basic_variable_declaration                            { $$ = $1; }
+    ;
+
+basic_variable_declaration
     : variable_declaration ',' "identifier"                 {
                                                                 auto decl = $1;
                                                                 auto identifier = $3;
@@ -578,7 +706,7 @@ variable_declaration
                                                                 $$ = std::move(decl);
                                                             }
     | variable_declaration ',' "variable"                   { ErrorRedefinition(driver, ToLocation(@$), $3); $1; $$ = NodeT<Variable>(); }
-    | variable_declaration ',' "identifier" '[' expression ']'
+    | variable_declaration ',' "identifier" '[' optional_expression ']'
                                                             {
                                                                 auto var_decl = $1;
                                                                 auto identifier = $3;
@@ -593,21 +721,7 @@ variable_declaration
                                                                 }
                                                                 $$ = std::move(var_decl);
                                                             }
-    | variable_declaration ',' "variable" '[' expression ']'
-                                                            { ErrorRedefinition(driver, ToLocation(@$), $3); $1; $5; $$ = NodeT<Variable>(); }
-    | variable_declaration '=' conditional_expression       {
-                                                                auto var_decl = $1;
-                                                                auto rvalue = $3;
-                                                                if(var_decl && var_decl->getSecond())
-                                                                {
-                                                                    auto* ptr = var_decl->getSecond()->back();
-                                                                    // Here is the deal. We have acquired the actual variable in some of the previous steps.
-                                                                    // However, suddenly we have an assignment. We want to move it to the new assignment initialization
-                                                                    // and move the whole operation in its place.
-                                                                    *ptr = CreateNode<BinaryOperator>(ToLocation(@$), TGE_EFFECT_ASSIGN, std::move(*ptr), rvalue ? std::move(rvalue->getSecond()) : AST::Node());
-                                                                }
-                                                                $$ = std::move(var_decl);
-                                                            }
+    | variable_declaration ',' "variable" '[' optional_expression ']' { ErrorRedefinition(driver, ToLocation(@$), $3); $1; $5; $$ = NodeT<Variable>(); }
     | variable                                              {
                                                                 auto var = $1;
                                                                 const Type* _type = var->getType();
@@ -615,6 +729,11 @@ variable_declaration
                                                             }
     ;
 
+optional_expression
+    : /* empty */                                           { $$ = CreateNodeTyped<Expression>(ToLocation(@$), nullptr, AST::Node()); }
+    | expression                                            { $$ = $1; }
+    ;
+    
 block_statement
     : '{'                                                   { driver.beginBlock(); }
             statement_list
@@ -655,7 +774,6 @@ layout_id
     : "identifier"                                          { $$ = $1; }
     | "identifier" '=' "identifier"                         { $$ = CreateNode<BinaryOperator>(ToLocation(@$), TGE_EFFECT_ASSIGN, $1, $3); }
     | "identifier" '=' "integer"                            { $$ = CreateNode<BinaryOperator>(ToLocation(@$), TGE_EFFECT_ASSIGN, $1, $3); }
-    | "identifier" '=' "sampler instance"                   { $$ = CreateNode<BinaryOperator>(ToLocation(@$), TGE_EFFECT_ASSIGN, $1, $3); }
     ;
 
 invariant_variable
@@ -709,8 +827,8 @@ variable
                                                                 $$ = driver.createStackNode<Variable>(ToLocation(@$), type.get(), identifier->getValue());
                                                             }
     | "type" "variable"                                     { ErrorRedefinition(driver, ToLocation(@$), $2); $1; $$ = NodeT<Variable>(); }
-    | "type" "variable" '[' expression ']'                  { ErrorRedefinition(driver, ToLocation(@$), $2); $1; $4; $$ = NodeT<Variable>(); }
-    | "type" "identifier" '[' expression ']'                {
+    | "type" "variable" '[' optional_expression ']'         { ErrorRedefinition(driver, ToLocation(@$), $2); $1; $4; $$ = NodeT<Variable>(); }
+    | "type" "identifier" '[' optional_expression ']'       {
                                                                 auto type = $1;
                                                                 auto identifier = $2;
                                                                 auto expr = $4;
@@ -922,7 +1040,7 @@ suffix_expression
                                                                 auto suffix_expr = $1;
                                                                 auto idx_expr = $3;   
                                                                 NodeT<Expression> result;
-                                                                if(suffix_expr && idx_expr->getFirst() && idx_expr && idx_expr->getFirst())
+                                                                if(suffix_expr && suffix_expr->getFirst() && idx_expr && idx_expr->getFirst())
                                                                 {
                                                                     if(idx_expr->getFirst()->getNodeName() != "int" && idx_expr->getFirst()->getNodeName() != "uint")
                                                                         driver.error(ToLocation(@3), "Invalid indexing type");
@@ -973,6 +1091,62 @@ function_call
                                                                 }
                                                                 $$ = std::move(result);
                                                             }
+    | variable_expression '(' function_arg_list ')'         {
+                                                                NodeT<Expression> result;
+                                                                auto var = $1;
+                                                                auto arg_list = $3;
+                                                                if(var)
+                                                                {
+                                                                    auto* _type = var->getFirst();
+                                                                    if(_type->getTypeEnum() != ElementType::Subroutine)
+                                                                    {
+                                                                        driver.error(ToLocation(@1), "Expecting valid subroutine variable");
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        auto* subroutine = _type->extract<Subroutine>();
+                                                                        auto return_type = subroutine->getDeclaration()->getReturnType();
+                                                                        if(subroutine->getDeclaration()->sameParameters(arg_list.get()))
+                                                                        {
+                                                                            auto subroutine_call = subroutine->createSubroutineCall(ToLocation(@$), std::move(var->getSecond()), std::move(arg_list));
+                                                                            result = CreateNodeTyped<Expression>(ToLocation(@$), return_type, std::move(subroutine_call));
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            std::stringstream ss;
+                                                                            Printer func_printer(ss, 0);
+                                                                            ss << "Invalid subroutine call to undeclared function: ";
+                                                                            var->getSecond().accept(&func_printer);
+                                                                            ss << "(";
+                                                                            for(List::iterator i = arg_list->current(), iend = arg_list->end(); i != iend; ++i)
+                                                                            {
+                                                                                if(i != arg_list->current())
+                                                                                    ss << ", ";
+                                                                                auto ptr = i->extract<Expression>();
+                                                                                if(ptr && i && ptr->getFirst())
+                                                                                    ss << ptr->getFirst()->getNodeName();
+                                                                                else
+                                                                                    ss << "<unknown>";
+                                                                            }
+                                                                            ss << ")\n"
+                                                                                "Candidates are:\n"
+                                                                                "\t";
+                                                                            auto* func_decl = subroutine->getDeclaration();
+                                                                            if(func_decl)
+                                                                            {
+                                                                                func_printer.visit(func_decl);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                ss << "<unknown>";
+                                                                            }
+                                                                            ss << '\n';
+                                                                            driver.error(ToLocation(@$), ss.str());
+                                                                        }
+                                                                    }
+                                                                }
+                                                                $$ = std::move(result);
+                                                            }
     ;
 
 parentheses_expression
@@ -1009,12 +1183,13 @@ void Parser::error(const Parser::location_type& l, const std::string& m)
     driver.error(ToLocation(l), m);
 }
 
-NodeT<Expression> CreateBinaryOperator(Driver& driver, AST::Location loc, BinaryOperatorType binop_type,
+NodeT<Expression> CreateBinaryOperator(Driver& driver, Location loc, BinaryOperatorType binop_type,
                                           NodeT<Expression> left_expr, NodeT<Expression> right_expr)
 {
     if(left_expr && right_expr)
     {
-        const Type* _type = left_expr->getFirst()->binaryOperatorResultType(driver, binop_type, right_expr->getFirst());
+        auto* left_type = left_expr->getFirst();
+        const Type* _type = left_type->binaryOperatorResultType(driver, binop_type, right_expr->getFirst());
         if(_type)
             return CreateNode<Expression>(loc, _type, CreateNode<BinaryOperator>(loc, binop_type, std::move(left_expr->getSecond()), std::move(right_expr->getSecond())));
         else
@@ -1024,7 +1199,7 @@ NodeT<Expression> CreateBinaryOperator(Driver& driver, AST::Location loc, Binary
     return NodeT<Expression>();
 }
 
-NodeT<Expression> CreateUnaryOperator(Driver& driver, AST::Location loc, UnaryOperatorType uniop_type,
+NodeT<Expression> CreateUnaryOperator(Driver& driver, Location loc, UnaryOperatorType uniop_type,
                                          NodeT<Expression> expr)
 {
     if(expr)
@@ -1038,7 +1213,7 @@ NodeT<Expression> CreateUnaryOperator(Driver& driver, AST::Location loc, UnaryOp
     return NodeT<Expression>();
 }
 
-void ErrorRedefinition(Driver& driver, const Tempest::AST::Location& loc, NodeT<VariableRef> var)
+void ErrorRedefinition(Driver& driver, Location loc, NodeT<VariableRef> var)
 {
     TGE_ASSERT(var, "Expected at least valid variable");
     std::stringstream err;

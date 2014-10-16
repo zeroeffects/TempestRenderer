@@ -76,6 +76,50 @@ public:
     static T* getSingletonPtr() { return m_Instance; }
 };
 
+// Convenience - calls all of your destructors, so you can pack arrays without being afraid that everything 
+// is going to break appart.
+template<class T>
+struct PackedData
+{
+    const uint32    Count;
+    T               Values[];
+    PackedData(uint32 count)
+        :   Count(count)
+    {
+        for(size_t i = 0; i < count; ++i)
+        {
+            new (&Values[i]) T;
+        }
+    }
+    
+    ~PackedData()
+    {
+        for(size_t i = 0, iend = Count; i < iend; ++i)
+        {
+            Values[i].~T();
+        }
+    }
+};
+
+template<class T, class... TArgs>
+T* CreatePackedData(size_t count, TArgs&&... args)
+{
+    return new (malloc(sizeof(T) + count*sizeof(typename T::PackType))) T(count, args...);
+}
+
+template<class T>
+void DestroyPackedData(T* ptr)
+{
+    ptr->~T();
+    free(ptr);
+}
+
+#define PACKED_DATA(type) \
+    typedef type PackType; \
+    template<class T, class... TArgs> friend T* Tempest::CreatePackedData(size_t count, TArgs&&... args); \
+    template<class T> friend void Tempest::DestroyPackedData(T* ptr); \
+    Tempest::PackedData<type>  
+
 template<class T> T* Singleton<T>::m_Instance = nullptr;
 
 template<class T, class TDeleter> class ScopedObject;
@@ -101,6 +145,8 @@ public:
 
     T get() { return m_Desc; }
     const T get() const { return m_Desc; }
+    
+    T release() { auto tmp = m_Desc; m_Desc = T(); return tmp; }
 };
 
 template<class T, class TDeleter>
@@ -125,6 +171,8 @@ public:
     T* get() { return m_Ptr; }
     const T* get() const { return m_Ptr; }
 
+    T release() { auto tmp = m_Ptr; m_Ptr = nullptr; return tmp; }
+    
     T** operator&(){ return &m_Ptr; }
     operator T*() const { return m_Ptr; }
     T& operator*() { return *m_Ptr; }

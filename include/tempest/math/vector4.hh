@@ -78,7 +78,10 @@ struct Vector4
     //! Default constructor
     explicit Vector4() { static_assert(sizeof(Vector4) == 4*sizeof(float), "Vector4 has the wrong size"); }
 
-    Vector4(const Vector4& vec);
+    Vector4(const Vector4& vec)
+    {
+        set(vec.coordinate.x, vec.coordinate.y, vec.coordinate.z, vec.coordinate.w);
+    }
     
     //! Conversion constructor
     explicit Vector4(const Vector3& vec)
@@ -97,35 +100,6 @@ struct Vector4
     {
         set(_x, _y, _z, _w);
     }
-
-    inline float& x() { return coordinate.x; }
-    inline float& y() { return coordinate.y; }
-    inline float& z() { return coordinate.z; }
-    inline float& w() { return coordinate.w; }
-    inline float& r() { return coordinate.x; }
-    inline float& g() { return coordinate.y; }
-    inline float& b() { return coordinate.z; }
-    inline float& a() { return coordinate.w; }
-    inline float& s() { return coordinate.x; }
-    inline float& t() { return coordinate.y; }
-    inline float& p() { return coordinate.z; }
-    inline float& q() { return coordinate.w; }
-
-    inline Vector2& xy() { return reinterpret_cast<comb0*>(this)->xy; }
-    inline Vector2& yz() { return reinterpret_cast<comb1*>(this)->yz; }
-    inline Vector2& zw() { return reinterpret_cast<comb0*>(this)->zw; }
-    inline Vector3& xyz() { return reinterpret_cast<comb2*>(this)->xyz; }
-    inline Vector3& yzw() { return reinterpret_cast<comb3*>(this)->yzw; }
-    inline Vector2& rg() { return reinterpret_cast<comb0*>(this)->xy; }
-    inline Vector2& gb() { return reinterpret_cast<comb1*>(this)->yz; }
-    inline Vector2& ba() { return reinterpret_cast<comb0*>(this)->zw; }
-    inline Vector3& rgb() { return reinterpret_cast<comb2*>(this)->xyz; }
-    inline Vector3& gba() { return reinterpret_cast<comb3*>(this)->yzw; }
-    inline Vector2& st() { return reinterpret_cast<comb0*>(this)->xy; }
-    inline Vector2& tp() { return reinterpret_cast<comb1*>(this)->yz; }
-    inline Vector2& pq() { return reinterpret_cast<comb0*>(this)->zw; }
-    inline Vector3& stp() { return reinterpret_cast<comb2*>(this)->xyz; }
-    inline Vector3& tpq() { return reinterpret_cast<comb3*>(this)->yzw; }
 
     inline float x() const { return coordinate.x; }
     inline float y() const { return coordinate.y; }

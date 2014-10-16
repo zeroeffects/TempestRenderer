@@ -90,12 +90,12 @@ static void TranslateDataFormat(DataFormat vtype, GLsizei* elements, GLenum* typ
     }
 }
 
-GLInputLayout::GLInputLayout(const VertexAttributeDescription* arr, size_t count)
-    :   m_ArrayCount(count)
+GLInputLayout::GLInputLayout(size_t count, const VertexAttributeDescription* arr)
+    :   m_Attributes(count)
 {
     for(size_t i = 0; i < count; ++i)
     {
-        auto& vert_attr = m_Array[i];
+        auto& vert_attr = m_Attributes.Values[i];
         GLsizei elements;
         GLenum type;
         GLboolean normalized;

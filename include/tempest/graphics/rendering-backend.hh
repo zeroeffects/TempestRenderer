@@ -53,15 +53,6 @@ struct FramebufferDescription
     RenderTarget*         renderTarget;
 };
 
-#ifdef SINGLE_RENDERING_BACKEND
-#   define RENDERING_BACKEND
-#   define RENDERING_VIRTUAL
-#   define RENDERING_OPT_OVERRIDE
-#else
-#   define RENDERING_BACKEND :public RenderingBackend
-#   define RENDERING_OPT_VIRTUAL virtual
-#   define RENDERING_OPT_OVERRIDE override
-
 /*! \brief The interface of the render device wrapper.
  *
  *  This interface closely maps to the structure of the modern graphics APIs. It might also contain
@@ -97,7 +88,7 @@ public:
      *  \returns returns a new render target or nullptr on error. The error is automatically written to
      *           logging stream, if applicable.
      */
-    virtual RenderTarget* createRenderTarget(const TextureDescription& desc, size_t flags)=0;
+    virtual RenderTarget* createRenderTarget(const TextureDescription& desc, uint32 flags)=0;
     
     /*! \brief Create a framebuffer that can be assigned in a single call.
      * 
@@ -146,7 +137,7 @@ public:
      *  \param data     data used for automatic initialization (can be nullptr).
      *  \returns Returns a new buffer object.
      */
-    virtual Buffer* createBuffer(size_t size, VBUsage usage, const void* data)=0;
+    virtual Buffer* createBuffer(size_t size, uint32 flags, const void* data)=0;
     
     /*! \brief Destroy a buffer object.
      * 
@@ -174,7 +165,7 @@ public:
      *  \param data     data used for automatic initialization (can be nullptr).
      *  
      */
-    virtual Texture* createTexture(const TextureDescription& desc, size_t flags, void* data = nullptr)=0;
+    virtual Texture* createTexture(const TextureDescription& desc, uint32 flags, const void* data = nullptr)=0;
     
     /*! \brief Destroy a texture object.
      * 
@@ -238,7 +229,6 @@ public:
      */
     virtual void clearDepthStencilBuffer(float depth=1.0f, uint8 stencil=0)=0;
 };
-#endif
 }
 
 #endif // _TEMPEST_RENDERING_BACKED_HH_

@@ -26,41 +26,98 @@
 #include "tempest/graphics/opengl-backend/gl-input-layout.hh"
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
+#include "tempest/graphics/opengl-backend/gl-texture.hh"
 #include "tempest/utils/logging.hh"
 #include "tempest/utils/assert.hh"
 
+#include <alloca.h>
+
 namespace Tempest
 {
-void GLResourceTable::setResource(size_t index, const GLTexture& tex)
+void GLResourceTable::setResource(ResourceIndex index, const GLTexture& tex)
 {
-    TGE_ASSERT(false, "Stub");
+    TGE_ASSERT(index.ResourceTableIndex < m_ResourceTable->Uniforms.Count || m_ResourceTable->Uniforms.Count == std::numeric_limits<size_t>::max(), "Unknown index");
+    if(index.ResourceTableIndex >= m_ResourceTable->Uniforms.Count)
+        return;
+    TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize, "Buffer overflow");
+    TGE_ASSERT(m_BakedResourceTable, "The baked table is already extracted");
+    #ifndef NDEBUG
+        TGE_ASSERT(UniformValueType::Texture == m_ResourceTable->Uniforms.Values[index.ResourceTableIndex].Type, "Mismatching uniform variable types.");
+    #endif
+    m_BakedResourceTable.setValue(index.BaseOffset, tex.getHandle());
 }
-
-GLShaderProgram::GLShaderProgram(GLuint id, ResourceTableDescription* res_tables[])
-    :   m_Id(id),
-        m_ResourceTables(res_tables)
+    
+ResourceIndex GLResourceTable::getResourceIndex(const string& name)
 {
+    ResourceIndex res_idx;
+    string sliced_string;
+    sliced_string.reserve(name.size());
+    int array_index = 0, array_index_base = 1;
+    for(size_t idx = 0; idx < name.size(); ++idx)
+    {
+        char c = name[idx];
+        // Array indexing gets chopped of because it hinders search.
+        if(c == '[')
+        {
+            TGE_ASSERT(array_index == 0, "Double arrays are not supported");
+            for(;;)
+            {
+                ++idx;
+                TGE_ASSERT(idx < name.size(), "Array ended prematurely");
+                c = name[idx];
+                if(isdigit(c))
+                {
+                    array_index += (c - '0')*array_index_base;
+                    array_index_base *= 10;
+                }
+                else if(c == ']')
+                {
+                    break;
+                }
+            }
+        }
+        else
+        {
+            if(c == '.')
+            {
+                auto iter = std::find_if(m_ResourceTable->Uniforms.Values, m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count, [&sliced_string](const DataDescription& data) { return data.Name == sliced_string; });
+                TGE_ASSERT(iter != m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count, "Unknown variable");
+                res_idx.BaseOffset += iter->Offset + iter->ElementSize*array_index;
+                array_index = 0, array_index_base = 1;
+            }
+            else
+            {
+                TGE_ASSERT(array_index_base == 1, "Array indexing should be followed by member access operator");
+            }
+            sliced_string.push_back(c);
+        }
+    }
+    auto iter = std::find_if(m_ResourceTable->Uniforms.Values, m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count, [&sliced_string](const DataDescription& data) { return data.Name == sliced_string; });
+    TGE_ASSERT(iter != m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count, "Unknown variable");
+    res_idx.BaseOffset += iter->Offset + iter->ElementSize*array_index;
+    res_idx.ResourceTableIndex = iter != m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count ? (iter - m_ResourceTable->Uniforms.Values) : std::numeric_limits<size_t>::max(); // So we don't crash on reloads and in general.
+    return res_idx;
 }
+    
+GLShaderProgram::GLShaderProgram(GLuint prog, ResourceTableDescription* res_tables[], size_t res_table_count)
+    :   m_Program(prog),
+        m_ResourceTableCount(res_table_count),
+        m_ResourceTables(res_tables) {}
 
 GLShaderProgram::~GLShaderProgram()
 {
     for(size_t i = 0; i < m_ResourceTableCount; ++i)
     {
-        auto& res_table = m_ResourceTables[i];
-        for(size_t j = 0; j < res_table->Count; ++j)
-        {
-            res_table->UniformValue[j].~DataDescription();
-        }
-        m_ResourceTables[i]->~ResourceTableDescription();
-        free(m_ResourceTables[i]);
+        DestroyPackedData(m_ResourceTables[i]);
     }
-    glDeleteProgram(m_Id);
+    glDeleteProgram(m_Program);
 }
 
-GLResourceTable* GLShaderProgram::createResourceTable(const string& name)
+GLResourceTable* GLShaderProgram::createResourceTable(const string& name, size_t extended)
 {
-    auto iter = std::find_if(m_ResourceTables.get(), m_ResourceTables.get() + m_ResourceTableCount, [name](const ResourceTableDescription* desc) { return desc->Name == name; });
-    return iter != m_ResourceTables.get() + m_ResourceTableCount ? new GLResourceTable(*iter) : nullptr;
+    auto iter = std::find_if(m_ResourceTables.get(), m_ResourceTables.get() + m_ResourceTableCount,
+                             [&name](const ResourceTableDescription* desc) { return desc->Name == name; });
+    return iter != m_ResourceTables.get() + m_ResourceTableCount ? new GLResourceTable(*iter, extended) : nullptr;
 }
 
 void GLShaderProgram::destroyRenderResource(GLResourceTable* buffer)
@@ -68,34 +125,36 @@ void GLShaderProgram::destroyRenderResource(GLResourceTable* buffer)
     delete buffer;
 }
 
-void GLShaderProgram::bind()
-{
-    glUseProgram(m_Id);
-}
-
-void GLShaderProgram::setupInputLayout(GLInputLayout* layout)
-{
-    if(!layout)
-        return;
-    for(size_t i = 0, iend = layout->getAttributeCount(); i < iend; ++i)
-    {
-        auto* vert_attr = layout->getAttribute(i);
-        glVertexAttribFormat(i, vert_attr->Size, vert_attr->Type, vert_attr->Normalized, vert_attr->Offset);
-        glBindVertexBuffer(i, 0, 0, vert_attr->Stride);
-        glVertexAttribBinding(i, vert_attr->Binding);
-        glEnableVertexAttribArrayARB(i);
-    }
-    CheckOpenGL();
-}
-
 GLInputLayout* GLShaderProgram::createInputLayout(GLRenderingBackend* backend, const VertexAttributeDescription* arr, size_t count)
 {
-    return new (malloc(sizeof(size_t) + count*sizeof(GLVertexAttributeDescription))) GLInputLayout(arr, count);
+    return CreatePackedData<GLInputLayout>(count, arr);
 }
 
 void GLShaderProgram::destroyRenderResource(GLRenderingBackend* backend, GLInputLayout* input_layout)
 {
-    input_layout->~GLInputLayout();
-    free(input_layout);
+    DestroyPackedData(input_layout);
+}
+
+GLLinkedShaderProgram* GLShaderProgram::getUniqueLinkage(GLBakedResourceTable* _table)
+{
+    auto iter = std::find_if(std::begin(m_Programs), std::end(m_Programs),
+                             [_table](const std::unique_ptr<GLLinkedShaderProgram>& prog) {
+                                 return _table == nullptr ?
+                                     prog->m_Baked == nullptr :
+                                     std::equal(prog->m_Baked->get(), prog->m_Baked->get() + prog->m_Baked->getSize(), _table->get());
+                             });
+    if(iter != m_Programs.end())
+    {
+        delete _table;
+        return iter->get();
+    }
+    auto* res = new GLLinkedShaderProgram(m_Program, _table);
+    m_Programs.push_back(std::unique_ptr<GLLinkedShaderProgram>(res));
+    return res;
+}
+    
+void GLLinkedShaderProgram::bind()
+{
+    glUseProgram(m_Program);
 }
 }

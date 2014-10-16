@@ -23,7 +23,7 @@
  */
 
 #include "tempest/graphics/rendering-convenience.hh"
-#include "tempest/shader/file-loader.hh"
+#include "tempest/parser/file-loader.hh"
 
 #include <fstream>
 

@@ -244,8 +244,9 @@ enum BuiltInEnum
 
 enum BuiltInVertexShader
 {
-    TGE_EFFECT_BUILTIN_OUT_GL_VERTEX_ID,
-    TGE_EFFECT_BUILTIN_OUT_GL_INSTANTGE_ID,
+    TGE_EFFECT_BUILTIN_IN_TGE_DRAW_ID, // It is possible that it is defined as instance index on some platforms
+    TGE_EFFECT_BUILTIN_IN_GL_VERTEX_ID,
+    TGE_EFFECT_BUILTIN_IN_GL_INSTANTCE_ID,
     TGE_EFFECT_BUILTIN_OUT_GL_POSITION,
     TGE_EFFECT_BUILTIN_OUT_GL_POINT_SIZE,
     TGE_EFFECT_BUILTIN_OUT_GL_CLIP_DISTANCE,
@@ -1465,8 +1466,9 @@ void Driver::beginShader(ShaderType shader_type)
         size_t current_size = m_Stack.size();
         m_Stack.resize(m_Stack.size() + TGE_EFFECT_BUILTINS_VS);
         StackType::iterator::pointer vs_p = &m_Stack[current_size];
-        vs_p[TGE_EFFECT_BUILTIN_OUT_GL_VERTEX_ID] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_VertexID");
-        vs_p[TGE_EFFECT_BUILTIN_OUT_GL_INSTANTGE_ID] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_InstanceID");
+        vs_p[TGE_EFFECT_BUILTIN_IN_TGE_DRAW_ID] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "tge_DrawID");
+        vs_p[TGE_EFFECT_BUILTIN_IN_GL_VERTEX_ID] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_VertexID");
+        vs_p[TGE_EFFECT_BUILTIN_IN_GL_INSTANTCE_ID] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_InstanceID");
         vs_p[TGE_EFFECT_BUILTIN_OUT_GL_POSITION] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC4), "gl_Position");
         vs_p[TGE_EFFECT_BUILTIN_OUT_GL_POINT_SIZE] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_FLOAT), "gl_PointSize");
         auto arr_size = createBuiltInType<ArrayType>(extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_FLOAT),

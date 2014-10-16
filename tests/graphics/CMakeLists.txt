@@ -25,3 +25,5 @@
 
 ADD_SUBDIRECTORY(draw-quad)
 ADD_SUBDIRECTORY(window-init)
+ADD_SUBDIRECTORY(object-file-viewer)
+ADD_SUBDIRECTORY(draw-quad-texture)

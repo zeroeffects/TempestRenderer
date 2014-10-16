@@ -39,10 +39,12 @@ class GLShaderCompiler
 public:
     typedef GLShaderProgram ShaderProgramType;
     
-    GLShaderProgram* compileShaderProgram(const string& filename, FileLoader* file_loader);
+    GLShaderProgram* compileShaderProgram(const string& filename, FileLoader* file_loader,
+                                          const string& technique_name = string(), const string& pass_name = string());
     void destroyRenderResource(GLShaderProgram* shader_program);
 
-    FileDescription* compileBinaryBlob(const string& filename, FileLoader* file_loader);
+    FileDescription* compileBinaryBlob(const string& filename, FileLoader* file_loader,
+                                       const string& technique_name = string(), const string& pass_name = string());
     void destroyRenderResource(FileDescription* blob);
 };
 }

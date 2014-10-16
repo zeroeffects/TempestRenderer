@@ -77,22 +77,13 @@ bool operator==(const Path& lhs, const Path& rhs)
     return lhs.get() == rhs.get();
 }
 
-#define PATH_DELIM '/'
-#ifdef _WIN32
-#   define INVALID_PATH_DELIM '/'
-#elif defined(LINUX)
-#   define INVALID_PATH_DELIM '\\'
-#else
-#   error "Unsupported platform"
-#endif
-
 void Path::set(const string& path)
 {
     m_Path = path;
     for(size_t i = 0; i < m_Path.size(); ++i)
     {
-        if(m_Path[i] == INVALID_PATH_DELIM)
-            m_Path[i] = PATH_DELIM;
+        if(m_Path[i] == TGE_INVALID_PATH_DELIM)
+            m_Path[i] = TGE_PATH_DELIM;
     }
 }
 
@@ -107,35 +98,45 @@ string Path::relativePath(const Path& p) const
        p.m_Path.compare(0, m_Path.size(), m_Path) != 0)
         return string();
     size_t sep = m_Path.size();
-    if(p.m_Path[sep] == PATH_DELIM)
+    if(p.m_Path[sep] == TGE_PATH_DELIM)
         ++sep;
     return p.m_Path.substr(sep);
 }
 
 string Path::directoryPath() const
 {
-    size_t idx = m_Path.find_last_of(PATH_DELIM);
+    size_t idx = m_Path.find_last_of(TGE_PATH_DELIM);
     return idx != string::npos ? m_Path.substr(0, idx) : "";
 }
 
 string Path::filename() const
 {
-    size_t idx = m_Path.find_last_of(PATH_DELIM);
+    size_t idx = m_Path.find_last_of(TGE_PATH_DELIM);
     return idx != string::npos ? m_Path.substr(idx+1) : m_Path;
 }
 
 string Path::filenameWOExt() const
 {
-    size_t first_char = m_Path.find_last_of(PATH_DELIM);
+    size_t first_char = m_Path.find_last_of(TGE_PATH_DELIM);
     first_char = first_char == string::npos ? 0 : first_char + 1;
     size_t last_char = string::npos;
-    for(size_t i = m_Path.size()-1; i >= first_char; ++i)
+    for(size_t i = m_Path.size()-1; i >= first_char; --i)
         if(m_Path[i] == '.')
         {
             last_char = i;
             break;
         }
     return m_Path.substr(first_char, last_char);
+}
+
+string Path::extension() const
+{
+    for(size_t i = m_Path.size()-1; i >= 0 && m_Path[i] != TGE_PATH_DELIM; --i)
+        if(m_Path[i] == '.')
+        {
+            return m_Path.substr(i + 1, string::npos); 
+        }
+    return string();
 }
 
 #ifdef _WIN32

@@ -26,6 +26,9 @@
 #define _TEMPEST_GL_INPUT_LAYOUT_HH_
 
 #include <GL/gl.h>
+#include <stdlib.h>
+
+#include "tempest/utils/patterns.hh"
 
 namespace Tempest
 {
@@ -43,14 +46,17 @@ struct VertexAttributeDescription;
 
 class GLInputLayout
 {
-    size_t m_ArrayCount;
-    GLVertexAttributeDescription m_Array[];
-public:
-    explicit GLInputLayout(const VertexAttributeDescription* arr, size_t count);
-    ~GLInputLayout()=default;
+    PACKED_DATA(GLVertexAttributeDescription) m_Attributes;
+public:    
+    GLInputLayout(const GLInputLayout&)=delete;
+    GLInputLayout& operator=(const GLInputLayout&)=delete;
     
-    const GLVertexAttributeDescription* getAttribute(size_t idx) const { return m_Array + idx; }
-    size_t getAttributeCount() const { return m_ArrayCount; }
+    const GLVertexAttributeDescription* getAttribute(size_t idx) const { return m_Attributes.Values + idx; }
+    size_t getAttributeCount() const { return m_Attributes.Count; }
+
+private:
+    GLInputLayout(size_t count, const VertexAttributeDescription* arr);
+    ~GLInputLayout()=default;
 };
 }
 

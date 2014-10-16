@@ -1,8 +1,8 @@
 /*   The MIT License
- *   
+ *
  *   Tempest Engine
- *   Copyright (c) 2010-2014 Zdravko Velinov
- *   
+ *   Copyright (c) 2009 2010 2011 2012 Zdravko Velinov
+ *
  *   Permission is hereby granted, free of charge, to any person obtaining a copy
  *   of this software and associated documentation files (the "Software"), to deal
  *   in the Software without restriction, including without limitation the rights
@@ -22,48 +22,29 @@
  *   THE SOFTWARE.
  */
 
-#ifndef _TEMPEST_TEXTURE_HH_
-#define _TEMPEST_TEXTURE_HH_
+#ifndef TEMPEST_FILE_LOADER_HH_
+#define TEMPEST_FILE_LOADER_HH_
 
 #include "tempest/utils/types.hh"
-#include "tempest/graphics/rendering-definitions.hh"
-
-#include <memory>
+#include "tempest/utils/patterns.hh"
 
 namespace Tempest
 {
-enum class TextureTiling
+// Hint: if you need more data just concat it after the initial header
+struct FileDescription
 {
-    Flat,
-    Cube,
-    Volume,
-    Array
+    const char* Content;
+    size_t ContentSize;
 };
-
-struct TextureDescription
+    
+class FileLoader
 {
-    uint16          Width;
-    uint16          Height;
-    uint16          Depth;
-    uint16          Samples = 1;
-    DataFormat      Format;
-    TextureTiling   Tiling;
-};
-
-class Texture
-{
-    TextureDescription        m_Header;
-    std::unique_ptr<uint8 []> m_Data;
 public:
-    explicit Texture(const TextureDescription& desc, uint8* data)
-        :   m_Header(desc),
-            m_Data(data) {}
-     ~Texture()=default;
-    
-    const TextureDescription& getHeader() const { return m_Header; }
-    
-    const uint8* getData() { return m_Data.get(); }
+    virtual FileDescription* loadFileContent(const string& name)=0;
+    virtual void freeFileContent(FileDescription* ptr)=0;
 };
+
+#define CREATE_SCOPED_FILE(loader, name) CreateScoped<FileDescription*>(loader->loadFileContent(name), [=](FileDescription* ptr){ loader->freeFileContent(ptr); });
 }
 
-#endif // _TEMPEST_TEXTURE_HH_
+#endif // TEMPEST_FILE_LOADER_HH_

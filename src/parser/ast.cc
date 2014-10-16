@@ -219,36 +219,8 @@ bool Driver::pushOnStack(AST::Node&& node)
     return true;
 }
 
-string Driver::getFileName() const
-{
-    return __FileName;
-}
 
-void Driver::warning(const Tempest::AST::Location& loc, const string& str)
-{
-    ++m_WarningCount;
-    Log(LogLevel::Warning, "\n", loc, ": warning: ", str);
-}
-
-void Driver::warning(const string& str)
-{
-    ++m_WarningCount;
-    Log(LogLevel::Warning, "\n", __FileName, ": warning: ", str);
-}
-
-void Driver::error(const Tempest::AST::Location& loc, const string& str)
-{
-    ++m_ErrorCount;
-    Log(LogLevel::Error, "\n", loc, ": error: ", str);
-}
-
-void Driver::error(const string& str)
-{
-    ++m_ErrorCount;
-    Log(LogLevel::Error, "\n", __FileName, ": error: ", str);
-}
-
-PrinterInfrastructure::PrinterInfrastructure(std::ostream& os, size_t flags)
+PrinterInfrastructure::PrinterInfrastructure(std::ostream& os, uint32 flags)
     :   m_Indentation(0),
         m_OutputStream(os),
         m_Flags(flags)

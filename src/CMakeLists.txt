@@ -30,6 +30,21 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_SOURCE_DIR}
                     ${WINDOW_SYSTEM_INCLUDE_DIR})
 
+SET(TEMPEST_UTILS_INC
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/assert.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/file-system.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/interleave-vertices.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/library.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/logging.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/macros.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/memory.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/parse-command-line.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/patterns.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/system.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/testing.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/types.hh
+   )
+
 SET(TEMPEST_UTILS_SRC
     utils/assert.cc
     utils/memory.cc
@@ -38,6 +53,7 @@ SET(TEMPEST_UTILS_SRC
     utils/logging.cc
     utils/library.cc
     utils/file-system.cc
+    utils/interleave-vertices.cc
    )
    
 SET(TEMPEST_LIB_INC
@@ -62,6 +78,7 @@ SET(TEMPEST_GRAPHICS_SRC
     graphics/opengl-backend/gl-shader.cc
     graphics/opengl-backend/gl-buffer.cc
     graphics/opengl-backend/gl-input-layout.cc
+    graphics/opengl-backend/gl-texture.cc
     graphics/rendering-convenience.cc
    )
 
@@ -69,10 +86,21 @@ SET(TEMPEST_GRAPHICS_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-library.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-backend.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-utils.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-texture.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-definitions.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-backend.hh
    )
 
+SET(TEMPEST_IMAGE_INC
+    ${CMAKE_SOURCE_DIR}/include/tempest/image/image.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/image/tga-image.hh
+   )
+
+SET(TEMPEST_IMAGE_SRC
+    ${CMAKE_SOURCE_DIR}/src/image/image.cc
+    ${CMAKE_SOURCE_DIR}/src/image/tga-image.cc
+   )
+   
 SET(TEMPEST_INPUT_SRC
     input/controller-linux.cc
    )
@@ -81,12 +109,14 @@ SET(TEMPEST_INPUT_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/input/controller.hh
    ) 
 
+FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/shader)
+   
 BISON_TARGET(TempestParser "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader-parser.y"
-             "${CMAKE_CURRENT_BINARY_DIR}/shader-parser.cc"
-             VERBOSE "${CMAKE_CURRENT_BINARY_DIR}/shader-parser.output"
+             "${CMAKE_CURRENT_BINARY_DIR}/shader/shader-parser.cc"
+             VERBOSE "${CMAKE_CURRENT_BINARY_DIR}/shader/shader-parser.output"
              COMPILE_FLAGS "--report=state")
 FLEX_TARGET(TempestScanner "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader-lexer.l"
-            "${CMAKE_CURRENT_BINARY_DIR}/shader-lexer.cc"
+            "${CMAKE_CURRENT_BINARY_DIR}/shader/shader-lexer.cc"
             COMPILE_FLAGS "-Pshader_")
 ADD_FLEX_BISON_DEPENDENCY(TempestScanner TempestParser)
 
@@ -110,6 +140,7 @@ SET(TEMPEST_SHADER_INC
 
 SET(TEMPEST_PARSER_SRC
     parser/ast.cc
+    parser/driver-base.cpp
    ) 
 
 SET(TEMPEST_PARSER_INC
@@ -129,15 +160,53 @@ SET(TEMPEST_MATH_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/math/vector2.hh
    )
 
+FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-loader)
+FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-mtl-loader)
+   
+BISON_TARGET(ObjParser "${CMAKE_CURRENT_SOURCE_DIR}/mesh/obj-loader.y"
+             "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-loader/obj-loader-parser.cc"
+             VERBOSE "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-loader/obj-loader-parser.output"
+             COMPILE_FLAGS "--report=state")
+FLEX_TARGET(ObjScanner "${CMAKE_CURRENT_SOURCE_DIR}/mesh/obj-loader.l"
+            "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-loader/obj-loader-lexer.cc"
+            COMPILE_FLAGS "-Pobj_loader_")
+ADD_FLEX_BISON_DEPENDENCY(ObjScanner ObjParser)
+
+BISON_TARGET(ObjMtlParser "${CMAKE_CURRENT_SOURCE_DIR}/mesh/obj-mtl-loader.y"
+             "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-mtl-loader/obj-mtl-loader-parser.cc"
+             VERBOSE "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-mtl-loader/obj-mtl-loader-parser.output"
+             COMPILE_FLAGS "--report=state")
+FLEX_TARGET(ObjMtlScanner "${CMAKE_CURRENT_SOURCE_DIR}/mesh/obj-mtl-loader.l"
+            "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-mtl-loader/obj-mtl-loader-lexer.cc"
+            COMPILE_FLAGS "-Pobj_mtl_loader_")
+ADD_FLEX_BISON_DEPENDENCY(ObjMtlScanner ObjMtlParser)
+
+SET(TEMPEST_MESH_SRC
+    mesh/obj-loader.cc
+    mesh/obj-loader-driver.cc
+    ${BISON_ObjParser_OUTPUTS}
+    ${FLEX_ObjScanner_OUTPUTS}
+    ${BISON_ObjMtlParser_OUTPUTS}
+    ${FLEX_ObjMtlScanner_OUTPUTS}
+   )
+
+SET(TEMPEST_MESH_INC
+   ${CMAKE_SOURCE_DIR}/include/tempest/mesh/obj-loader.hh
+   ${CMAKE_SOURCE_DIR}/include/tempest/mesh/obj-mtl-loader.hh
+   ${CMAKE_SOURCE_DIR}/include/tempest/mesh/obj-loader-driver.hh
+   ${CMAKE_SOURCE_DIR}/include/tempest/mesh/obj-mtl-loader-driver.hh
+   )
+
 SET(TEMPEST_LIBRARY_FILES
+    ${TEMPEST_UTILS_INC}
     ${TEMPEST_UTILS_SRC}
     ${TEMPEST_LIB_INC}
     ${TEMPEST_GRAPHICS_SRC}
     ${TEMPEST_GRAPHICS_INC}
-    ${TEMPEST_SHADER_SRC}
-    ${TEMPEST_SHADER_INC}
     ${TEMPEST_PARSER_SRC}
     ${TEMPEST_PARSER_INC}
+    ${TEMPEST_IMAGE_SRC}
+    ${TEMPEST_IMAGE_INC}
     ${TEMPEST_INPUT_SRC}
     ${TEMPEST_INPUT_INC}
     ${TEMPEST_MATH_SRC}
@@ -148,11 +217,19 @@ IF(UNIX)
     SET(EXTRA_LIBS dl)
 ENDIF()
 
+ADD_LIBRARY(tempest-shader-tmp STATIC ${TEMPEST_SHADER_SRC} ${TEMPEST_SHADER_INC})
+TARGET_INCLUDE_DIRECTORIES(tempest-shader-tmp PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/shader)
+
+ADD_LIBRARY(tempest-mesh-tmp STATIC ${TEMPEST_MESH_SRC} ${TEMPEST_MESH_INC})
+TARGET_INCLUDE_DIRECTORIES(tempest-mesh-tmp PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/mesh)
+
+SET_TARGET_PROPERTIES(tempest-shader-tmp tempest-mesh-tmp PROPERTIES COMPILE_FLAGS "-fPIC")
+
 ADD_LIBRARY(tempest-static STATIC ${TEMPEST_LIBRARY_FILES})
-TARGET_LINK_LIBRARIES(tempest-static ${EXTRA_LIBS} ${WINDOW_SYSTEM_LIBRARIES})
+TARGET_LINK_LIBRARIES(tempest-static ${EXTRA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} tempest-shader-tmp tempest-mesh-tmp xxhash)
 
 ADD_LIBRARY(tempest-shared SHARED ${TEMPEST_LIBRARY_FILES})
-TARGET_LINK_LIBRARIES(tempest-shared ${EXTRA_LIBS} ${WINDOW_SYSTEM_LIBRARIES})
+TARGET_LINK_LIBRARIES(tempest-shared ${EXTRA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} tempest-shader-tmp tempest-mesh-tmp xxhash)
 
 
 ADD_LIBRARY(tempest-main STATIC utils/tempest-main.cc)

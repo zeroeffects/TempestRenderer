@@ -46,14 +46,14 @@ string ConvertLogLevelToString(LogLevel level)
     return "[UNKNOWN]";
 }
 
-LogFile::LogFile(size_t flags)
+LogFile::LogFile(uint32 flags)
     :   m_MinLogLevel(LogLevel::Info),
 		m_CurrentIndex(0),
 		m_Flags(flags)
 {
 }
 
-LogFile::LogFile(const string& filename, LogLevel log_level, size_t flags)
+LogFile::LogFile(const string& filename, LogLevel log_level, uint32 flags)
     :   m_LogFile(filename.c_str(), std::ios::out | std::ios::trunc),
         m_MinLogLevel(log_level),
         m_CurrentIndex(0),

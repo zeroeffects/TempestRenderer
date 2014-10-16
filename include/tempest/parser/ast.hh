@@ -28,10 +28,10 @@
 #include "tempest/utils/types.hh"
 #include "tempest/utils/assert.hh"
 #include "tempest/utils/memory.hh"
+#include "tempest/parser/driver-base.hh"
 
 #include <type_traits>
 #include <vector>
-#include <iostream>
 
 using std::is_const;
 
@@ -39,25 +39,6 @@ namespace Tempest
 {
 namespace AST
 {
-/*! \brief Convenience macro to point to the default AST::Location used for built-in types and variables
- * 
- *  \remarks It is used internally. Please, don't use this type for anything outside the standard parser,
- *           because it is used for distinguishing built-in types.
- */
-#define TGE_DEFAULT_LOCATION Tempest::AST::Location()
-
-struct Location
-{
-    std::string* filename;
-    size_t       startLine;
-    size_t       startColumn;
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Location& loc)
-{
-    os << *loc.filename << ":" << loc.startLine << ":" << loc.startColumn;
-}
-
 enum ASTNodeType
 {
     TGE_AST_UNKNOWN=0,
@@ -646,7 +627,7 @@ private:
     std::ostream&   m_OutputStream;
     size_t          m_Flags;
 public:
-    PrinterInfrastructure(std::ostream& os, size_t flags);
+    PrinterInfrastructure(std::ostream& os, uint32 flags);
      ~PrinterInfrastructure();
     
     std::ostream& stream() { return m_OutputStream; }
@@ -656,7 +637,7 @@ public:
     void setIndentation(size_t indentation) { m_Indentation = indentation; }
     size_t getIndentation() const { return m_Indentation; }
     
-    bool hasFlags(size_t flags) { return (m_Flags & flags) != 0; }
+    bool hasFlags(uint32 flags) { return (m_Flags & flags) != 0; }
 };
 
 // When you want to build your own printer. Just pick what functions out of these you are going to use and
@@ -871,7 +852,7 @@ private:
 typedef std::vector<AST::Node> ObjectPoolType;
 typedef std::vector<size_t>    StackType;
 
-class Driver
+class Driver: public DriverBase
 {
 protected:
     typedef std::vector<size_t>    StackPointers;
@@ -897,7 +878,7 @@ public:
     bool pushOnStack(AST::Node&& node);
 
     template<class T, class... TArgs>
-    AST::NodeT<AST::Reference<T>> createStackNode(AST::Location loc, TArgs&&... args)
+    AST::NodeT<AST::Reference<T>> createStackNode(Location loc, TArgs&&... args)
     {
         auto _node = AST::CreateNode<T>(loc, std::forward<TArgs>(args)...);
         return pushOnStack(std::move(_node)) ?
@@ -907,14 +888,6 @@ public:
     void setASTRoot(AST::Node ast_root);
     AST::Node* getASTRoot();
     const AST::Node* getASTRoot() const;
-
-    string getFileName() const;
-
-    void warning(const AST::Location& loc, const string& filename);
-    void warning(const string& filename);
-
-    void error(const AST::Location& loc, const string& filename);
-    void error(const string& filename);
 
     ///! \remarks Dangerous -- returns reference to object which is part of an array.
     AST::Node* findIdentifier(const string& name);

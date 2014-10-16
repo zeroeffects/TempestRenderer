@@ -28,11 +28,13 @@ TGE_TEST("Testing the off-screen rendering context")
     
     Tempest::GLShaderCompiler compiler;
     auto shader = Tempest::CreateShader(&compiler, CURRENT_SOURCE_DIR "/test.tfx");
-    auto res_table = shader->createResourceTable("Globals");
+    TGE_ASSERT(shader, "Expecting successful compilation");
+    auto res_table = shader->createResourceTable("GlobalsBuffer", 1);
+    TGE_ASSERT(res_table, "Expecting valid resource table");
     Tempest::Matrix4 mat;
     mat.identity();
     mat.translate(Tempest::Vector2(-0.5f, -0.5f));
-    res_table->setResource("Transform", mat);
+    res_table->setResource("Globals[0].Transform", mat);
     auto baked_table = Tempest::ExtractBakedResourceTable(res_table);
     
     TGE_ASSERT(shader, "Could not create shader file");
@@ -44,11 +46,14 @@ TGE_TEST("Testing the off-screen rendering context")
     
     auto input_layout = Tempest::CreateInputLayout(&backend, shader.get(), layout_arr);
     
+    auto* shader_ptr = shader.get();
+    auto linked_shader_prog = shader_ptr->getUniqueLinkage(nullptr);
+    
     Tempest::GLDrawBatch batch;
     batch.PrimitiveType = Tempest::DrawModes::TriangleStrip;
     batch.VertexCount = idx_arr.size();
     batch.ResourceTable = baked_table.get();
-    batch.ShaderProgram = shader.get();
+    batch.LinkedShaderProgram = linked_shader_prog;
     batch.IndexBuffer = index_buf.get();
     batch.InputLayout = input_layout.get();
     batch.VertexBuffers[0] = vertex_buf.get();

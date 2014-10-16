@@ -30,20 +30,20 @@
 
 namespace Tempest
 {
-GLenum TranslateUsage(VBUsage usage)
+GLenum TranslateUsage(size_t usage)
 {
-    switch(usage)
+    switch(usage & RESOURCE_USAGE_MASK)
     {
     default: TGE_ASSERT(false, "Unknown usage");
-    case VBUsage::StaticDraw: return GL_STATIC_DRAW;
-    case VBUsage::StaticRead: return GL_STATIC_READ;
-    case VBUsage::StaticCopy: return GL_STATIC_COPY;
-    case VBUsage::StreamDraw: return GL_STREAM_DRAW;
-    case VBUsage::StreamRead: return GL_STREAM_READ;
-    case VBUsage::StreamCopy: return GL_STREAM_COPY;
-    case VBUsage::DynamicDraw: return GL_DYNAMIC_DRAW;
-    case VBUsage::DynamicRead: return GL_DYNAMIC_READ;
-    case VBUsage::DynamicCopy: return GL_DYNAMIC_COPY;
+    case RESOURCE_STATIC_DRAW: return GL_STATIC_DRAW;
+    case RESOURCE_STATIC_READ: return GL_STATIC_READ;
+    case RESOURCE_STATIC_COPY: return GL_STATIC_COPY;
+    case RESOURCE_STREAM_DRAW: return GL_STREAM_DRAW;
+    case RESOURCE_STREAM_READ: return GL_STREAM_READ;
+    case RESOURCE_STREAM_COPY: return GL_STREAM_COPY;
+    case RESOURCE_DYNAMIC_DRAW: return GL_DYNAMIC_DRAW;
+    case RESOURCE_DYNAMIC_READ: return GL_DYNAMIC_READ;
+    case RESOURCE_DYNAMIC_COPY: return GL_DYNAMIC_COPY;
     }
 }
 
@@ -57,7 +57,7 @@ static GLenum TranslateVBType(VBType vb_type)
     }
 }
 
-GLBuffer::GLBuffer(size_t size, VBType vb_type, VBUsage usage, const void* data)
+GLBuffer::GLBuffer(size_t size, VBType vb_type, size_t usage, const void* data)
     :   m_Size(size)
 {
     GLenum gl_vbt = TranslateVBType(vb_type);

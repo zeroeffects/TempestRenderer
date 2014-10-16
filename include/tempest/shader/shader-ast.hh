@@ -45,6 +45,7 @@ enum NodeType
     TGE_EFFECT_FUNCTION_DEFINITION,
     TGE_EFFECT_FUNCTION_SET,
     TGE_EFFECT_FUNCTION_CALL,
+    TGE_EFFECT_SUBROUTINE_CALL,
     TGE_EFFECT_DECLARATION,
     TGE_EFFECT_VARIABLE,
     TGE_EFFECT_ARRAY_ELEMENT,
@@ -54,7 +55,6 @@ enum NodeType
     TGE_EFFECT_CONSTRUCTOR_CALL,
     TGE_EFFECT_TECHNIQUE,
     TGE_EFFECT_IMPORT,
-    TGE_EFFECT_SAMPLER,
     TGE_EFFECT_PASS,
     TGE_EFFECT_UNARY_OPERATOR,
     TGE_EFFECT_BINARY_OPERATOR,
@@ -125,6 +125,7 @@ class FunctionDeclaration;
 class FunctionDefinition;
 class FunctionSet;
 class FunctionCall;
+class SubroutineCall;
 class Declaration;
 class Variable;
 class ArrayElementVariable;
@@ -134,7 +135,6 @@ class ConstructorCall;
 class Import;
 class Profile;
 class Technique;
-class Sampler;
 class Shader;
 class Pass;
 class UnaryOperator;
@@ -154,13 +154,13 @@ class Buffer;
 typedef Value<string> Identifier;
 typedef Intermediate<const Type*, NodeT<Identifier>> DeclarationInfo;
 typedef Intermediate<const Type*, FunctionSet*> FuncDeclarationInfo;
+typedef Intermediate<AST::Node, FunctionDeclaration*> IntermFuncNode;
 typedef Intermediate<const Type*, NodeT<List>> VarDeclList;
 typedef Value<ShaderType> ValueShaderType;
 
 typedef AST::Reference<FunctionSet> FunctionSetRef;
 typedef AST::Reference<Variable> VariableRef;
 typedef AST::Reference<Type> TypeRef;
-typedef AST::Reference<Sampler> SamplerRef;
 }
 
 namespace AST
@@ -171,6 +171,7 @@ TGE_AST_NODE_INFO(FunctionDeclaration, TGE_EFFECT_FUNCTION_DECLARATION, Shader::
 TGE_AST_NODE_INFO(FunctionDefinition, TGE_EFFECT_FUNCTION_DEFINITION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(FunctionSet, TGE_EFFECT_FUNCTION_SET, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(FunctionCall, TGE_EFFECT_FUNCTION_CALL, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(SubroutineCall, TGE_EFFECT_SUBROUTINE_CALL, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Declaration, TGE_EFFECT_DECLARATION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Variable, TGE_EFFECT_VARIABLE, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(ArrayElementVariable, TGE_EFFECT_ARRAY_ELEMENT, Shader::VisitorInterface)
@@ -181,7 +182,6 @@ TGE_AST_NODE_INFO(ConstructorCall, TGE_EFFECT_CONSTRUCTOR_CALL, Shader::VisitorI
 TGE_AST_NODE_INFO(Import, TGE_EFFECT_IMPORT, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Technique, TGE_EFFECT_TECHNIQUE, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Pass, TGE_EFFECT_PASS, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Sampler, TGE_EFFECT_SAMPLER, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(UnaryOperator, TGE_EFFECT_UNARY_OPERATOR, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(BinaryOperator, TGE_EFFECT_BINARY_OPERATOR, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(TernaryIf, TGE_EFFECT_TERNARY_IF, Shader::VisitorInterface)
@@ -196,6 +196,7 @@ TGE_AST_NODE_INFO(JumpStatement, TGE_EFFECT_JUMP_STATEMENT, Shader::VisitorInter
 TGE_AST_NODE_INFO(Expression, TGE_EFFECT_EXPRESSION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(ReturnStatement, TGE_EFFECT_RETURN_STATEMENT, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(FuncDeclarationInfo, TGE_AST_UNKNOWN, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(IntermFuncNode, TGE_AST_UNKNOWN, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(DeclarationInfo, TGE_AST_UNKNOWN, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(VarDeclList, TGE_AST_UNKNOWN, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Value<ShaderType>, TGE_AST_UNKNOWN, Shader::VisitorInterface)
@@ -216,20 +217,23 @@ template<class T> struct TypeInfo {};
 class ScalarType;
 class VectorType;
 class MatrixType;
+class StructType;
 class ArrayType;
-class Sampler;
 class SamplerType;
 class Shader;
 class Profile;
+class Subroutine;
 class CompiledShader;
 
 TGE_EFFECT_TYPE_INFO(ScalarType, ElementType::Scalar, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(VectorType, ElementType::Vector, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(MatrixType, ElementType::Matrix, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(StructType, ElementType::Struct, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(ArrayType, ElementType::Array, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(SamplerType, ElementType::Sampler, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(Shader, ElementType::Shader, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(Profile, ElementType::Profile, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(Subroutine, ElementType::Subroutine, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(CompiledShader, ElementType::CompiledShader, VisitorInterface)
 
 // The reasoning behind passing this_type is that we can't guarantee that it
@@ -341,7 +345,7 @@ public:
     const Type* getMemberType(Driver& driver, const string& name) const { return m_Impl->getMemberType(driver, this, name); }
     const Type* getArrayElementType() const { return m_Impl->getArrayElementType(); }
     bool hasValidConstructor(const List* var_list) const { return m_Impl->hasValidConstructor(var_list); }
-    NodeT<ConstructorCall> createConstructorCall(AST::Location loc, NodeT<List> arg_list) const { return hasValidConstructor(arg_list.get()) ? CreateNodeTyped<ConstructorCall>(loc, this, std::move(arg_list)) : NodeT<ConstructorCall>(); }
+    NodeT<ConstructorCall> createConstructorCall(Location loc, NodeT<List> arg_list) const { return hasValidConstructor(arg_list.get()) ? CreateNodeTyped<ConstructorCall>(loc, this, std::move(arg_list)) : NodeT<ConstructorCall>(); }
 };
 
 template<class T, class... TArgs>
@@ -388,6 +392,7 @@ class FunctionDeclaration
     const Type*     m_ReturnType;
     string          m_Name;
     NodeT<List>     m_VarList;
+    NodeT<List>     m_SubroutineTypes;
 public:
     typedef ListIterator<const AST::Node>  const_parameter_iterator;
     typedef ListIterator<AST::Node>        parameter_iterator;
@@ -397,18 +402,26 @@ public:
 
     string getNodeName() const { return m_Name; }
     
-    parameter_iterator getParametersBegin();
-    parameter_iterator getParametersEnd();
+    parameter_iterator getSubroutineTypesBegin() { return parameter_iterator(m_SubroutineTypes.get()); }
+    parameter_iterator getSubroutineTypesEnd() { return parameter_iterator(); }
+    
+    const_parameter_iterator getSubroutineTypesBegin() const { return const_parameter_iterator(m_SubroutineTypes.get()); }
+    const_parameter_iterator getSubroutineTypesEnd() const { return const_parameter_iterator(); }
+    
+    parameter_iterator getParametersBegin() { return parameter_iterator(m_VarList.get()); }
+    parameter_iterator getParametersEnd() { return parameter_iterator(); }
 
-    const_parameter_iterator getParametersBegin() const;
-    const_parameter_iterator getParametersEnd() const;
-
-    NodeT<FunctionCall> createFunctionCall(AST::Location loc, NodeT<List> arg_list);
+    const_parameter_iterator getParametersBegin() const { return const_parameter_iterator(m_VarList.get()); }
+    const_parameter_iterator getParametersEnd() const { return const_parameter_iterator(); }
+    
+    NodeT<FunctionCall> createFunctionCall(Location loc, NodeT<List> arg_list);
     bool sameParameters(const List* var_list) const;
 
     const Type* getReturnType() const;
     
     const List* getArgumentExpressions() const { return m_VarList.get(); }
+    
+    bool setSubroutineTypes(NodeT<List> list);
     
     bool isBlockStatement() const;
 };
@@ -458,10 +471,7 @@ public:
     FunctionSet(string name);
     ~FunctionSet();
 
-    string getNodeName() const
-    {
-        return m_Name;
-    }
+    string getNodeName() const { return m_Name; }
     
     void pushFunction(AST::NodeT<FunctionDeclaration> func);
 
@@ -472,6 +482,49 @@ public:
     size_t getFunctionCount() const;
 
     bool isBlockStatement() const;
+};
+
+class SubroutineCall
+{
+    AST::Node                m_Subroutine;
+    AST::NodeT<FunctionCall> m_FunctionCall;
+public:
+    SubroutineCall(AST::Node subroutine, AST::NodeT<FunctionCall> func_call)
+        :   m_Subroutine(std::move(subroutine)),
+            m_FunctionCall(std::move(func_call)) {}
+
+    string getNodeName() const { return m_Subroutine.getNodeName(); }
+
+    const AST::Node* getSubroutine() const { return &m_Subroutine; }
+    const FunctionCall* getFunctionCall() const { return m_FunctionCall.get(); }
+    
+    bool isBlockStatement() const { return false; }
+};
+
+class Subroutine
+{
+    AST::NodeT<FunctionDeclaration> m_SubroutineDeclaration;
+public:
+    Subroutine(AST::NodeT<FunctionDeclaration> func_decl)
+        :   m_SubroutineDeclaration(std::move(func_decl)) {}
+     ~Subroutine()=default;
+    
+    bool hasBase(const Type* _type) const { return _type->getTypeEnum() == ElementType::Subroutine ? _type->extract<Subroutine>() == this: false; }
+    
+    bool hasImplicitConversionTo(const Type* _type) const { return _type->getTypeEnum() == ElementType::Subroutine ? _type->extract<Subroutine>() == this: false; }
+    
+    const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
+    const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
+
+    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
+    const Type* getArrayElementType() const { return nullptr; }
+    bool hasValidConstructor(const List* var_list) const { return false; }
+     
+    string getNodeName() const { return m_SubroutineDeclaration.getNodeName(); }
+    
+    const FunctionDeclaration* getDeclaration() const { return m_SubroutineDeclaration.get(); }
+    
+    AST::NodeT<SubroutineCall> createSubroutineCall(Location loc, AST::Node subr, AST::NodeT<List> arg_list) const;
 };
 
 class ConstructorCall
@@ -616,6 +669,25 @@ public:
     const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
     const Type* getArrayElementType() const;
     bool hasValidConstructor(const List* var_list) const;
+};
+
+class StructType: public AST::NamedList<StructType>
+{
+public:
+    StructType(string name, NodeT<List> body)
+        :   AST::NamedList<StructType>(name, std::move(body)) {}
+     ~StructType()=default;
+    
+    bool hasBase(const Type* _type) const { return false; }
+    
+    bool hasImplicitConversionTo(const Type* _type) const { return false; }
+    
+    const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
+    const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
+
+    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
+    const Type* getArrayElementType() const { return nullptr; }
+    bool hasValidConstructor(const List* var_list) const { return false; }
 };
 
 enum InterpolationQualifier
@@ -1020,13 +1092,6 @@ public:
      ~Technique();
 };
 
-class Sampler: public AST::NamedList<Sampler>
-{
-public:
-    Sampler(string name, NodeT<List> body);
-     ~Sampler();
-};
-
 class Import: public AST::NamedList<Import>
 {
 public:
@@ -1036,7 +1101,7 @@ public:
 
 class Buffer: public AST::NamedList<Buffer>
 {
-    BufferType         m_BufferType;
+    BufferType         m_BufferType = BufferType::Regular;
 public:
     Buffer(string name, NodeT<List> body);
      ~Buffer();
@@ -1104,6 +1169,7 @@ public:
     virtual void visit(const FunctionDeclaration*)=0;
     virtual void visit(const FunctionDefinition*)=0;
     virtual void visit(const FunctionCall*)=0;
+    virtual void visit(const SubroutineCall*)=0;
     virtual void visit(const FunctionSet*)=0;
     virtual void visit(const ConstructorCall*)=0;
     virtual void visit(const ScalarType*)=0;
@@ -1128,14 +1194,16 @@ public:
     virtual void visit(const Expression*)=0;
     virtual void visit(const Profile*)=0;
     virtual void visit(const Technique*)=0;
-    virtual void visit(const Sampler*)=0;
     virtual void visit(const Import*)=0;
     virtual void visit(const Shader*)=0;
+    virtual void visit(const StructType*)=0;
     virtual void visit(const CompiledShader*)=0;
     virtual void visit(const Pass*)=0;
     virtual void visit(const IfStatement*)=0;
     virtual void visit(const Buffer*)=0;
+    virtual void visit(const Subroutine*)=0;
     // Some types that should not appear in AST
+    virtual void visit(const IntermFuncNode*)=0;
     virtual void visit(const FuncDeclarationInfo*)=0;
     virtual void visit(const DeclarationInfo*)=0;
     virtual void visit(const VarDeclList*)=0;
@@ -1170,9 +1238,15 @@ void PrintNode(AST::PrinterInfrastructure* printer, const JumpStatement* jump_st
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const ReturnStatement* return_stmt);
 void PrintNode(AST::PrinterInfrastructure* printer, const Profile* profile_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader* shader_stmt);
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct);
 void PrintNode(AST::PrinterInfrastructure* printer, const CompiledShader* compiled_stmt);
 void PrintNode(VisitorInterface* visitor, const Type* type_stmt);
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Subroutine* subroutine);
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const SubroutineCall* subroutine_call);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const IfStatement* if_stmt);
+
+void PrintDeclaration(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct);
+void PrintDeclaration(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Subroutine* subroutine);
 
 /*! \brief Outputs the content of the AST graph in formatted fashion.
  *
@@ -1184,7 +1258,7 @@ class Printer: public VisitorInterface
 {
     AST::PrinterInfrastructure m_Printer;
 public:
-    Printer(std::ostream& os, size_t flags);
+    Printer(std::ostream& os, uint32 flags);
     virtual ~Printer();
 
     std::ostream& stream() { return m_Printer.stream(); }
@@ -1201,6 +1275,7 @@ public:
     virtual void visit(const Parentheses* parentheses) override { PrintNode(this, &m_Printer, parentheses);}
     virtual void visit(const FunctionDeclaration* func_decl) override { PrintNode(this, &m_Printer, func_decl); }
     virtual void visit(const FunctionDefinition* func_def) override { PrintNode(this, &m_Printer, func_def); }
+    virtual void visit(const SubroutineCall* subroutine_call) override { PrintNode(this, &m_Printer, subroutine_call); }
     virtual void visit(const FunctionCall* func_call) override { PrintNode(this, &m_Printer, func_call); }
     virtual void visit(const ConstructorCall* constructor) override { PrintNode(this, &m_Printer, constructor); }
     virtual void visit(const ScalarType* scalar_type) override { PrintNode(&m_Printer, scalar_type); }
@@ -1224,17 +1299,19 @@ public:
     virtual void visit(const ReturnStatement* return_stmt) override { PrintNode(this, &m_Printer, return_stmt); }
     virtual void visit(const Profile* _profile) override { PrintNode(&m_Printer, _profile); }
     virtual void visit(const Technique* _technique) override { _technique->printList(this, &m_Printer, "technique"); }
-    virtual void visit(const Sampler* _sampler) override { _sampler->printList(this, &m_Printer, "sampler"); }
     virtual void visit(const Import* _import) override { _import->printList(this, &m_Printer, "import"); }
     virtual void visit(const Shader* _shader) override { PrintNode(this, &m_Printer, _shader); }
+    virtual void visit(const StructType* _struct) override { PrintNode(this, &m_Printer, _struct); }
     virtual void visit(const CompiledShader* compiled_shader) override { PrintNode(&m_Printer, compiled_shader); }
     virtual void visit(const Pass* _pass) override { _pass->printList(this, &m_Printer, "pass"); }
     virtual void visit(const IfStatement* if_stmt) override { PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Type* type_stmt) override { PrintNode(this, type_stmt); }
-    virtual void visit(const Buffer* buffer) override { buffer->printList(this, &m_Printer, "buffer");}
+    virtual void visit(const Buffer* buffer) override { buffer->printList(this, &m_Printer, "buffer"); }
+    virtual void visit(const Subroutine* subroutine) override { PrintNode(this, &m_Printer, subroutine); }
     // Some types that should not appear in AST
     virtual void visit(const FunctionSet*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Expression*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const IntermFuncNode*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const FuncDeclarationInfo*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const DeclarationInfo*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const VarDeclList*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }

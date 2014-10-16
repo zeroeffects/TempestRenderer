@@ -1,1 +1,1 @@
-        
+ADD_SUBDIRECTORY(test_assets)

@@ -23,7 +23,7 @@
  */
 
 #include "tempest/shader/dx-shader-generator.hh"
-#include "tempest/shader/file-loader.hh"
+#include "tempest/parser/file-loader.hh"
 #include "tempest/shader/shader-ast.hh"
 #include "tempest/shader/shader-driver.hh"
 #include "tempest/parser/ast.hh"
@@ -50,7 +50,7 @@ class ShaderPrinter: public Shader::VisitorInterface
     typedef bool (ShaderPrinter::*TranslationFunction)(const Shader::FunctionCall* func_call);
     std::unordered_map<string, TranslationFunction> m_FunctionTranslator;
 public:
-    ShaderPrinter(std::ostream& os, size_t flags);
+    ShaderPrinter(std::ostream& os, uint32 flags);
     virtual ~ShaderPrinter();
 
     void setSamplerTextureAssociation(string texture, string sampler)
@@ -81,6 +81,7 @@ public:
     virtual void visit(const Shader::FunctionDefinition* func_def) final { Shader::PrintNode(this, &m_Printer, func_def); }
     virtual void visit(const Shader::FunctionCall* func_call) final;
     virtual void visit(const Shader::ConstructorCall* constructor) final { Shader::PrintNode(this, &m_Printer, constructor); }
+    virtual void visit(const Shader::SubroutineCall* subroutine_call) final { Shader::PrintNode(this, &m_Printer, subroutine_call); }
     virtual void visit(const Shader::ScalarType* scalar_type) final { Shader::PrintNode(&m_Printer, scalar_type); }
     virtual void visit(const Shader::VectorType* vector_type) final;
     virtual void visit(const Shader::MatrixType* matrix_type) final { Shader::PrintNode(&m_Printer, matrix_type); }
@@ -102,15 +103,17 @@ public:
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { Shader::PrintNode(this, &m_Printer, return_stmt); }
     virtual void visit(const Shader::Profile* _profile) final { Shader::PrintNode(&m_Printer, _profile); }
     virtual void visit(const Shader::Technique* _technique) final { _technique->printList(this, &m_Printer, "technique"); }
-    virtual void visit(const Shader::Sampler* _sampler) final { _sampler->printList(this, &m_Printer, "sampler"); }
     virtual void visit(const Shader::Import* _import) final { _import->printList(this, &m_Printer, "import"); }
     virtual void visit(const Shader::Shader* _shader) final { Shader::PrintNode(this, &m_Printer, _shader); }
+    virtual void visit(const Shader::StructType* _struct) final { Shader::PrintNode(this, &m_Printer, _struct); }
     virtual void visit(const Shader::CompiledShader* compiled_shader) final { Shader::PrintNode(&m_Printer, compiled_shader); }
     virtual void visit(const Shader::Pass* _pass) final { _pass->printList(this, &m_Printer, "pass"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
     virtual void visit(const Shader::Buffer* buffer) final { TGE_ASSERT(false, "Currently unsupported"); }
+    virtual void visit(const Shader::Subroutine* subroutine) final { Shader::PrintNode(this, &m_Printer, subroutine); }
     // Some types that should not appear in AST
+    virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::Expression*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FuncDeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
@@ -202,7 +205,7 @@ bool ShaderPrinter::TranslateTexelFetch(const Shader::FunctionCall* func_call)
     return true;
 }
 
-ShaderPrinter::ShaderPrinter(std::ostream& os, size_t flags)
+ShaderPrinter::ShaderPrinter(std::ostream& os, uint32 flags)
     :   m_Printer(os, flags),
         m_Valid(true)
 {
@@ -315,6 +318,7 @@ public:
     virtual void visit(const Shader::Typedef* _typedef) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Parentheses* parentheses) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::FunctionCall* func_call) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
+    virtual void visit(const Shader::SubroutineCall* subroutine_call) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ConstructorCall* constructor) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ScalarType* scalar_type) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::VectorType* vector_type) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -337,9 +341,9 @@ public:
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Profile* _profile) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Technique* _technique) final;
-    virtual void visit(const Shader::Sampler* _sampler) final;
     virtual void visit(const Shader::Import* _import) final;
     virtual void visit(const Shader::Shader* _shader) final;
+    virtual void visit(const Shader::StructType* _struct) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::FunctionDefinition* func_def) final;
     virtual void visit(const Shader::FunctionDeclaration* func_decl) final;
     virtual void visit(const Shader::CompiledShader* compiled_shader) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -347,9 +351,11 @@ public:
     virtual void visit(const Shader::IfStatement* if_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Type* type_stmt) final;
     virtual void visit(const Shader::Buffer* buffer) final;
+    virtual void visit(const Shader::Subroutine* subroutine) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     // Some types that should not appear in AST
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
     virtual void visit(const Shader::Expression*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
+    virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
     virtual void visit(const Shader::FuncDeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
     virtual void visit(const Shader::DeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
     virtual void visit(const Shader::VarDeclList*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
@@ -518,30 +524,6 @@ void Generator::visit(const Shader::Type* type_stmt)
 }
 
 // Same as GLFX
-void Generator::visit(const Shader::Sampler* _sampler)
-{
-    // Sampler definitions in HLSL FX style, but with OpenGL parameter values to make it easier for people that
-    // are used to them.
-    auto sampler_body = _sampler->getBody();
-    TGE_ASSERT(sampler_body, "Sampler should have a valid body"); // TODO: Hm, not exactly valid assumption
-    Shader::SamplerDescription fxsampler(_sampler->getNodeName());
-    for(auto j = sampler_body->current(); j != sampler_body->end(); ++j)
-    {
-        if(j->getNodeType() != Shader::TGE_EFFECT_BINARY_OPERATOR)
-        {
-            Log(LogLevel::Error, "Unexpected node type in sampler: ", _sampler->getNodeName());
-            return;
-        }
-        auto* binop = j->extract<Shader::BinaryOperator>();
-        string state_name = binop->getLHSOperand()->extract<Shader::Identifier>()->getValue(),
-               state_value = binop->getRHSOperand()->extract<Shader::Identifier>()->getValue();
-        Shader::ParameterDescription param(state_name, state_value);
-        fxsampler.addParameter(param);
-    }
-    m_Effect.addSampler(fxsampler);
-}
-
-// Same as GLFX
 void Generator::visit(const Shader::Import* _import)
 {
     // Imported data generally speaking is an external file that does not
@@ -577,8 +559,6 @@ void Generator::visit(const Shader::Import* _import)
         raw_import_stream << "\n";
     }
 }
-
-// BUG: I am quite sure that I have misinterpreted samplerExt in some of my other code.
 
 void Generator::visit(const Shader::Shader* _shader)
 {

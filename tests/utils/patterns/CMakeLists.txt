@@ -27,3 +27,8 @@ ADD_EXECUTABLE(ScopeObjectsTest WIN32 scope.cc)
 ADD_TEST(ScopeObjectsTest ScopeObjectsTest)
 
 TARGET_LINK_LIBRARIES(ScopeObjectsTest tempest-static tempest-main)
+
+ADD_EXECUTABLE(PackedTypesTest WIN32 packed-types.cc)
+ADD_TEST(PackedTypesTest PackedTypesTest)
+
+TARGET_LINK_LIBRARIES(PackedTypesTest tempest-static tempest-main)

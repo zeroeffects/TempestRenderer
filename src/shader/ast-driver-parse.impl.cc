@@ -69,8 +69,8 @@ bool Driver::parseString(const char* str, size_t size, const string& filename)
     #endif
     parser.set_debug_level(yy_flex_debug);
     */
-    auto bs = shader__scan_bytes(str, size);
-    auto fd = CreateAtScopeExit([bs]() { shader__delete_buffer(bs); });
+    auto bs = SCAN_BYTES(str, size);
+    auto fd = CreateAtScopeExit([bs]() { DELETE_BUFFER(bs); });
 
     if(!bs)
     {
@@ -78,7 +78,7 @@ bool Driver::parseString(const char* str, size_t size, const string& filename)
         return false;
     }
 
-    shader__switch_to_buffer(bs);
+    SWITCH_TO_BUFFER(bs);
     
     int res = parser.parse();
 

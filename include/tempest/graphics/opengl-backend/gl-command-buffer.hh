@@ -36,8 +36,9 @@
 
 namespace Tempest
 {
+class GLRenderingBackend;
 class GLBakedResourceTable;
-class GLShaderProgram;
+class GLLinkedShaderProgram;
 class GLInputLayout;
 class GLBuffer;
 
@@ -46,17 +47,17 @@ class GLBuffer;
     #define MAX_VERTEX_BUFFERS 2
 #endif
 
-// 64 bytes, if you don't change anything. Should be cache friendly
+// TODO: make it cache friendlier, by pool allocating and using offsets instead
 struct GLDrawBatch
 {
-    DrawModes               PrimitiveType = DrawModes::TriangleList;
-    uint16                  VertexCount   = 0;
-    uint16                  BaseVertex    = 0;
-    GLBakedResourceTable*   ResourceTable = nullptr;
-    GLShaderProgram*        ShaderProgram = nullptr;
-    GLInputLayout*          InputLayout   = nullptr;
-    uint64                  SortKey       = 0;
-    GLBuffer*               IndexBuffer   = nullptr;
+    DrawModes               PrimitiveType       = DrawModes::TriangleList;
+    uint16                  VertexCount         = 0;
+    uint32                  BaseVertex          = 0;
+    uint64                  SortKey             = 0;
+    GLBakedResourceTable*   ResourceTable       = nullptr;
+    GLLinkedShaderProgram*  LinkedShaderProgram = nullptr;
+    GLInputLayout*          InputLayout         = nullptr;
+    GLBuffer*               IndexBuffer         = nullptr;
     GLBuffer*               VertexBuffers[MAX_VERTEX_BUFFERS];
 };
 
@@ -77,6 +78,8 @@ class GLCommandBuffer
     size_t                       m_GPUCommandBufferSize      = 0;
     size_t                       m_GPUCommandBufferStart     = 0;
 public:
+    typedef GLDrawBatch DrawBatchType;
+    
     explicit GLCommandBuffer();
      ~GLCommandBuffer();
     
@@ -90,7 +93,7 @@ public:
     void prepareCommandBuffer();
     
     //! Called by the rendering backend to initiate buffer transfer.
-    void _executeCommandBuffer();
+    void _executeCommandBuffer(GLRenderingBackend* backend);
 };
 }
 

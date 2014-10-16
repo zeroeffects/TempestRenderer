@@ -43,17 +43,54 @@ enum class RenderTargetBindPoint
     LastAttachment = ColorAttachment3 //!< More than this is not worth the bandwidth.
 };
 
-enum class VBUsage
+enum class FilterMode
 {
-    StaticDraw,
-    StaticRead,
-    StaticCopy,
-    StreamDraw,
-    StreamRead,
-    StreamCopy,
-    DynamicDraw,
-    DynamicRead,
-    DynamicCopy
+    Nearest,
+    Linear
+};
+
+enum class SamplerMode
+{
+    Default,
+    Minimum,
+    Maximum,
+    Comparison
+};
+
+enum class WrapMode
+{
+    Repeat,
+    Mirror,
+    Clamp,
+    ClampBorder,
+    MirrorOnce
+};
+
+enum class ComparisonFunction
+{
+    Never,
+    Less,
+    Equal,
+    LessEqual,
+    Greater,
+    NotEqual,
+    GreaterEqual,
+    AlwaysPass
+};
+
+enum ResourceFlags
+{
+    RESOURCE_STATIC_DRAW   = 0,
+    RESOURCE_STATIC_READ   = 1,
+    RESOURCE_STATIC_COPY   = 2,
+    RESOURCE_STREAM_DRAW   = 3,
+    RESOURCE_STREAM_READ   = 4,
+    RESOURCE_STREAM_COPY   = 5,
+    RESOURCE_DYNAMIC_DRAW  = 6,
+    RESOURCE_DYNAMIC_READ  = 7,
+    RESOURCE_DYNAMIC_COPY  = 8,
+    RESOURCE_USAGE_MASK    = 0xF,
+    RESOURCE_GENERATE_MIPS = 1 << 4
 };
 
 enum class VBType
@@ -137,7 +174,7 @@ enum class DataFormat
     uR10G10B10A2
 };
 
-enum class UniformValueType
+enum class UniformValueType: uint32
 {
     Float,
     Vector2,
@@ -164,7 +201,10 @@ enum class UniformValueType
     Matrix3x4,
     Matrix4x2,
     Matrix4x3,
-    Texture
+    Texture,
+    Struct,
+    SubroutineUniform,
+    SubroutineFunction
 };
 
 inline size_t UniformValueTypeSize(UniformValueType uniform_value)
@@ -197,6 +237,9 @@ inline size_t UniformValueTypeSize(UniformValueType uniform_value)
     case UniformValueType::Matrix4x2: return 4*2*sizeof(float);
     case UniformValueType::Matrix4x3: return 4*3*sizeof(float);
     case UniformValueType::Texture: return sizeof(uint64);
+    case UniformValueType::SubroutineUniform: return sizeof(uint32);
+    case UniformValueType::SubroutineFunction: return sizeof(uint32);
+    case UniformValueType::Struct: return 1;
     default: TGE_ASSERT(false, "Unsupported uniform value type"); break;
     }
     return 0;

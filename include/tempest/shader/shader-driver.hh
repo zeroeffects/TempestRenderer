@@ -70,14 +70,14 @@ public:
     bool parseString(const char* content, size_t size, const string& filename="");
     
     template<class T, class... TArgs>
-    AST::NodeT<AST::Reference<Type>> createStackType(AST::Location loc, TArgs&&... args)
+    AST::NodeT<AST::Reference<Type>> createStackType(Location loc, TArgs&&... args)
     {
         return pushOnStack(AST::CreateTypeNode<T>(std::forward<TArgs>(args)...)) ?
             CreateNodeTyped<AST::Reference<Type>>(loc, m_ObjectPool.back().extract<Type>()) : AST::NodeT<AST::Reference<Type>>();
     }
     
     template<class T, class... TArgs>
-    AST::NodeT<AST::Reference<Type>> createInternalType(AST::Location loc, TArgs&&... args)
+    AST::NodeT<AST::Reference<Type>> createInternalType(Location loc, TArgs&&... args)
     {
         m_ObjectPool.push_back(AST::CreateTypeNode<T>(std::forward<TArgs>(args)...));
         return CreateNodeTyped<AST::Reference<Type>>(loc, m_ObjectPool.back().extract<Type>());

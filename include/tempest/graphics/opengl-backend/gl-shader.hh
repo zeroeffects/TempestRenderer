@@ -27,11 +27,13 @@
 
 #include <GL/gl.h>
 
+#include <vector>
 #include <algorithm>
 #include <memory>
 
 #include "tempest/utils/types.hh"
 #include "tempest/utils/assert.hh"
+#include "tempest/utils/patterns.hh"
 #include "tempest/graphics/rendering-definitions.hh"
 
 namespace Tempest
@@ -66,8 +68,9 @@ struct DataDescription
 {
     string           Name;
     UniformValueType Type;
-    size_t           ElementCount;
-    size_t           Offset;
+    uint16           ElementSize;
+    uint16           ElementCount;
+    uint32           Offset;
 };
 
 class GLBakedResourceTable
@@ -79,6 +82,22 @@ public:
         :   m_Table(new char[size]),
             m_Size(size) {}
     ~GLBakedResourceTable() { delete m_Table; }
+    
+    GLBakedResourceTable(GLBakedResourceTable&& table)
+    {
+        m_Table = table.m_Table;
+        m_Size = table.m_Size;
+        table.m_Table = nullptr;
+        table.m_Size = 0;
+    }
+    
+    GLBakedResourceTable& operator=(GLBakedResourceTable&& table)
+    {
+        m_Table = table.m_Table;
+        m_Size = table.m_Size;
+        table.m_Table = nullptr;
+        table.m_Size = 0;
+    }
     
     template<class T>
     void setValue(size_t offset, const T& val)
@@ -95,11 +114,28 @@ public:
 
 struct ResourceTableDescription
 {
-    string          Name;
-    uint32          BindPoint;
-    uint32          Count;
-    uint32          BufferSize;
-    DataDescription UniformValue[];
+    string                       Name;
+    uint32                       BindPoint;
+    uint32                       BufferSize;
+    uint32                       ExtendablePart;
+    PACKED_DATA(DataDescription) Uniforms;
+    
+    ResourceTableDescription(const ResourceTableDescription&)=delete;
+    ResourceTableDescription& operator=(const ResourceTableDescription&)=delete;
+    
+private:
+    ResourceTableDescription(size_t count, size_t extendable_part, string name, uint32 bind_point)
+        :   ExtendablePart(extendable_part),
+            Name(name),
+            BindPoint(bind_point),
+            Uniforms(count) {}
+     ~ResourceTableDescription()=default;
+};
+
+struct ResourceIndex
+{
+    uint32 ResourceTableIndex = 0;
+    uint32 BaseOffset = 0;
 };
 
 class GLResourceTable
@@ -107,33 +143,48 @@ class GLResourceTable
     ResourceTableDescription* m_ResourceTable;
 
     GLBakedResourceTable m_BakedResourceTable;
+    size_t               m_ExtendedUnits;
 public:
-    GLResourceTable(ResourceTableDescription* desc)
+    GLResourceTable(ResourceTableDescription* desc, size_t extended)
         :   m_ResourceTable(desc),
-            m_BakedResourceTable(desc->BufferSize) {}
+            m_BakedResourceTable(desc->BufferSize + desc->ExtendablePart*extended),
+            m_ExtendedUnits(0) {}
     
     typedef GLBakedResourceTable BakedResourceTableType;
     
-    inline size_t getResourceIndex(const string& name)
+    inline size_t getResourceCount() const { return m_ResourceTable->Uniforms.Count; }
+    
+    ResourceIndex getResourceIndex(const string& name);
+    
+    inline void setSubroutine(ResourceIndex index, ResourceIndex subroutine_func)
     {
-        auto iter = std::find_if(m_ResourceTable->UniformValue, m_ResourceTable->UniformValue + m_ResourceTable->Count, [&name](const DataDescription& data) { return data.Name == name; });
-        TGE_ASSERT(iter != m_ResourceTable->UniformValue + m_ResourceTable->Count, "Unknown variable");
-        return iter != m_ResourceTable->UniformValue + m_ResourceTable->Count ? iter-m_ResourceTable->UniformValue : std::numeric_limits<size_t>::max(); // So we don't crash on reloads and in general.
+        TGE_ASSERT(index.ResourceTableIndex < m_ResourceTable->Uniforms.Count || m_ResourceTable->Uniforms.Count == std::numeric_limits<size_t>::max(), "Unknown index");
+        if(index.ResourceTableIndex >= m_ResourceTable->Uniforms.Count)
+            return;
+        TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize, "Buffer overflow");
+        TGE_ASSERT(m_BakedResourceTable, "The baked table is already extracted");
+        m_BakedResourceTable.setValue(index.BaseOffset, subroutine_func.ResourceTableIndex);
     }
     
-    void setResource(size_t index, const GLTexture& tex);
+    inline void setSubroutine(const string& name, const string& func)
+    {
+        setSubroutine(getResourceIndex(name), getResourceIndex(func));
+    }
+    
+    void setResource(ResourceIndex index, const GLTexture& tex);
     
     template<class T>
-    void setResource(size_t index, const T& val)
+    void setResource(ResourceIndex index, const T& val)
     {
-        TGE_ASSERT(index < m_ResourceTable->Count || m_ResourceTable->Count == std::numeric_limits<size_t>::max(), "Unknown index");
-        if(index >= m_ResourceTable->Count)
+        TGE_ASSERT(index.ResourceTableIndex < m_ResourceTable->Uniforms.Count || m_ResourceTable->Uniforms.Count == std::numeric_limits<size_t>::max(), "Unknown index");
+        if(index.ResourceTableIndex >= m_ResourceTable->Uniforms.Count)
             return;
+        TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize, "Buffer overflow");
         TGE_ASSERT(m_BakedResourceTable, "The baked table is already extracted");
     #ifndef NDEBUG
-        TGE_ASSERT(UniformValueBinding<T>::value_type == m_ResourceTable->UniformValue[index].Type, "Mismatching uniform variable types.");
+        TGE_ASSERT(UniformValueBinding<T>::value_type == m_ResourceTable->Uniforms.Values[index.ResourceTableIndex].Type, "Mismatching uniform variable types.");
     #endif
-        m_BakedResourceTable.setValue(m_ResourceTable->UniformValue[index].Offset, val);
+        m_BakedResourceTable.setValue(index.BaseOffset, val);
     }
     
     template<class T>
@@ -153,15 +204,30 @@ public:
     GLBakedResourceTable* getBakedTable() { return &m_BakedResourceTable; }
 };
 
+class GLShaderProgram;
 class GLInputLayout;
 class GLRenderingBackend;
 struct VertexAttributeDescription;
 
+class GLLinkedShaderProgram
+{
+    friend GLShaderProgram;
+    GLuint                m_Program;
+    GLBakedResourceTable* m_Baked;
+public:
+    GLLinkedShaderProgram(GLuint prog, GLBakedResourceTable* table)
+        :   m_Program(prog),
+            m_Baked(table) {}
+    
+    void bind();
+};
 
+typedef std::vector<std::unique_ptr<GLLinkedShaderProgram>> DynamicLinkageCache;
 
 class GLShaderProgram
 {
-    GLuint                                       m_Id;
+    GLuint                                       m_Program;
+    DynamicLinkageCache                          m_Programs;
     std::unique_ptr<ResourceTableDescription*[]> m_ResourceTables;
     GLint                                        m_ResourceTableCount;
 
@@ -169,21 +235,21 @@ public:
     typedef GLInputLayout InputLayoutType;
     typedef GLResourceTable ResourceTableType;
     
-    explicit GLShaderProgram(GLuint id, ResourceTableDescription* resource_tables[]);
+    explicit GLShaderProgram(GLuint shader_program, ResourceTableDescription* resource_tables[], size_t res_table_count);
      ~GLShaderProgram();
     
     GLShaderProgram(const GLShaderProgram&)=delete;
     GLShaderProgram& operator=(const GLShaderProgram&)=delete;
     GLShaderProgram(GLShaderProgram&&)=delete;
     GLShaderProgram& operator=(GLShaderProgram&&)=delete;
-    
-    void bind();
-    void setupInputLayout(GLInputLayout* layout);
+ 
+    //! \remarks Don't deallocate
+    GLLinkedShaderProgram* getUniqueLinkage(GLBakedResourceTable* _table);
     
     GLInputLayout* createInputLayout(GLRenderingBackend* backend, const VertexAttributeDescription* arr, size_t count);
     void destroyRenderResource(GLRenderingBackend* backend, GLInputLayout* input_layout);
     
-    GLResourceTable* createResourceTable(const string& name);
+    GLResourceTable* createResourceTable(const string& name, size_t extended = 0);
     void destroyRenderResource(GLResourceTable* buffer);
 };
 

@@ -44,6 +44,7 @@ class GLBuffer;
 class GLStateObject;
 class GLTexture;
 class GLShaderProgram;
+class GLInputLayout;
 
 class GLRenderingBackend
 {
@@ -78,7 +79,7 @@ public:
      *  \returns returns a new render target or nullptr on error. The error is automatically written to
      *           logging stream, if applicable.
      */
-    GLRenderTarget* createRenderTarget(const TextureDescription& desc, size_t flags);
+    GLRenderTarget* createRenderTarget(const TextureDescription& desc, uint32 flags);
     
     /*! \brief Create a batch of render targets that can be assigned in a single call.
      * 
@@ -136,7 +137,7 @@ public:
      *  \param data     data used for automatic initialization (can be nullptr).
      *  \returns Returns a new buffer object.
      */
-    GLBuffer* createBuffer(size_t size, VBType vb_type, VBUsage usage = VBUsage::StaticDraw, const void* data = nullptr);
+    GLBuffer* createBuffer(size_t size, VBType vb_type, uint32 flags = RESOURCE_STATIC_DRAW, const void* data = nullptr);
     
     /*! \brief Destroy a buffer object.
      * 
@@ -158,7 +159,7 @@ public:
      *  \param data     data used for automatic initialization (can be nullptr).
      *  
      */
-    GLTexture* createTexture(const TextureDescription& desc, size_t flags, void* data = nullptr);
+    GLTexture* createTexture(const TextureDescription& desc, uint32 flags = RESOURCE_STATIC_DRAW, const void* data = nullptr);
     
     /*! \brief Destroy a texture object.
      * 
@@ -221,6 +222,8 @@ public:
      *  \param stencil the stencil value.
      */
     void clearDepthStencilBuffer(float depth=1.0f, uint8 stencil=0);
+    
+    void bindInputLayout(GLInputLayout* layout);
 };
 }
 

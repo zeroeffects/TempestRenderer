@@ -29,6 +29,7 @@
 #include "tempest/graphics/opengl-backend/gl-buffer.hh"
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/graphics/opengl-backend/gl-input-layout.hh"
+#include "tempest/graphics/opengl-backend/gl-backend.hh"
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
 #include "tempest/utils/assert.hh"
 
@@ -100,7 +101,7 @@ void GLCommandBuffer::clear()
 
 void GLCommandBuffer::enqueueBatch(const GLDrawBatch& draw_batch)
 {
-    if(draw_batch.ShaderProgram == nullptr)
+    if(draw_batch.LinkedShaderProgram == nullptr)
         return; // We don't care about broken programs.
     m_CommandBuffer.push_back(draw_batch);
     if(draw_batch.ResourceTable)
@@ -115,9 +116,9 @@ void GLCommandBuffer::prepareCommandBuffer()
     std::sort(m_CommandBuffer.begin(), m_CommandBuffer.end(),
               [](const GLDrawBatch& lhs, const GLDrawBatch& rhs)
               {
-                  return lhs.ShaderProgram == rhs.ShaderProgram ?
+                  return lhs.LinkedShaderProgram == rhs.LinkedShaderProgram ?
                       lhs.SortKey < rhs.SortKey :
-                      lhs.ShaderProgram < rhs.ShaderProgram;
+                      lhs.LinkedShaderProgram < rhs.LinkedShaderProgram;
               });
                   
 }
@@ -141,7 +142,7 @@ static void AllocateBuffer(GLenum type, size_t req_size, size_t* size, GLuint* g
     }
 }
 
-void GLCommandBuffer::_executeCommandBuffer()
+void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
 {
     // Early out, don't bother with empty stuff.
     if(m_CommandBuffer.empty())
@@ -164,17 +165,17 @@ void GLCommandBuffer::_executeCommandBuffer()
          *res_start = res_buf;
     size_t cnt = 0;
     auto& first = m_CommandBuffer.front();
-    GLShaderProgram* prev_prog = first.ShaderProgram;
+    GLLinkedShaderProgram* prev_prog = first.LinkedShaderProgram;
     GLInputLayout* layout = first.InputLayout;
     DrawModes mode = first.PrimitiveType;
     
     prev_prog->bind();
-    prev_prog->setupInputLayout(layout);
+    backend->bindInputLayout(layout);
     
     for(auto& cpu_cmd : m_CommandBuffer)
     {
         auto& gpu_cmd = *reinterpret_cast<DrawElementsIndirectBindlessCommandNV*>(cmd_buf);
-        if(prev_prog != cpu_cmd.ShaderProgram ||
+        if(prev_prog != cpu_cmd.LinkedShaderProgram ||
            mode != cpu_cmd.PrimitiveType ||
            layout != cpu_cmd.InputLayout)
         {
@@ -194,12 +195,12 @@ void GLCommandBuffer::_executeCommandBuffer()
             cnt = 0;
             mode = cpu_cmd.PrimitiveType;
             layout = cpu_cmd.InputLayout;
-            prev_prog = cpu_cmd.ShaderProgram;
+            prev_prog = cpu_cmd.LinkedShaderProgram;
             
-            if(prev_prog != cpu_cmd.ShaderProgram)
+            if(prev_prog != cpu_cmd.LinkedShaderProgram)
                 prev_prog->bind();
             if(layout != cpu_cmd.InputLayout)
-                prev_prog->setupInputLayout(layout);
+                backend->bindInputLayout(layout);
         }
         
         size_t layout_size = cpu_cmd.InputLayout ? cpu_cmd.InputLayout->getAttributeCount() : 0;

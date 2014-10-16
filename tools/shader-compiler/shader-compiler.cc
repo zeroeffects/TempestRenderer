@@ -25,7 +25,7 @@
 #include "tempest/utils/parse-command-line.hh"
 #include "tempest/shader/gl-shader-generator.hh"
 #include "tempest/shader/dx-shader-generator.hh"
-#include "tempest/shader/file-loader.hh"
+#include "tempest/parser/file-loader.hh"
 #include "tempest/utils/file-system.hh"
 #include "tempest/utils/system.hh"
 #include "tempest/utils/logging.hh"

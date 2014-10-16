@@ -100,27 +100,31 @@ FunctionDeclaration::~FunctionDeclaration()
 {
 }
 
-FunctionDeclaration::parameter_iterator FunctionDeclaration::getParametersBegin()
+bool FunctionDeclaration::setSubroutineTypes(NodeT<List> list_node)
 {
-    return parameter_iterator(m_VarList.get());
+    if(!m_SubroutineTypes)
+    {
+        m_SubroutineTypes = std::move(list_node);
+        return true;
+    }
+    for(List::iterator iter1 = list_node->current(), iter1_end = list_node->end(), iter2, iter2_end; iter1 != iter1_end; ++iter1)
+    {
+        for(iter2 = m_SubroutineTypes->current(), iter2_end = m_SubroutineTypes->end(); iter2 != iter2_end; ++iter2)
+        {
+            if(*iter1 == *iter2)
+            {
+                break;
+            }
+        }
+        if(iter2 == iter2_end)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
-FunctionDeclaration::parameter_iterator FunctionDeclaration::getParametersEnd()
-{
-    return parameter_iterator();
-}
-
-FunctionDeclaration::const_parameter_iterator FunctionDeclaration::getParametersBegin() const
-{
-    return const_parameter_iterator(m_VarList.get());
-}
-
-FunctionDeclaration::const_parameter_iterator FunctionDeclaration::getParametersEnd() const
-{
-    return const_parameter_iterator();
-}
-
-NodeT<FunctionCall> FunctionDeclaration::createFunctionCall(AST::Location loc, NodeT<List> arg_list)
+NodeT<FunctionCall> FunctionDeclaration::createFunctionCall(Location loc, NodeT<List> arg_list)
 {
     List::iterator i, j;
     for(i = arg_list->current(), j = m_VarList->current();
@@ -179,6 +183,12 @@ const Type* Typedef::getType() const
 bool Typedef::isBlockStatement() const
 {
     return false;
+}
+
+AST::NodeT<SubroutineCall> Subroutine::createSubroutineCall(Location loc, AST::Node subr, AST::NodeT<List> arg_list) const
+{
+    auto func_call = m_SubroutineDeclaration->createFunctionCall(loc, std::move(arg_list));
+    return func_call ? CreateNodeTyped<SubroutineCall>(loc, std::move(subr), std::move(func_call)) : AST::NodeT<SubroutineCall>();
 }
 
 ConstructorCall::ConstructorCall(const Type* _type, NodeT<List> arg_list)
@@ -939,6 +949,44 @@ const Type* SamplerType::unaryOperatorResultType(Driver& driver, const Type* thi
 const Type* SamplerType::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
 const Type* SamplerType::getArrayElementType() const { return nullptr; }
 
+const Type* StructType::getMemberType(Driver& driver, const Type* this_type, const string& name) const
+{
+    for(auto iter = getBody()->current(), iter_end = getBody()->end(); iter != iter_end; ++iter)
+    {
+        TGE_ASSERT(iter->getNodeType() == TGE_EFFECT_DECLARATION, "Expecting declaration");
+        auto* decl = iter->extract<Declaration>();
+        
+        auto* vars = decl->getVariables();
+        switch(vars->getNodeType())
+        {
+        case TGE_EFFECT_VARIABLE:
+        {
+            auto* var = vars->extract<Variable>();
+            if(var->getNodeName() == name)
+            {
+                return var->getType();
+            }
+        } break;
+        case TGE_AST_LIST_ELEMENT:
+        {
+            auto* _list = vars->extract<List>();
+            for(auto var_iter = _list->current(), var_iter_end = _list->end(); var_iter != var_iter_end; ++var_iter)
+            {
+                TGE_ASSERT(var_iter->getNodeType() == TGE_EFFECT_VARIABLE, "Expecting variable");
+                auto* var = vars->extract<Variable>();
+                if(var->getNodeName() == name)
+                {
+                    return var->getType();
+                }
+            }
+        } break;
+        default:
+            TGE_ASSERT(false, "Unsupported node type"); break;
+        }
+    }
+    return nullptr;
+}
+
 Variable::Variable(const Type* _type, string name)
     :   m_Name(name),
         m_Interpolation(TGE_EFFECT_DEFAULT_INTERPOLATION),
@@ -1349,11 +1397,6 @@ const Type* Shader::unaryOperatorResultType(Driver& driver, const Type* this_typ
 const Type* Shader::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
 const Type* Shader::getArrayElementType() const { return nullptr; }
 
-Sampler::Sampler(string name, NodeT<List> body)
-    :   NamedList(name, std::move(body)) {}
-
-Sampler::~Sampler() {}
-
 CompiledShader::CompiledShader() {}
 
 CompiledShader::~CompiledShader() {}
@@ -1429,7 +1472,7 @@ ReturnStatement::~ReturnStatement()
 {
 }
 
-Printer::Printer(std::ostream& os, size_t flags)
+Printer::Printer(std::ostream& os, uint32 flags)
     :   m_Printer(os, flags) {}
 Printer::~Printer() {}
 
@@ -1453,6 +1496,20 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
 {
     auto& os = printer->stream();
     auto* ret_type = func_decl->getReturnType();
+    auto subr_iter = func_decl->getSubroutineTypesBegin();
+    auto subr_end = func_decl->getSubroutineTypesEnd();
+    if(subr_iter != subr_end)
+    {
+        os << "subroutine(";
+        for(;;)
+        {
+            os << subr_iter->getNodeName();
+            if(++subr_iter == subr_end)
+                break;
+            os << ", ";
+        }
+        os << ") ";
+    }
     if(ret_type)
         visitor->visit(ret_type);
     else
@@ -1497,6 +1554,20 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
     auto* args = func_call->getArguments();
     if(args)
         static_cast<AST::VisitorInterface*>(visitor)->visit(args);
+    os << ")";
+}
+
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const SubroutineCall* subr_call)
+{
+    auto& os = printer->stream();
+    subr_call->getSubroutine()->accept(visitor);
+    os << "(";
+    TGE_ASSERT(subr_call->getFunctionCall(), "Valid function call should be specified");
+    auto* args = subr_call->getFunctionCall()->getArguments();
+    if(args)
+    {
+        static_cast<AST::VisitorInterface*>(visitor)->visit(args);
+    }
     os << ")";
 }
 
@@ -1560,7 +1631,11 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
             auto* array_type = var->getType()->extract<ArrayType>();
             visitor->visit(var);
             os << "[";
-            array_type->getSize()->accept(visitor);
+            auto* array_size = array_type->getSize();
+            if(*array_size)
+            {
+                array_size->accept(visitor);
+            }
             os << "]";
         }
         else
@@ -1636,6 +1711,24 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
                 os << ", ";
             else
                 break;
+        }
+    } break;
+    case TGE_EFFECT_TYPE:
+    {
+        auto* _type = variables->extract<Type>();
+        switch(_type->getTypeEnum())
+        {
+        case ElementType::Struct:
+        {
+            auto* _struct = _type->extract<StructType>();
+            _struct->printList(visitor, printer, "struct");
+        } break;
+        case ElementType::Subroutine:
+        {
+            auto* subroutine = _type->extract<Subroutine>();
+            printer->stream() << "subroutine ";
+            PrintNode(visitor, printer, subroutine->getDeclaration());
+        } break;
         }
     } break;
     default:
@@ -1911,6 +2004,16 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
         break;
     }
     shader->printList(visitor, printer, shader_type + " shader");
+}
+
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct)
+{
+    printer->stream() << _struct->getNodeName();
+}
+
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Subroutine* subroutine)
+{
+    printer->stream() << subroutine->getNodeName();
 }
 
 void PrintNode(AST::PrinterInfrastructure* printer, const CompiledShader* compiled_shader)
