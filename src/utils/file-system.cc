@@ -341,12 +341,12 @@ FSPollingService::~FSPollingService()
 {
 }
 
+bool FSPollingService::initPollingService() { return true;  }
+
 bool FSPollingService::addWatch(const Directory& dir)
 {
     return addWatch(dir.getPath());
 }
-
-VOID  NotificationCompletion(DWORD  , DWORD  , LPVOID ) {}
 
 bool FSPollingService::addWatch(const Path& path)
 {
@@ -356,6 +356,7 @@ bool FSPollingService::addWatch(const Path& path)
     {
         return false;
     }
+    // TODO
     m_CompletionPort = CreateIoCompletionPort(dir_ptr->handle, m_CompletionPort, reinterpret_cast<ULONG_PTR>(dir_ptr.get()), 0);
     if (!m_CompletionPort)
     {

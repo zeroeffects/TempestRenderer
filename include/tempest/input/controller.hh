@@ -29,6 +29,10 @@
 namespace Tempest
 {
     
+#define TEMPEST_GAMEPAD_LEFT_THUMB_DEADZONE   7849
+#define TEMPEST_GAMEPAD_RIGHT_THUMB_DEADZONE  8689
+#define TEMPEST_GAMEPAD_TRIGGER_THRESHOLD    -30000
+
 #ifndef TEMPEST_CONTROLLER_EVENT_QUEUE_SIZE
     #define TEMPEST_CONTROLLER_EVENT_QUEUE_SIZE 256
 #endif
@@ -98,6 +102,10 @@ class Controller
 {
 #ifdef LINUX
     int             m_FD;
+#elif defined(_WIN32)
+    DWORD           m_Index;
+#else
+#   error "Unsupported platform"
 #endif
 public:
     Controller(const ControllerDescription& desc);

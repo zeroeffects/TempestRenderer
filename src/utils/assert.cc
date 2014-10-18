@@ -118,7 +118,7 @@ void CrashMessageBox(const string& title, const string& doc_msg)
 #endif
     
 #if defined(_WIN32)
-string Backtrace()
+string Backtrace(size_t start_frame, size_t end_frame)
 {
     TGE_ASSERT(false, "Unimplemented. TODO: Stack walk");
     return string();

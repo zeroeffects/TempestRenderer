@@ -35,10 +35,6 @@
 
 #include <limits>
 
-#define TEMPEST_GAMEPAD_LEFT_THUMB_DEADZONE   7849
-#define TEMPEST_GAMEPAD_RIGHT_THUMB_DEADZONE  8689
-#define TEMPEST_GAMEPAD_TRIGGER_THRESHOLD    -30000
-
 namespace Tempest
 {
 std::vector<ControllerDescription> GetControllerDescriptions()
@@ -54,7 +50,7 @@ std::vector<ControllerDescription> GetControllerDescriptions()
         
         std::stringstream num_ss(filename.substr(2));
 
-        int fd = open("/dev/input/js0", O_RDONLY);        
+        int fd = open(filename.c_str(), O_RDONLY);        
         auto scope_obj = CreateAtScopeExit([fd]() { if(fd != -1) close(fd); });
         if(fd == -1)
             continue;
@@ -167,12 +163,12 @@ bool Controller::getState(ControllerState* state)
         {
             switch(evt.number)
             {
-            case 0: state->LeftThumbX = abs(evt.value) < TEMPEST_GAMEPAD_LEFT_THUMB_DEADZONE ? 0 : evt.value; break;
-            case 1: state->LeftThumbY = abs(evt.value) < TEMPEST_GAMEPAD_LEFT_THUMB_DEADZONE ? 0 : evt.value; break;
-            case 2: state->RightThumbX = abs(evt.value) < TEMPEST_GAMEPAD_RIGHT_THUMB_DEADZONE ? 0 : evt.value; break;
-            case 3: state->RightThumbY = abs(evt.value) < TEMPEST_GAMEPAD_RIGHT_THUMB_DEADZONE ? 0 : evt.value; break;
-            case 4: state->RightTrigger = evt.value < TEMPEST_GAMEPAD_TRIGGER_THRESHOLD ? std::numeric_limits<int16>::min() : evt.value; break;
-            case 5: state->LeftTrigger = evt.value < TEMPEST_GAMEPAD_TRIGGER_THRESHOLD ? std::numeric_limits<int16>::min() : evt.value; break;
+            case 0: state->LeftThumbX = abs(evt.value) > TEMPEST_GAMEPAD_LEFT_THUMB_DEADZONE ? evt.value : 0; break;
+            case 1: state->LeftThumbY = abs(evt.value) > TEMPEST_GAMEPAD_LEFT_THUMB_DEADZONE ? evt.value : 0; break;
+            case 2: state->RightThumbX = abs(evt.value) > TEMPEST_GAMEPAD_RIGHT_THUMB_DEADZONE ? evt.value : 0; break;
+            case 3: state->RightThumbY = abs(evt.value) > TEMPEST_GAMEPAD_RIGHT_THUMB_DEADZONE ? evt.value : 0; break;
+            case 4: state->RightTrigger = evt.value > TEMPEST_GAMEPAD_TRIGGER_THRESHOLD ? evt.value : std::numeric_limits<int16>::min(); break;
+            case 5: state->LeftTrigger = evt.value > TEMPEST_GAMEPAD_TRIGGER_THRESHOLD ? evt.value : std::numeric_limits<int16>::min(); break;
             case 6:
             {
                 if(evt.value == 0)

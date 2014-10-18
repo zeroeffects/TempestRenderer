@@ -46,7 +46,12 @@ SET(TEMPEST_UTILS_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/utils/types.hh
    )
 
+IF(WIN32)
+	SET(TEMPEST_PLATFORM_UTILS_SRC utils/misc-w32.cc)
+ENDIF()
+   
 SET(TEMPEST_UTILS_SRC
+	${TEMPEST_PLATFORM_UTILS_SRC}
     utils/assert.cc
     utils/memory.cc
     utils/parse-command-line.cc
@@ -111,6 +116,10 @@ SET(TEMPEST_IMAGE_SRC
 IF(UNIX)   
 	SET(TEMPEST_INPUT_SRC
 		input/controller-linux.cc
+	   )
+ELSEIF(WIN32)
+	SET(TEMPEST_INPUT_SRC
+		input/controller-xinput.cc
 	   )
 ENDIF()
 
