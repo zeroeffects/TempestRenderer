@@ -27,6 +27,8 @@
 #include "tempest/parser/file-loader.hh"
 #include "tempest/utils/file-system.hh"
 
+#include <algorithm>
+
 namespace Tempest
 {
 namespace ObjLoader

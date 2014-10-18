@@ -27,7 +27,9 @@
 
 #include <memory>
 
-#include <GL/glx.h>
+#ifdef LINUX
+    #include <GL/glx.h>
+#endif
 
 #include "tempest/utils/types.hh"
 #include "tempest/graphics/os-window.hh"
@@ -53,18 +55,22 @@ struct WindowDescription
     BufferingType   Buffering = BufferingType::Double;
 };
 
+#ifdef LINUX 
 struct XFreeRAII
 {
     void operator()(void* ptr) { XFree(ptr); }
 };
 
 typedef std::shared_ptr<GLXFBConfig> GLXFBConfigPtr;
+#endif
 
 class GLWindow
 {
     OSWindow        m_Window    = OSWindow();    //!< Handle to the OS-specific window implementation.
+#ifdef LINUX
     Colormap        m_XColormap = Colormap(); //!< Colormap used for gamma correction.
     GLXFBConfigPtr  m_FBConfig;
+#endif
     OSWindowSystem* m_Display   = nullptr;
 public:
     explicit GLWindow()=default;
@@ -75,8 +81,10 @@ public:
      *  This function creates a window object that is usable for rendering.
      */
     bool init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescription& wdesc);
-    
+
+#ifdef LINUX
     GLXFBConfigPtr getFBConfig() { return m_FBConfig; }
+#endif
     OSWindow getWindowId() {  return m_Window; }
     
     void show();
@@ -87,9 +95,11 @@ public:
 //! \brief The OpenGL rendering context. Makes it possible to attach the rendering system to different windows.
 class GLContext
 {
+#ifdef LINUX
     // Because there is not a cannonical description what it should contain we pessimize the code.
     GLXFBConfigPtr  m_FBConfig;
     GLXContext      m_GLXContext = GLXContext();
+#endif
     OSWindowSystem* m_Display    = nullptr;
 public:
     explicit GLContext()=default;

@@ -164,14 +164,14 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
          *cmd_start = cmd_buf,
          *res_buf = reinterpret_cast<char*>(const_buf_ptr),
          *res_start = res_buf;
-    size_t cnt = 0;
+    GLuint cnt = 0;
     auto& first = cpu_cmd_buf.front();
     GLLinkedShaderProgram* prev_prog = first.LinkedShaderProgram;
     GLInputLayout* prev_layout = first.InputLayout;
     DrawModes prev_mode = first.PrimitiveType;
     GLVertexBufferDescription prev_vert_buffers[MAX_VERTEX_BUFFERS];
     std::copy_n(first.VertexBuffers, MAX_VERTEX_BUFFERS, prev_vert_buffers);
-    for(size_t i = 0; i < MAX_VERTEX_BUFFERS; ++i)
+    for(GLuint i = 0; i < MAX_VERTEX_BUFFERS; ++i)
     {
         auto& vb = first.VertexBuffers[i];
         if(vb.VertexBuffer)
@@ -197,7 +197,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
            prev_layout != cpu_cmd.InputLayout ||
            !vb_not_equal)
         {
-            size_t layout_size = prev_layout ? prev_layout->getAttributeCount() : 0;
+            GLuint layout_size = (GLuint)(prev_layout ? prev_layout->getAttributeCount() : 0);
             
             if(res_buf != res_start)
             {
@@ -224,7 +224,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
             }
             if(vb_not_equal)
             {
-                for(size_t i = 0; i < MAX_VERTEX_BUFFERS; ++i)
+                for(GLuint i = 0; i < MAX_VERTEX_BUFFERS; ++i)
                 {
                     auto& vb = cpu_cmd.VertexBuffers[i];
                     if(vb.VertexBuffer)
@@ -293,7 +293,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
         }
         
         glMultiDrawElementsIndirectBindlessNV(TranslateDrawMode(prev_mode), GL_UNSIGNED_SHORT,
-                                              offset, cnt, 0, layout ? layout->getAttributeCount() : 0);
+                                              offset, cnt, 0, static_cast<GLuint>(layout ? layout->getAttributeCount() : 0));
         CheckOpenGL();
     }
 }
@@ -304,7 +304,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, const std::vect
          *cmd_start = cmd_buf,
          *res_buf = reinterpret_cast<char*>(const_buf_ptr),
          *res_start = res_buf;
-    size_t cnt = 0;
+    GLuint cnt = 0;
     auto& first = cpu_cmd_buf.front();
     GLLinkedShaderProgram* prev_prog = first.LinkedShaderProgram;
     GLInputLayout* prev_layout = first.InputLayout;
@@ -315,7 +315,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, const std::vect
     
     prev_prog->bind();
     prev_index_buffer->bindIndexBuffer();
-    for(size_t vb_idx = 0; vb_idx < MAX_VERTEX_BUFFERS; ++vb_idx)
+    for(GLuint vb_idx = 0; vb_idx < MAX_VERTEX_BUFFERS; ++vb_idx)
     {
         auto& vb = prev_vert_buffers[vb_idx];
         if(vb.VertexBuffer)
@@ -368,7 +368,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, const std::vect
             }
             if(vb_not_equal)
             {
-                for(size_t vb_idx = 0; vb_idx < MAX_VERTEX_BUFFERS; ++vb_idx)
+                for(GLuint vb_idx = 0; vb_idx < MAX_VERTEX_BUFFERS; ++vb_idx)
                 {
                     auto& prev_vb = prev_vert_buffers[vb_idx];
                     auto& cur_vb = cpu_cmd.VertexBuffers[vb_idx];

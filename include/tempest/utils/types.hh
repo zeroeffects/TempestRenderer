@@ -26,11 +26,11 @@
 #define _TEMPEST_TYPES_HH_
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN 1
-#include <windows.h>
+    #define WIN32_LEAN_AND_MEAN
+    #include <windows.h>
 #else
-#include <stdint.h>
-#include <inttypes.h>
+    #include <stdint.h>
+    #include <inttypes.h>
 #endif
 
 #include <string>

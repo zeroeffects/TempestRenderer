@@ -27,6 +27,10 @@
 
 #include "tempest/utils/assert.hh"
 
+#ifdef _MSC_VER
+	#pragma warning(disable : 4200)
+#endif
+
 namespace Tempest
 {
 /*! \brief Common template for creating an object that has a single instance within the application.

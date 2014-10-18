@@ -179,17 +179,17 @@ void GLRenderingBackend::setStateObject(const GLStateObject* state_obj)
     TGE_ASSERT(false, "Stub");
 }
     
-void GLRenderingBackend::setScissorRect(size_t x, size_t y, size_t width, size_t height)
+void GLRenderingBackend::setScissorRect(uint32 x, uint32 y, uint32 width, uint32 height)
 {
     glScissor(x, y, width, height);
 }
 
-void GLRenderingBackend::setViewportRect(size_t x, size_t y, size_t w, size_t h)
+void GLRenderingBackend::setViewportRect(uint32 x, uint32 y, uint32 w, uint32 h)
 {
     glViewport(0, 0, w, h);
 }
     
-void GLRenderingBackend::clearColorBuffer(size_t idx, const Vector4& color)
+void GLRenderingBackend::clearColorBuffer(uint32 idx, const Vector4& color)
 {
     glClearBufferfv(GL_COLOR, idx, color.elem);
     CheckOpenGL();

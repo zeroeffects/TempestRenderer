@@ -26,6 +26,7 @@
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_BINARY_DIR}/include
                     ${CMAKE_SOURCE_DIR}/external
+					${FLEX_INCLUDE_DIRS}
                     ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}
                     ${WINDOW_SYSTEM_INCLUDE_DIR})
@@ -68,10 +69,16 @@ SET(TEMPEST_LIB_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/utils/file-system.hh
    )
 
+IF(UNIX)
+    SET(TEMPEST_GL_PLATFORM_SPECIFIC_SRC graphics/opengl-backend/gl-window-x11.cc)
+ELSEIF(WIN32)
+
+ENDIF()
+   
 SET(TEMPEST_GRAPHICS_SRC
+	${TEMPEST_GL_PLATFORM_SPECIFIC_SRC}
     graphics/opengl-backend/gl-library.cc
     graphics/opengl-backend/gl-backend.cc
-    graphics/opengl-backend/gl-window-x11.cc
     graphics/opengl-backend/gl-convenience.cc
     graphics/opengl-backend/gl-command-buffer.cc
     graphics/opengl-backend/gl-compiler.cc
@@ -101,9 +108,11 @@ SET(TEMPEST_IMAGE_SRC
     ${CMAKE_SOURCE_DIR}/src/image/tga-image.cc
    )
    
-SET(TEMPEST_INPUT_SRC
-    input/controller-linux.cc
-   )
+IF(UNIX)   
+	SET(TEMPEST_INPUT_SRC
+		input/controller-linux.cc
+	   )
+ENDIF()
 
 SET(TEMPEST_INPUT_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/input/controller.hh
@@ -223,7 +232,9 @@ TARGET_INCLUDE_DIRECTORIES(tempest-shader-tmp PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 ADD_LIBRARY(tempest-mesh-tmp STATIC ${TEMPEST_MESH_SRC} ${TEMPEST_MESH_INC})
 TARGET_INCLUDE_DIRECTORIES(tempest-mesh-tmp PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/mesh)
 
-SET_TARGET_PROPERTIES(tempest-shader-tmp tempest-mesh-tmp PROPERTIES COMPILE_FLAGS "-fPIC")
+IF(UNIX)
+	SET_TARGET_PROPERTIES(tempest-shader-tmp tempest-mesh-tmp PROPERTIES COMPILE_FLAGS "-fPIC")
+ENDIF()
 
 ADD_LIBRARY(tempest-static STATIC ${TEMPEST_LIBRARY_FILES})
 TARGET_LINK_LIBRARIES(tempest-static ${EXTRA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} tempest-shader-tmp tempest-mesh-tmp xxhash)

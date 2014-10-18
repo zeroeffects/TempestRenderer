@@ -26,6 +26,7 @@
 #include "tempest/math/matrix4.hh"
 
 #include <cmath>
+#include <algorithm>
 
 namespace Tempest
 {
@@ -148,7 +149,8 @@ Quaternion operator*(const Quaternion& q, float f)
 
 Quaternion operator/(const Quaternion& q, float f)
 {
-    return Quaternion(q.coordinate.x/f, q.coordinate.y/f, q.coordinate.z/f, q.coordinate.w/f);
+	float f_rcp = 1.0f / f;
+	return Quaternion(q.coordinate.x * f_rcp, q.coordinate.y * f_rcp, q.coordinate.z * f_rcp, q.coordinate.w * f_rcp);
 }
 
 

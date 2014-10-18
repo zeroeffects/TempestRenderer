@@ -25,6 +25,10 @@
 #ifndef _TEMPEST_GL_SHADER_HH_
 #define _TEMPEST_GL_SHADER_HH_
 
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
 #include <GL/gl.h>
 
 #include <vector>
@@ -45,9 +49,9 @@ namespace Tempest
  */
 class GLTexture;
 class Matrix4;
-class Vector4;
-class Vector3;
-class Vector2;
+struct Vector4;
+struct Vector3;
+struct Vector2;
 
 template<class T> struct UniformValueBinding;
 #define UNIFORM_VALUE_BINDING(type, value) \
@@ -124,7 +128,7 @@ struct ResourceTableDescription
     ResourceTableDescription& operator=(const ResourceTableDescription&)=delete;
     
 private:
-    ResourceTableDescription(size_t count, size_t extendable_part, string name, uint32 bind_point)
+	ResourceTableDescription(uint32 count, uint32 extendable_part, string name, uint32 bind_point)
         :   ExtendablePart(extendable_part),
             Name(name),
             BindPoint(bind_point),
@@ -235,7 +239,7 @@ public:
     typedef GLInputLayout InputLayoutType;
     typedef GLResourceTable ResourceTableType;
     
-    explicit GLShaderProgram(GLuint shader_program, ResourceTableDescription* resource_tables[], size_t res_table_count);
+    explicit GLShaderProgram(GLuint shader_program, ResourceTableDescription* resource_tables[], uint32 res_table_count);
      ~GLShaderProgram();
     
     GLShaderProgram(const GLShaderProgram&)=delete;

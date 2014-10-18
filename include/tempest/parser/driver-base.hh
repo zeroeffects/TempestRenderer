@@ -47,7 +47,7 @@ struct Location
 
 inline std::ostream& operator<<(std::ostream& os, const Location& loc)
 {
-    os << *loc.filename << ":" << loc.startLine << ":" << loc.startColumn;
+    return os << *loc.filename << ":" << loc.startLine << ":" << loc.startColumn;
 }
 
 class DriverBase

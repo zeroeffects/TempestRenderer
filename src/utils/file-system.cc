@@ -25,9 +25,9 @@
 #include "tempest/utils/file-system.hh"
 
 #include "tempest/utils/logging.hh"
+#include "tempest/utils/memory.hh"
 
 #ifdef _WIN32
-#   define WIN32_LEAN_AND_MEAN 1
 #   include <winerror.h>
 #   ifdef __MINGW32__
 #       define off64_t _off64_t
@@ -280,25 +280,37 @@ extern string GetLastErrorString();
 
 FSPollingService::MonitoredDirectory::MonitoredDirectory(string _name)
     :	name(_name),
-        handle(::CreateFile(name.c_str(),
-                            FILE_LIST_DIRECTORY,
-                            FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
-                            nullptr,
-                            OPEN_EXISTING,
-                            FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
-                            nullptr))
+        handle(INVALID_HANDLE_VALUE)
 {
-	if(handle == INVALID_HANDLE_VALUE)
-        THROW_EXCEPTION("The application has failed to set up a file system handle for the following directory: " + _name + ": " + GetLastErrorString());
+}
+
+bool FSPollingService::MonitoredDirectory::initMonitoredDirectory()
+{
+    handle = ::CreateFile(name.c_str(),
+                          FILE_LIST_DIRECTORY,
+                          FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                          nullptr,
+                          OPEN_EXISTING,
+                          FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+                          nullptr);
+    if(handle == INVALID_HANDLE_VALUE)
+    {
+        Log(LogLevel::Error, "The application has failed to set up a file system handle for the following directory: ", name, ": ", GetLastErrorString());
+        return false;
+    }
+    return true;
 }
 
 FSPollingService::MonitoredDirectory::~MonitoredDirectory()
 {
-    CancelIo(handle);
-    CloseHandle(handle);
+    if(handle != INVALID_HANDLE_VALUE)
+    {
+        CancelIo(handle);
+        CloseHandle(handle);
+    }
 }
 
-void FSPollingService::MonitoredDirectory::restartMonitoring()
+bool FSPollingService::MonitoredDirectory::restartMonitoring()
 {
     ZeroMemory(&overlapped, sizeof(OVERLAPPED));
     DWORD bytes = 0;
@@ -313,7 +325,11 @@ void FSPollingService::MonitoredDirectory::restartMonitoring()
                                         &overlapped,
                                         nullptr);
     if(ret == FALSE)
-        THROW_EXCEPTION("The application has failed to enqueue directory change listening operation: " + GetLastErrorString());
+    {
+        Log(LogLevel::Error, "The application has failed to enqueue directory change listening operation: ", GetLastErrorString());
+        return false;
+    }
+    return true;
 }
 
 FSPollingService::FSPollingService()
@@ -325,40 +341,55 @@ FSPollingService::~FSPollingService()
 {
 }
 
-void FSPollingService::addWatch(const Directory& dir)
+bool FSPollingService::addWatch(const Directory& dir)
 {
-    addWatch(dir.getPath());
+    return addWatch(dir.getPath());
 }
 
 VOID  NotificationCompletion(DWORD  , DWORD  , LPVOID ) {}
 
-void FSPollingService::addWatch(const Path& path)
+bool FSPollingService::addWatch(const Path& path)
 {
     auto str = path.get();
-    MonitoredDirectoryPtr ptr = make_aligned_unique<MonitoredDirectory>(path.get());
-    m_CompletionPort = CreateIoCompletionPort(ptr->handle, m_CompletionPort, reinterpret_cast<ULONG_PTR>(ptr.get()), 0);
-    if(!m_CompletionPort)
-        THROW_EXCEPTION("The application has failed to set up a completion port: " + path.get() + ": " + GetLastErrorString());
+    auto dir_ptr = Tempest::make_unique<MonitoredDirectory>(path.get());
+    if(!dir_ptr->initMonitoredDirectory())
+    {
+        return false;
+    }
+    m_CompletionPort = CreateIoCompletionPort(dir_ptr->handle, m_CompletionPort, reinterpret_cast<ULONG_PTR>(dir_ptr.get()), 0);
+    if (!m_CompletionPort)
+    {
+        Log(LogLevel::Error, "The application has failed to set up a completion port: ", path.get(), ": ", GetLastErrorString());
+        return false;
+    }
 
-    ptr->restartMonitoring();
+    if(!dir_ptr->restartMonitoring())
+    {
+        return false;
+    }
         
-    m_Handles.push_back(std::move(ptr));
+    m_Handles.push_back(std::move(dir_ptr));
+    return true;
 }
 
-void FSPollingService::removeWatch(const Directory& dir)
+bool FSPollingService::removeWatch(const Directory& dir)
 {
-    removeWatch(dir.getPath());
+    return removeWatch(dir.getPath());
 }
 
-void FSPollingService::removeWatch(const Path& path)
+bool FSPollingService::removeWatch(const Path& path)
 {
 	auto iter = std::find_if(m_Handles.begin(), m_Handles.end(), [&path](const MonitoredDirectoryPtr& dir) { return dir->name == path.get(); });
     if(iter == m_Handles.end())
-        THROW_EXCEPTION("Unmanaged file system watch: " + path.get());
+    {
+        Log(LogLevel::Error, "Unmanaged file system watch: ", path.get());
+        return false;
+    }
 	m_Handles.erase(iter);
+    return true;
 }
 
-void FSPollingService::poll(FSEvents& evts)
+bool FSPollingService::poll(FSEvents& evts)
 {
     evts.clear();
     DWORD bytes_transferred;
@@ -405,13 +436,18 @@ void FSPollingService::poll(FSEvents& evts)
             fsevent.name = str;
             evts.push_back(fsevent);
         } while(fni->NextEntryOffset);
-        key->restartMonitoring();
+        if(!key->restartMonitoring())
+        {
+            return false;
+        }
     }
     auto status = GetLastError();
     if(status != ERROR_ABANDONED_WAIT_0 && status != WAIT_TIMEOUT)
-        THROW_EXCEPTION("The application has encountered an error while polling for file system events: " + GetLastErrorString());
-    else
-        return;
+    {
+        Log(LogLevel::Error, "The application has encountered an error while polling for file system events: ", GetLastErrorString());
+        return false;
+    }
+    return true;
 }
 #elif defined(LINUX)
 FSPollingService::FSPollingService()

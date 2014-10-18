@@ -34,7 +34,6 @@
 
 #include <array>
 #include <memory>
-#include <bits/stl_vector.h>
 
 namespace Tempest
 {

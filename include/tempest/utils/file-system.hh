@@ -29,14 +29,12 @@
 
 #include <list>
 #include <vector>
+#include <memory>
 #include <unordered_map>
 
-#ifdef _WIN32
-#   define WIN32_LEAN_AND_MEAN 1
-#   include <windows.h>
-#elif defined(LINUX)
+#ifdef LINUX
 #   include <sys/epoll.h>
-#else
+#elif !defined(_WIN32)
 #	error "Unsupported platform"
 #endif
 
@@ -197,12 +195,13 @@ class FSPollingService
         MonitoredDirectory(string name);
             ~MonitoredDirectory();
 
-        void restartMonitoring();
+        bool initMonitoredDirectory();
+        bool restartMonitoring();
 
         bool operator==(const string& val) { return name == val; }
     };
 
-    typedef std::unique_ptr<MonitoredDirectory, Deleter<MonitoredDirectory>> MonitoredDirectoryPtr;
+    typedef std::unique_ptr<MonitoredDirectory> MonitoredDirectoryPtr;
 
     typedef std::vector<MonitoredDirectoryPtr> MonitoredDirectories;
     MonitoredDirectories	  m_Handles;

@@ -80,8 +80,6 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         *arg_ptr = '\0';
     }
 
-    TGE_INIT_TEMPEST_COMMON(argc, argv);
-    
     TempestMain(argc, argv);
 
     while(argc--)

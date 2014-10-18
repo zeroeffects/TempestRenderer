@@ -28,6 +28,10 @@
 #include "tempest/utils/library.hh"
 #include "tempest/utils/macros.hh"
 
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
 #include <GL/gl.h>
 
 #include "GL/glext.h"
@@ -90,6 +94,8 @@ extern PFNWGLCREATECONTEXTPROC wglCreateContext;
 extern PFNWGLGETEXTENSIONSSTRINGARBPROC wglGetExtensionsStringARB;
 extern PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB;
 extern PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
+
+HGLRC w32hackCreateContextAttribs(HDC hDC, HGLRC hShareContext, const int *attribList);
 #endif
 
 //////////////////

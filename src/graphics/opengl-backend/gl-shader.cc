@@ -30,7 +30,11 @@
 #include "tempest/utils/logging.hh"
 #include "tempest/utils/assert.hh"
 
-#include <alloca.h>
+#ifdef _WIN32
+    #define alloca _alloca
+#else
+    #include <alloca.h>
+#endif
 
 namespace Tempest
 {
@@ -95,11 +99,11 @@ ResourceIndex GLResourceTable::getResourceIndex(const string& name)
     auto iter = std::find_if(m_ResourceTable->Uniforms.Values, m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count, [&sliced_string](const DataDescription& data) { return data.Name == sliced_string; });
     TGE_ASSERT(iter != m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count, "Unknown variable");
     res_idx.BaseOffset += iter->Offset + iter->ElementSize*array_index;
-    res_idx.ResourceTableIndex = iter != m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count ? (iter - m_ResourceTable->Uniforms.Values) : std::numeric_limits<size_t>::max(); // So we don't crash on reloads and in general.
+    res_idx.ResourceTableIndex = iter != m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count ? static_cast<uint32>(iter - m_ResourceTable->Uniforms.Values) : std::numeric_limits<uint32>::max(); // So we don't crash on reloads and in general.
     return res_idx;
 }
     
-GLShaderProgram::GLShaderProgram(GLuint prog, ResourceTableDescription* res_tables[], size_t res_table_count)
+GLShaderProgram::GLShaderProgram(GLuint prog, ResourceTableDescription* res_tables[], uint32 res_table_count)
     :   m_Program(prog),
         m_ResourceTableCount(res_table_count),
         m_ResourceTables(res_tables) {}

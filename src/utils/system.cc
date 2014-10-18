@@ -26,7 +26,6 @@
 #include "tempest/utils/types.hh"
 
 #ifdef _WIN32
-#   define WIN32_LEAN_AND_MEAN
 #   include <windows.h>
 #   ifdef __MINGW32__
 #       define off64_t _off64_t

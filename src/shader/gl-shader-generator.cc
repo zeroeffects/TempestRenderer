@@ -99,7 +99,7 @@ public:
     virtual void visit(const Shader::Profile* _profile) final { Shader::PrintNode(&m_Printer, _profile); }
     virtual void visit(const Shader::Technique* _technique) final { _technique->printList(this, &m_Printer, "technique"); }
     virtual void visit(const Shader::Import* _import) final { _import->printList(this, &m_Printer, "import"); }
-    virtual void visit(const Shader::Shader* _shader) final { Shader::PrintNode(this, &m_Printer, _shader); }
+    virtual void visit(const Shader::ShaderDeclaration* _shader) final { Shader::PrintNode(this, &m_Printer, _shader); }
     virtual void visit(const Shader::CompiledShader* compiled_shader) final { Shader::PrintNode(&m_Printer, compiled_shader); }
     virtual void visit(const Shader::Pass* _pass) final { _pass->printList(this, &m_Printer, "pass"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
@@ -176,7 +176,7 @@ public:
     virtual void visit(const Shader::Profile* _profile) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Technique* _technique) final;
     virtual void visit(const Shader::Import* _import) final;
-    virtual void visit(const Shader::Shader* _shader) final;
+    virtual void visit(const Shader::ShaderDeclaration* _shader) final;
     virtual void visit(const Shader::FunctionDefinition* func_def) final;
     virtual void visit(const Shader::FunctionDeclaration* func_decl) final;
     virtual void visit(const Shader::CompiledShader* compiled_shader) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -425,6 +425,7 @@ static size_t GetAlignment(UniformValueType _type)
     case UniformValueType::SubroutineFunction:
     default: TGE_ASSERT(false, "Unexpected uniform type");
     }
+    return 0;
 }
 
 static void ConvertVariable(const string& base, const Shader::Variable* var, size_t* offset, Shader::BufferDescription* buf_desc)
@@ -645,7 +646,7 @@ void Generator::visit(const Shader::Technique* _technique)
         TGE_ASSERT(cp_args->current_front(), "Expected valid arguments");
         auto profile_instance = cp_args->current_front()->extract<Shader::Variable>();
         auto shader_constructor_call = cp_args->next()->get()->current_front()->extract<Shader::ConstructorCall>();
-        auto shader_type = shader_constructor_call->getType()->extract<Shader::Shader>();
+        auto shader_type = shader_constructor_call->getType()->extract<Shader::ShaderDeclaration>();
 
         auto profile_name = profile_instance->getNodeName();
         string _version = TranslateGLSLVersion(profile_name);
@@ -732,7 +733,7 @@ void Generator::visit(const Shader::Type* type_stmt)
     }
 }
 
-void Generator::visit(const Shader::Shader* _shader)
+void Generator::visit(const Shader::ShaderDeclaration* _shader)
 {
     auto shader_type = _shader->getType();
     Shader::ShaderDescription shader_desc(_shader->getType(), _shader->getNodeName());
@@ -788,7 +789,7 @@ void Generator::visit(const Shader::Shader* _shader)
                 for(auto k = layout->current(); k != layout->end(); ++k)
                 {
                     auto* binop = k->extract<Shader::BinaryOperator>();
-                    auto layout_id = binop->getLHSOperand()->extract<AST::Identifier>()->getValue();
+                    auto layout_id = binop->getLHSOperand()->extract<Shader::Identifier>()->getValue();
                     if(layout_id == "semanticExt")
                     {
                         auto _storage = var->getStorage();
@@ -799,7 +800,7 @@ void Generator::visit(const Shader::Shader* _shader)
                             return;
                         }
                         
-                        auto* semantic_name_val = binop->getRHSOperand()->extract<AST::Identifier>();
+                        auto* semantic_name_val = binop->getRHSOperand()->extract<Shader::Identifier>();
                         Shader::InputParameter param(var->getType()->getTypeEnum(), var->getNodeName(), semantic_name_val->getValue());
                         shader_desc.addInputParameter(param);
                     }

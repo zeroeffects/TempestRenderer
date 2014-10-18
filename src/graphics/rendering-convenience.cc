@@ -44,6 +44,7 @@ FileDescription* BasicFileLoader::loadFileContent(const string& name)
     FileDescription* header = reinterpret_cast<FileDescription*>(data);
     header->Content = data + sizeof(FileDescription);
     header->ContentSize = size;
+    return header;
 }
 
 void BasicFileLoader::freeFileContent(FileDescription* ptr)

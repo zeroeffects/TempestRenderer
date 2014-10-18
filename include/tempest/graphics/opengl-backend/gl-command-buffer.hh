@@ -25,12 +25,17 @@
 #ifndef _GL_COMMAND_BUFFER_HH_
 #define _GL_COMMAND_BUFFER_HH_
 
-#include "GL/gl.h"
+#include "tempest/graphics/rendering-definitions.hh"
+
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
+#include <GL/gl.h>
+#include "GL/glext.h"
 
 #include <cstddef>
 #include <vector>
-
-#include "tempest/graphics/rendering-definitions.hh"
 
 #include <iostream>
 

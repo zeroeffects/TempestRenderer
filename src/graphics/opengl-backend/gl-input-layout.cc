@@ -27,6 +27,8 @@
 #include "tempest/graphics/rendering-definitions.hh"
 #include "tempest/utils/assert.hh"
 
+#include "GL/glext.h"
+
 namespace Tempest
 {
 static void TranslateDataFormat(DataFormat vtype, GLsizei* elements, GLenum* type, GLboolean* normalized)

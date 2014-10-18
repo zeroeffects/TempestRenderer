@@ -41,11 +41,11 @@
 
 namespace Tempest
 {
-class Vector2;
-class Vector3;
-class Vector4;
-class Quaternion;
-class DualQuaternion;
+struct Vector2;
+struct Vector3;
+struct Vector4;
+struct Quaternion;
+struct DualQuaternion;
 
 /*! \defgroup sse_ext SIMD Convenience functions
     @{

@@ -135,7 +135,7 @@ class ConstructorCall;
 class Import;
 class Profile;
 class Technique;
-class Shader;
+class ShaderDeclaration;
 class Pass;
 class UnaryOperator;
 class BinaryOperator;
@@ -165,42 +165,40 @@ typedef AST::Reference<Type> TypeRef;
 
 namespace AST
 {
-using namespace Shader;
-
-TGE_AST_NODE_INFO(FunctionDeclaration, TGE_EFFECT_FUNCTION_DECLARATION, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(FunctionDefinition, TGE_EFFECT_FUNCTION_DEFINITION, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(FunctionSet, TGE_EFFECT_FUNCTION_SET, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(FunctionCall, TGE_EFFECT_FUNCTION_CALL, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(SubroutineCall, TGE_EFFECT_SUBROUTINE_CALL, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Declaration, TGE_EFFECT_DECLARATION, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Variable, TGE_EFFECT_VARIABLE, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(ArrayElementVariable, TGE_EFFECT_ARRAY_ELEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(MemberVariable, TGE_EFFECT_STRUCT_MEMBER, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Type, TGE_EFFECT_TYPE, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Typedef, TGE_EFFECT_TYPEDEF, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(ConstructorCall, TGE_EFFECT_CONSTRUCTOR_CALL, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Import, TGE_EFFECT_IMPORT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Technique, TGE_EFFECT_TECHNIQUE, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Pass, TGE_EFFECT_PASS, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(UnaryOperator, TGE_EFFECT_UNARY_OPERATOR, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(BinaryOperator, TGE_EFFECT_BINARY_OPERATOR, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(TernaryIf, TGE_EFFECT_TERNARY_IF, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(InvariantDeclaration, TGE_EFFECT_INVARIANT_DECLARATION, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(IfStatement, TGE_EFFECT_IF_STATEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(WhileStatement, TGE_EFFECT_WHILE_STATEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(ForStatement, TGE_EFFECT_FOR_STATEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(SwitchStatement, TGE_EFFECT_SWITCH_STATEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(CaseStatement, TGE_EFFECT_CASE_STATEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Parentheses, TGE_EFFECT_PARENTHESES_STATEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(JumpStatement, TGE_EFFECT_JUMP_STATEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Expression, TGE_EFFECT_EXPRESSION, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(ReturnStatement, TGE_EFFECT_RETURN_STATEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(FuncDeclarationInfo, TGE_AST_UNKNOWN, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(IntermFuncNode, TGE_AST_UNKNOWN, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(DeclarationInfo, TGE_AST_UNKNOWN, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(VarDeclList, TGE_AST_UNKNOWN, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Value<ShaderType>, TGE_AST_UNKNOWN, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Buffer, TGE_EFFECT_BUFFER, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::FunctionDeclaration, Shader::TGE_EFFECT_FUNCTION_DECLARATION, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::FunctionDefinition, Shader::TGE_EFFECT_FUNCTION_DEFINITION, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::FunctionSet, Shader::TGE_EFFECT_FUNCTION_SET, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::FunctionCall, Shader::TGE_EFFECT_FUNCTION_CALL, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::SubroutineCall, Shader::TGE_EFFECT_SUBROUTINE_CALL, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Declaration, Shader::TGE_EFFECT_DECLARATION, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Variable, Shader::TGE_EFFECT_VARIABLE, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::ArrayElementVariable, Shader::TGE_EFFECT_ARRAY_ELEMENT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::MemberVariable, Shader::TGE_EFFECT_STRUCT_MEMBER, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Type, Shader::TGE_EFFECT_TYPE, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Typedef, Shader::TGE_EFFECT_TYPEDEF, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::ConstructorCall, Shader::TGE_EFFECT_CONSTRUCTOR_CALL, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Import, Shader::TGE_EFFECT_IMPORT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Technique, Shader::TGE_EFFECT_TECHNIQUE, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Pass, Shader::TGE_EFFECT_PASS, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::UnaryOperator, Shader::TGE_EFFECT_UNARY_OPERATOR, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::BinaryOperator, Shader::TGE_EFFECT_BINARY_OPERATOR, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::TernaryIf, Shader::TGE_EFFECT_TERNARY_IF, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::InvariantDeclaration, Shader::TGE_EFFECT_INVARIANT_DECLARATION, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::IfStatement, Shader::TGE_EFFECT_IF_STATEMENT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::WhileStatement, Shader::TGE_EFFECT_WHILE_STATEMENT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::ForStatement, Shader::TGE_EFFECT_FOR_STATEMENT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::SwitchStatement, Shader::TGE_EFFECT_SWITCH_STATEMENT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::CaseStatement, Shader::TGE_EFFECT_CASE_STATEMENT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Parentheses, Shader::TGE_EFFECT_PARENTHESES_STATEMENT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::JumpStatement, Shader::TGE_EFFECT_JUMP_STATEMENT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Expression, Shader::TGE_EFFECT_EXPRESSION, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::ReturnStatement, Shader::TGE_EFFECT_RETURN_STATEMENT, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::FuncDeclarationInfo, TGE_AST_UNKNOWN, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::IntermFuncNode, TGE_AST_UNKNOWN, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::DeclarationInfo, TGE_AST_UNKNOWN, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::VarDeclList, TGE_AST_UNKNOWN, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Value<Shader::ShaderType>, TGE_AST_UNKNOWN, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Buffer, Shader::TGE_EFFECT_BUFFER, Shader::VisitorInterface)
 }
 
 namespace Shader
@@ -220,7 +218,7 @@ class MatrixType;
 class StructType;
 class ArrayType;
 class SamplerType;
-class Shader;
+class ShaderDeclaration;
 class Profile;
 class Subroutine;
 class CompiledShader;
@@ -231,7 +229,7 @@ TGE_EFFECT_TYPE_INFO(MatrixType, ElementType::Matrix, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(StructType, ElementType::Struct, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(ArrayType, ElementType::Array, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(SamplerType, ElementType::Sampler, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(Shader, ElementType::Shader, VisitorInterface)
+TGE_EFFECT_TYPE_INFO(ShaderDeclaration, ElementType::Shader, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(Profile, ElementType::Profile, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(Subroutine, ElementType::Subroutine, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(CompiledShader, ElementType::CompiledShader, VisitorInterface)
@@ -300,7 +298,7 @@ public:
     Type(TypeImpl* val)
         :   m_Impl(val) {}
 
-    ~Type() { TGE_DEALLOCATE(m_Impl); }
+    ~Type() { delete m_Impl; }
         
     Type(Type&& _type)
         :   m_Impl(_type.m_Impl) 
@@ -311,7 +309,7 @@ public:
 
     Type& operator=(Type&& val)
     {
-        TGE_DEALLOCATE(m_Impl);
+        delete m_Impl;
         m_Impl = val.m_Impl;
         val.m_Impl = nullptr;
         return *this;
@@ -351,7 +349,7 @@ public:
 template<class T, class... TArgs>
 AST::Node CreateTypeNode(TArgs&&... args)
 {
-    return CreateNode<Type>(TGE_DEFAULT_LOCATION, Type(TGE_ALLOCATE(TypeImplModel<T>)(std::forward<TArgs>(args)...)));
+    return CreateNode<Type>(TGE_DEFAULT_LOCATION, Type(new TypeImplModel<T>(std::forward<TArgs>(args)...)));
 }
 
 class Typedef
@@ -1110,12 +1108,12 @@ public:
     BufferType getBufferType() const { return m_BufferType; }
 };
 
-class Shader: public AST::NamedList<Shader>
+class ShaderDeclaration : public AST::NamedList<ShaderDeclaration>
 {
     ShaderType          m_Type;
 public:
-    Shader(ShaderType _type, string name, NodeT<List> body);
-    ~Shader();
+	ShaderDeclaration(ShaderType _type, string name, NodeT<List> body);
+	~ShaderDeclaration();
 
     ShaderType getType() const;
     
@@ -1195,7 +1193,7 @@ public:
     virtual void visit(const Profile*)=0;
     virtual void visit(const Technique*)=0;
     virtual void visit(const Import*)=0;
-    virtual void visit(const Shader*)=0;
+	virtual void visit(const ShaderDeclaration*) = 0;
     virtual void visit(const StructType*)=0;
     virtual void visit(const CompiledShader*)=0;
     virtual void visit(const Pass*)=0;
@@ -1237,7 +1235,7 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
 void PrintNode(AST::PrinterInfrastructure* printer, const JumpStatement* jump_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const ReturnStatement* return_stmt);
 void PrintNode(AST::PrinterInfrastructure* printer, const Profile* profile_stmt);
-void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader* shader_stmt);
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const ShaderDeclaration* shader_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct);
 void PrintNode(AST::PrinterInfrastructure* printer, const CompiledShader* compiled_stmt);
 void PrintNode(VisitorInterface* visitor, const Type* type_stmt);
@@ -1300,7 +1298,7 @@ public:
     virtual void visit(const Profile* _profile) override { PrintNode(&m_Printer, _profile); }
     virtual void visit(const Technique* _technique) override { _technique->printList(this, &m_Printer, "technique"); }
     virtual void visit(const Import* _import) override { _import->printList(this, &m_Printer, "import"); }
-    virtual void visit(const Shader* _shader) override { PrintNode(this, &m_Printer, _shader); }
+	virtual void visit(const ShaderDeclaration* _shader) override { PrintNode(this, &m_Printer, _shader); }
     virtual void visit(const StructType* _struct) override { PrintNode(this, &m_Printer, _struct); }
     virtual void visit(const CompiledShader* compiled_shader) override { PrintNode(&m_Printer, compiled_shader); }
     virtual void visit(const Pass* _pass) override { _pass->printList(this, &m_Printer, "pass"); }

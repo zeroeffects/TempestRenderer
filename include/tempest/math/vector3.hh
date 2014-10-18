@@ -42,23 +42,9 @@ struct Vector3
               z; /*!< z-coordinate component */
     };
 
-    struct comb0
-    {
-        Vector2 xy; /*!< xy-component subvector */
-        float   z;  /*!< z-coordinate component */
-    };
-
-    struct comb1
-    {
-        float   x;  /*!< x-coordinate component */
-        Vector2 yz; /*!< yz-component subvector */
-    };
-
     union
     {
         coord coordinate;
-        comb0 combined0;
-        comb1 combined1;
         float elem[3]; /*!< coordinate array */
     };
 
@@ -90,12 +76,6 @@ struct Vector3
     inline float& s() { return coordinate.x; }
     inline float& t() { return coordinate.y; }
     inline float& p() { return coordinate.z; }
-    inline Vector2& xy() { return combined0.xy; }
-    inline Vector2& yz() { return combined1.yz; }
-    inline Vector2& rg() { return combined0.xy; }
-    inline Vector2& gb() { return combined1.yz; }
-    inline Vector2& st() { return combined0.xy; }
-    inline Vector2& tp() { return combined1.yz; }
 
     inline float x() const { return coordinate.x; }
     inline float y() const { return coordinate.y; }
@@ -106,12 +86,6 @@ struct Vector3
     inline float s() const { return coordinate.x; }
     inline float t() const { return coordinate.y; }
     inline float p() const { return coordinate.z; }
-    inline Vector2 xy() const { return combined0.xy; }
-    inline Vector2 yz() const { return combined1.yz; }
-    inline Vector2 rg() const { return combined0.xy; }
-    inline Vector2 gb() const { return combined1.yz; }
-    inline Vector2 st() const { return combined0.xy; }
-    inline Vector2 tp() const { return combined1.yz; }
 
     //! Array style coordinate component referencing
     /*!
@@ -219,11 +193,22 @@ inline Vector3& operator*=(Vector3& vec, float a) { vec.coordinate.x *= a; vec.c
 
 //! Divides a vector with a float-pointing variable and returns the resulting vector
 /*! \related Vector3 */
-inline Vector3 operator/(const Vector3& vec, float a) { return Vector3(vec.coordinate.x / a, vec.coordinate.y / a, vec.coordinate.z / a); }
+inline Vector3 operator/(const Vector3& vec, float a)
+{
+	float rcp_a = 1.0f / a;
+	return Vector3(vec.coordinate.x * rcp_a, vec.coordinate.y * rcp_a, vec.coordinate.z * rcp_a);
+}
 
 //! Divides a vector with a float-pointing variable and replaces the vector
 /*! \related Vector3 */
-inline Vector3& operator/=(Vector3& vec, float a) { vec.coordinate.x /= a; vec.coordinate.y /= a; vec.coordinate.z /= a; return vec; }
+inline Vector3& operator/=(Vector3& vec, float a)
+{
+	float rcp_a = 1.0f / a;
+	vec.coordinate.x *= rcp_a;
+	vec.coordinate.y *= rcp_a;
+	vec.coordinate.z *= rcp_a;
+	return vec;
+}
 
 //! Returns the component-wise absolute value of a 3-dimensional vector
 inline Vector3 v3abs(Vector3& v)

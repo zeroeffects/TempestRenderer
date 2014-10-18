@@ -43,35 +43,10 @@ struct Vector4
               z, /*!< z-coordinate component */
               w; /*!< w-coordinate component */
     };
-    struct comb0
-    {
-        Vector2 xy, /*!< xy-component subvector */
-                zw; /*!< zw-component subvector */
-    };
-    struct comb1
-    {
-        float   x;  /*!< x-coordinate component */
-        Vector2 yz; /*!< yz-component subvector */
-        float   w;  /*!< w-coordinate component */
-    };
-    struct comb2
-    {
-        Vector3 xyz; /*!< xyz-component subvector */
-        float   w;   /*!< w-coordinate component subvector */
-    };
-    struct comb3
-    {
-        float   x;   /*!< x-coordinate component */
-        Vector3 yzw; /*!< yzw-component subvector */
-    };
 
     union
     {
         coord coordinate;
-        comb0 combined0;
-        comb1 combined1;
-        comb2 combined2;
-        comb3 combined3;
         float elem[4]; /*!< coordinate array */
     };
 
@@ -113,22 +88,6 @@ struct Vector4
     inline float t() const { return coordinate.y; }
     inline float p() const { return coordinate.z; }
     inline float q() const { return coordinate.w; }
-
-    inline Vector2 xy() const { return combined0.xy; }
-    inline Vector2 yz() const { return combined1.yz; }
-    inline Vector2 zw() const { return combined0.zw; }
-    inline Vector3 xyz() const { return combined2.xyz; }
-    inline Vector3 yzw() const { return combined3.yzw; }
-    inline Vector2 rg() const { return combined0.xy; }
-    inline Vector2 gb() const { return combined1.yz; }
-    inline Vector2 ba() const { return combined0.zw; }
-    inline Vector3 rgb() const { return combined2.xyz; }
-    inline Vector3 gba() const { return combined3.yzw; }
-    inline Vector2 st() const { return combined0.xy; }
-    inline Vector2 tp() const { return combined1.yz; }
-    inline Vector2 pq() const { return combined0.zw; }
-    inline Vector3 stp() const { return combined2.xyz; }
-    inline Vector3 tpq() const { return combined3.yzw; }
 
     //! Array style coordinate component referencing
     /*!
@@ -204,6 +163,12 @@ struct Vector4
     inline void set(float _x, float _y, float _z, float _w = 1.0f) { coordinate.x = _x; coordinate.y = _y; coordinate.z = _z; coordinate.w = _w; }
 };
 
+inline Vector3 ToVector3(const Vector4& vec)
+{
+    auto w_rcp = 1.0f / vec.coordinate.w;
+    return Vector3(vec.coordinate.x * w_rcp, vec.coordinate.y * w_rcp, vec.coordinate.z * w_rcp);
+}
+
 inline bool operator==(const Vector4& lhs, const Vector4& rhs) { return approx_eq(lhs.coordinate.x, rhs.coordinate.x) && approx_eq(lhs.coordinate.y, rhs.coordinate.y) && approx_eq(lhs.coordinate.z, rhs.coordinate.z) && approx_eq(lhs.coordinate.w, rhs.coordinate.w); }
 
 inline bool operator!=(const Vector4& lhs, const Vector4& rhs) { return approx_neq(lhs.coordinate.x, rhs.coordinate.x) || approx_neq(lhs.coordinate.y, rhs.coordinate.y) || approx_neq(lhs.coordinate.z, rhs.coordinate.z) || approx_neq(lhs.coordinate.w, rhs.coordinate.w); }
@@ -242,11 +207,23 @@ inline Vector4& operator*=(Vector4& vec, float a) { vec.coordinate.x *= a; vec.c
 
 //! Divides a vector with a float-pointing variable and returns the resulting vector
 /*! \related Vector4 */
-inline Vector4 operator/(const Vector4& vec, float a) { return Vector4(vec.coordinate.x / a, vec.coordinate.y / a, vec.coordinate.z / a, vec.coordinate.w / a); }
+inline Vector4 operator/(const Vector4& vec, float a)
+{
+	float rcp_a = 1.0f / a;
+	return Vector4(vec.coordinate.x * rcp_a, vec.coordinate.y * rcp_a, vec.coordinate.z * rcp_a, vec.coordinate.w * rcp_a);
+}
 
 //! Divides a vector with a float-pointing variable and replaces the vector
 /*! \related Vector4 */
-inline Vector4& operator/=(Vector4& vec, float a) { vec.coordinate.x /= a; vec.coordinate.y /= a; vec.coordinate.z /= a; vec.coordinate.w /= a; return vec; }
+inline Vector4& operator/=(Vector4& vec, float a)
+{
+	float rcp_a = 1.0f / a;
+	vec.coordinate.x *= rcp_a;
+	vec.coordinate.y *= rcp_a;
+	vec.coordinate.z *= rcp_a;
+	vec.coordinate.w *= rcp_a;
+	return vec;
+}
 }
 
 #endif // _TEMPEST_VECTOR4_HH_

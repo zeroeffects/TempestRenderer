@@ -1366,36 +1366,36 @@ Technique::Technique(string name, NodeT<List> body)
 
 Technique::~Technique() {}
 
-Shader::Shader(ShaderType _type, string name, NodeT<List> body)
+ShaderDeclaration::ShaderDeclaration(ShaderType _type, string name, NodeT<List> body)
     :   NamedList(name, std::move(body)),
         m_Type(_type) {}
 
-Shader::~Shader() {}
+ShaderDeclaration::~ShaderDeclaration() {}
 
-ShaderType Shader::getType() const
+ShaderType ShaderDeclaration::getType() const
 {
     return m_Type;
 }
 
-bool Shader::hasBase(const Type* _type) const
+bool ShaderDeclaration::hasBase(const Type* _type) const
 {
     return _type->getNodeName() == "shader";
 }
 
-bool Shader::hasImplicitConversionTo(const Type* _type) const
+bool ShaderDeclaration::hasImplicitConversionTo(const Type* _type) const
 {
     return (_type->getTypeEnum() == ElementType::Shader && _type->getNodeName() == "shader");
 }
 
-bool Shader::hasValidConstructor(const List* var_list) const
+bool ShaderDeclaration::hasValidConstructor(const List* var_list) const
 {
     return !var_list;
 }
 
-const Type* Shader::binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
-const Type* Shader::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
-const Type* Shader::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
-const Type* Shader::getArrayElementType() const { return nullptr; }
+const Type* ShaderDeclaration::binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
+const Type* ShaderDeclaration::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
+const Type* ShaderDeclaration::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
+const Type* ShaderDeclaration::getArrayElementType() const { return nullptr; }
 
 CompiledShader::CompiledShader() {}
 
@@ -1991,7 +1991,7 @@ void PrintNode(AST::PrinterInfrastructure* printer, const Profile* profile)
      printer->stream() << "profile";
 }
 
-void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader* shader)
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const ShaderDeclaration* shader)
 {
     string shader_type;
     switch(shader->getType())

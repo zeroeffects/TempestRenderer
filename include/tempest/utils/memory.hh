@@ -160,8 +160,6 @@ private:
 #   define TGE_DEALLOCATE(p) Tempest::MemoryDebugger::deallocate(p, __FILE__ + std::string(":") + TO_STRING(__LINE__))
 #endif
 
-#undef max
-
 template<class T>
 class AlignedSTLAllocator
 {

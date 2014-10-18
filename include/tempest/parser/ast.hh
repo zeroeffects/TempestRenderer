@@ -299,13 +299,28 @@ struct UnmanagedNode
     
      template<class TOther>
     UnmanagedNode& operator=(NodeT<TOther>&& _node);
-private:
+
     // It is an error to move unmanaged nodes. They are supposed to be copied and
     // manually managed. The main reason why they were created was the Bison parser
     // and its current implementation. If in the future I come up with better
     // parser in mind I am going to replace it.
-    UnmanagedNode(UnmanagedNode&&);
-    UnmanagedNode& operator=(UnmanagedNode&&);
+
+#ifdef _MSC_VER
+    // Here they are defined because containers insist to move stuff around.
+    UnmanagedNode(UnmanagedNode&& _node)
+        :   m_Impl(_node.m_Impl),
+            m_Deleter(_node.m_Deleter) {}
+
+    UnmanagedNode& operator=(UnmanagedNode&& _node)
+    {
+        m_Impl = _node.m_Impl;
+        m_Deleter = _node.m_Deleter;
+        return *this;
+    }
+#else
+    UnmanagedNode(UnmanagedNode&& _node)=delete;
+    UnmanagedNode& operator=(UnmanagedNode&& _node)=delete;
+#endif
 };
 
 template<class T>
@@ -551,13 +566,13 @@ UnmanagedNode& UnmanagedNode::operator=(NodeT<TOther>&& _node)
 template<class TNode, class... TArgs>
 NodeT<TNode> CreateNodeTyped(Location loc, TArgs&&... args)
 {
-    return NodeT<TNode>(TGE_ALLOCATE(NodeImplModel<TNode>)(loc, std::forward<TArgs>(args)...), reinterpret_cast<NodeDeleter>(&DeallocFunction<NodeImplModel<TNode>>));
+    return NodeT<TNode>(new NodeImplModel<TNode>(loc, std::forward<TArgs>(args)...), reinterpret_cast<NodeDeleter>(&DeallocFunction<NodeImplModel<TNode>>));
 }
 
 template<class TNode, class... TArgs>
 Node CreateNode(Location loc, TArgs&&... args)
 {
-    return Node(TGE_ALLOCATE(NodeImplModel<TNode>)(loc, std::forward<TArgs>(args)...), reinterpret_cast<NodeDeleter>(&DeallocFunction<NodeImplModel<TNode>>));
+    return Node(new NodeImplModel<TNode>(loc, std::forward<TArgs>(args)...), reinterpret_cast<NodeDeleter>(&DeallocFunction<NodeImplModel<TNode>>));
 }
 
 template<class T>

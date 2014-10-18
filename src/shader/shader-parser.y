@@ -255,7 +255,7 @@ shader
                                                                 auto identifier = $2;
                                                                 TGE_ASSERT(shader_type, "Valid shader qualifier expected");
                                                                 TGE_ASSERT(identifier, "Valid identifier expected. Potential lexer bug.");
-                                                                $$ = driver.createStackType<Shader>(ToLocation(@$), shader_type->getValue(), identifier ? identifier->getValue() : string(), $4);
+                                                                $$ = driver.createStackType<ShaderDeclaration>(ToLocation(@$), shader_type->getValue(), identifier ? identifier->getValue() : string(), $4);
                                                             }
     ;
 

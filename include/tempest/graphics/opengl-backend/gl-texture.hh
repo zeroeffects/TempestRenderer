@@ -26,13 +26,18 @@
 #define _GL_TEXTURE_HH_
 
 #include "tempest/graphics/texture.hh"
+#include "tempest/utils/types.hh"
+
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 
 #include <GL/gl.h>
 #include "GL/glext.h"
 
 namespace Tempest
 {
-class Vector4;
+struct Vector4;
     
 class GLTexture
 {
@@ -48,7 +53,7 @@ public:
     void setFilter(FilterMode min_filter, FilterMode mag_filter, FilterMode mip_filter, SamplerMode sampler_mode = SamplerMode::Default);
     void setWrapMode(WrapMode x_axis, WrapMode y_axis, WrapMode z_axis);
     void setMipLODBias(float lod_bias);
-    void setMaxAnisotrophy(uint max_anisotropy);
+    void setMaxAnisotrophy(uint32 max_anisotropy);
     void setCompareFunction(ComparisonFunction compare_func);
     void setBorderColor(const Vector4& color);
     void setMinLOD(float min_lod);

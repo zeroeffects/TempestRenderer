@@ -351,13 +351,64 @@ string ConvertGLErrorToString(GLenum err)
     return ss.str();
 }
 
+#ifdef _WIN32
+// Because f... you person that has invented this clunky API
+    static HGLRC s_RC = nullptr;
+#endif
+
 GLLibrary::~GLLibrary()
 {
 #ifdef _WIN32
-    if(m_RC)
-        wglDeleteContext(m_RC);
+    if(s_RC)
+    {
+        wglDeleteContext(s_RC);
+        s_RC = nullptr;
+    }
 #endif
 }
+
+#ifdef _WIN32
+// Imagine that, you need regular context to query the extension.
+HGLRC w32hackCreateContextAttribs(HDC hDC, HGLRC hShareContext, const int *attribList)
+{
+    if(!wglCreateContextAttribsARB)
+    {
+        PIXELFORMATDESCRIPTOR pfd = {
+            sizeof(PIXELFORMATDESCRIPTOR),
+            1,
+            PFD_DRAW_TO_WINDOW |
+            PFD_SUPPORT_OPENGL |
+            PFD_DOUBLEBUFFER,
+            PFD_TYPE_RGBA,
+            24,
+            0, 0, 0, 0, 0, 0,
+            0,
+            0,
+            0,
+            0, 0, 0, 0,
+            24,
+            8,
+            0,
+            PFD_MAIN_PLANE,
+            0,
+            0, 0, 0
+        };
+
+        int iPixelFormat = ChoosePixelFormat(hDC, &pfd);
+        SetPixelFormat(hDC, iPixelFormat, &pfd);
+
+        s_RC = wglCreateContext(hDC);
+        TGE_ASSERT(s_RC, "Expecting valid context");
+        if (!s_RC)
+            return false;
+        wglMakeCurrent(hDC, s_RC);
+
+        wglCreateContextAttribsARB = reinterpret_cast<decltype(wglCreateContextAttribsARB)>(GL_GET_PROC_ADDRESS("wglCreateContextAttribsARB"));
+    }
+
+    return wglCreateContextAttribsARB(hDC, hShareContext, attribList);
+}
+#endif
 
 bool GLLibrary::initGLX()
 {
@@ -373,38 +424,9 @@ bool GLLibrary::initGLX()
     GL_LIB_LOAD_FUNCTION(wglCreateContext);
     GL_LIB_LOAD_FUNCTION(wglGetProcAddress);
 
-    PIXELFORMATDESCRIPTOR pfd = { 
-        sizeof(PIXELFORMATDESCRIPTOR),
-        1,
-        PFD_DRAW_TO_WINDOW |
-        PFD_SUPPORT_OPENGL |
-        PFD_DOUBLEBUFFER,
-        PFD_TYPE_RGBA,
-        24,
-        0, 0, 0, 0, 0, 0,
-        0,
-        0,
-        0,
-        0, 0, 0, 0,
-        24,
-        8, 
-        0,  
-        PFD_MAIN_PLANE,
-        0,
-        0, 0, 0  
-    };
-
-    HDC dc = GetDC(wnfo.getWindowId());
-    
-    int iPixelFormat = ChoosePixelFormat(dc, &pfd);
-    SetPixelFormat(dc, iPixelFormat, &pfd);
-
-    m_RC = wglCreateContext(dc); assert(m_RC);
-    wglMakeCurrent(dc, m_RC);
-
     GL_LOAD_FUNCTION(wglGetExtensionsStringARB);
     GL_LOAD_FUNCTION(wglChoosePixelFormatARB);
-    return LoadGLFunction(m_GLLib, "wglCreateContextAttribsARB", wglCreateContextAttribsARB);
+    return true;
 #elif defined(LINUX)
     GL_LIB_LOAD_FUNCTION(glXGetProcAddress);
 

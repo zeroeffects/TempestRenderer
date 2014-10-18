@@ -34,7 +34,7 @@ namespace Tempest
 {
 void InterleaveVertices(const char** vert_arrays,
                         const int32* strides,
-                        int32 subarrays,
+                        size_t subarrays,
                         const int32** inds,
                         size_t ind_count,
                         std::vector<int32>* out_inds,

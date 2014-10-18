@@ -97,9 +97,9 @@ void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoader::Gro
             auto& prev = pos[prev_idx];
             auto& current = pos[current_idx];
             auto& next = pos[next_idx];
-            auto current_v3 = current.xyz()/current.w();
-            auto d0 = prev.xyz()/prev.w() - current_v3;
-            auto d1 = next.xyz()/next.w() - current_v3;
+            auto current_v3 = ToVector3(current);
+            auto d0 = ToVector3(prev) - current_v3;
+            auto d1 = ToVector3(next) - current_v3;
             Vector3 norm = d0.cross(d1);
             gen_norms[prev_idx] += norm;
             gen_norms[current_idx] += norm;

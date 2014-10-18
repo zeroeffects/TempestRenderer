@@ -548,7 +548,7 @@ Vector3 Matrix4::operator*(const Vector3& vec) const
     res.coordinate.y /= res.coordinate.w;
     res.coordinate.z /= res.coordinate.w;
 
-    return res.xyz();
+    return Vector3(res.x(), res.y(), res.z());
 }
 
 Vector4 Matrix4::operator*(const Vector4& vec) const
@@ -751,7 +751,7 @@ Vector3 Matrix4::transform_rotate(const Vector3& vec) const
     vec4f.coordinate.y /= vec4f.coordinate.w;
     vec4f.coordinate.z /= vec4f.coordinate.w;
 
-    return vec4f.xyz();
+    return Vector3(vec4f.x(), vec4f.y(), vec4f.z());
 }
 
 void Matrix4::translate(const Vector3& vec)

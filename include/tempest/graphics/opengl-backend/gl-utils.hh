@@ -25,6 +25,10 @@
 #ifndef _TEMPEST_GL_UTILS_HH_
 #define _TEMPEST_GL_UTILS_HH_
 
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
 #include <GL/gl.h>
 
 #include "tempest/utils/logging.hh"

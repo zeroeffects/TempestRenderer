@@ -183,12 +183,12 @@ void GLTexture::setFilter(FilterMode min_filter, FilterMode mag_filter, FilterMo
     default: TGE_ASSERT(false, "Unsupported filter mode"); break;
     }
     
-    switch((uint)min_filter | ((uint)mip_filter << 4))
+    switch((uint32)min_filter | ((uint32)mip_filter << 4))
     {
-    case (uint)FilterMode::Nearest | ((uint)FilterMode::Nearest << 4): gl_min_filter = GL_NEAREST_MIPMAP_NEAREST; break;
-    case (uint)FilterMode::Nearest | ((uint)FilterMode::Linear << 4): gl_min_filter = GL_NEAREST_MIPMAP_LINEAR; break;
-    case (uint)FilterMode::Linear  | ((uint)FilterMode::Nearest << 4): gl_min_filter = GL_LINEAR_MIPMAP_NEAREST; break;
-    case (uint)FilterMode::Linear  | ((uint)FilterMode::Linear << 4): gl_min_filter = GL_LINEAR_MIPMAP_LINEAR; break;
+    case (uint32)FilterMode::Nearest | ((uint32)FilterMode::Nearest << 4): gl_min_filter = GL_NEAREST_MIPMAP_NEAREST; break;
+    case (uint32)FilterMode::Nearest | ((uint32)FilterMode::Linear << 4): gl_min_filter = GL_NEAREST_MIPMAP_LINEAR; break;
+    case (uint32)FilterMode::Linear  | ((uint32)FilterMode::Nearest << 4): gl_min_filter = GL_LINEAR_MIPMAP_NEAREST; break;
+    case (uint32)FilterMode::Linear  | ((uint32)FilterMode::Linear << 4): gl_min_filter = GL_LINEAR_MIPMAP_LINEAR; break;
     }
     
     glTextureParameteriEXT(m_Texture, m_Target, GL_TEXTURE_MIN_FILTER, gl_min_filter);
@@ -222,7 +222,7 @@ void GLTexture::setMipLODBias(float lod_bias)
     glTextureParameterfEXT(m_Texture, m_Target, GL_TEXTURE_LOD_BIAS, lod_bias);
 }
 
-void GLTexture::setMaxAnisotrophy(uint max_anisotropy)
+void GLTexture::setMaxAnisotrophy(uint32 max_anisotropy)
 {
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
     glTextureParameteriEXT(m_Texture, m_Target, GL_TEXTURE_MAX_ANISOTROPY_EXT, max_anisotropy);

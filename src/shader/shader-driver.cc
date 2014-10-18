@@ -1431,7 +1431,7 @@ Driver::Driver()
 // Technique Built-ins
     m_TechniqueBuiltIns.resize(TGE_EFFECT_BUILTINS_TECHNIQUE);
     m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_COMPILED_SHADER_TYPE] = createBuiltInType<CompiledShader>();
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_SHADER_TYPE] = createBuiltInType<Shader>(ShaderType::GenericShader, "shader", NodeT<List>());
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_SHADER_TYPE] = createBuiltInType<ShaderDeclaration>(ShaderType::GenericShader, "shader", NodeT<List>());
     m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_PROFILE_TYPE] = createBuiltInType<Profile>();
     m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_SET_VERTEX_SHADER] = createFunctionSet(&func_set, "SetVertexShader");
     BuiltInFunction<void (CompiledShaderType)>::addTo(m_ObjectPool, m_TechniqueBuiltIns, func_set);

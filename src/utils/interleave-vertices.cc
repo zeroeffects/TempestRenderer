@@ -42,7 +42,7 @@ public:
 
     size_t operator()(const int32* key) const
     {
-        return XXH32(key, m_ElementCount*sizeof(int32), 0xEF1C1337);
+        return (size_t)XXH32(key, (uint32)m_ElementCount*sizeof(int32), 0xEF1C1337);
     }
 };
 
@@ -63,7 +63,7 @@ public:
 
 void InterleaveVertices(const char** vert_arrays,
                         const int32* strides,
-                        int32 subarrays,
+                        size_t subarrays,
                         const int32** inds,
                         size_t ind_count,
                         std::vector<int32>* out_inds,

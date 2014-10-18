@@ -196,7 +196,7 @@ public:
      *  \param width  the horizontal size of the rectangle.
      *  \param height the vertical size of the rectangle.
      */
-    void setScissorRect(size_t x, size_t y, size_t width, size_t height);
+	void setScissorRect(uint32 x, uint32 y, uint32 width, uint32 height);
     
     /*! \brief Set up the drawing rectangle.
      * 
@@ -205,7 +205,7 @@ public:
      *  \param width  the horizontal size of the rectangle.
      *  \param height the vertical size of the rectangle.
      */
-    void setViewportRect(size_t x, size_t y, size_t width, size_t height);
+	void setViewportRect(uint32 x, uint32 y, uint32 width, uint32 height);
     
     /*! \brief Clear up the color buffer with the specified color.
      * 
@@ -214,7 +214,7 @@ public:
      *  \param idx    the index of the color buffer (-1 for all buffers).
      *  \param color  the color that is going to fill the color buffer.
      */
-    void clearColorBuffer(size_t idx, const Vector4& color);
+    void clearColorBuffer(uint32 idx, const Vector4& color);
     
     /*! \brief Clear up the depth stencil buffer with the specified depth and stencil value.
      * 

@@ -27,8 +27,6 @@
 
 #include <cstddef>
 
-#include "location.hh"
-
 #include "tempest/utils/types.hh"
 #include "tempest/parser/driver-base.hh"
 #include "tempest/mesh/obj-mtl-loader.hh"
@@ -36,6 +34,8 @@
 #include "tempest/math/vector4.hh"
 #include "tempest/math/vector3.hh"
 #include "tempest/math/vector2.hh"
+
+#include <vector>
 
 namespace Tempest
 {
@@ -104,14 +104,19 @@ public:
     
     void parseMaterialFile(const Location& loc, const string& name);
     
-    void normalizeIndices() { normalizeIndices(m_Position.size(), m_PositionIndices); normalizeIndices(m_TexCoord.size(), m_TexCoordIndices); normalizeIndices(m_Normal.size(), m_NormalIndices); }
+	void normalizeIndices()
+	{
+		normalizeIndices((int32)m_Position.size(), m_PositionIndices);
+		normalizeIndices((int32)m_TexCoord.size(), m_TexCoordIndices);
+		normalizeIndices((int32)m_Normal.size(), m_NormalIndices);
+	}
     
     const std::vector<GroupHeader>& getGroups() const { return m_Groups; }
     
     bool parseFile(const string& filename);
     bool parseString(const char* str, size_t size, const string& filename);
 private:
-    void normalizeIndices(size_t elems, std::vector<int32>& vec)
+    void normalizeIndices(int32 elems, std::vector<int32>& vec)
     {
         for(auto& ind : vec)
         {
