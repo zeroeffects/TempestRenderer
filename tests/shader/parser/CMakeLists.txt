@@ -26,4 +26,4 @@
 ADD_EXECUTABLE(ParserTest WIN32 parser-test.cc)
 ADD_TEST(ParserTest ParserTest)
 
-TARGET_LINK_LIBRARIES(ParserTest tempest-shared tempest-main)
+TARGET_LINK_LIBRARIES(ParserTest tempest-static tempest-main)

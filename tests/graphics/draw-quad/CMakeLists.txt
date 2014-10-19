@@ -28,4 +28,4 @@ ADD_DEFINITIONS("-DCURRENT_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 ADD_EXECUTABLE(DrawQuadTest WIN32 draw-quad.cc)
 ADD_TEST(DrawQuadTest DrawQuadTest)
 
-TARGET_LINK_LIBRARIES(DrawQuadTest tempest-shared tempest-main)
+TARGET_LINK_LIBRARIES(DrawQuadTest tempest-static tempest-main)

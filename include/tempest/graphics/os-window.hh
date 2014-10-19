@@ -52,7 +52,19 @@ typedef Window OSWindow;
 
 namespace Tempest
 {
-typedef int OSWindowSystem;
+class OSWindowSystem
+{
+public:
+    explicit OSWindowSystem();
+    ~OSWindowSystem()=default;
+
+    OSWindowSystem(const OSWindowSystem&)=delete;
+    OSWindowSystem& operator=(const OSWindowSystem&)=delete;
+
+    operator bool() const { return true; }
+    int nativeHandle() { return 0; }
+};
+
 typedef HWND OSWindow;
 }
 

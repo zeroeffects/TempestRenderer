@@ -102,7 +102,7 @@ bool BuildTextShaderSimple(const string& input_file, const string& output_file, 
     return BuildTextShaderSimple(input_file, output_file.empty() ? std::cout : fs, flags);
 }
 
-int TempestMain(int argc, char* argv[])
+int TempestMain(int argc, char** argv)
 {
     CommandLineOptsParser parser("shader_compiler", true);
     

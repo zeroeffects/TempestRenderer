@@ -23,7 +23,7 @@
 #   THE SOFTWARE.
 ##################################################################################
 
-ADD_EXECUTABLE(LoggingTest logging-test.cc)
+ADD_EXECUTABLE(LoggingTest WIN32 logging-test.cc)
 ADD_TEST(LoggingTest LoggingTest)
 
 TARGET_LINK_LIBRARIES(LoggingTest tempest-static tempest-main)

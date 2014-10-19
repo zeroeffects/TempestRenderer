@@ -26,4 +26,4 @@
 ADD_EXECUTABLE(ShaderFeatureCheckTest WIN32 feature-check.cc)
 ADD_TEST(ShaderFeatureCheckTest ShaderFeatureCheckTest)
 
-TARGET_LINK_LIBRARIES(ShaderFeatureCheckTest tempest-shared tempest-main)
+TARGET_LINK_LIBRARIES(ShaderFeatureCheckTest tempest-static tempest-main)

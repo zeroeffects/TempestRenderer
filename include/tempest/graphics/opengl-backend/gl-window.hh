@@ -70,6 +70,8 @@ class GLWindow
 #ifdef LINUX
     Colormap        m_XColormap = Colormap(); //!< Colormap used for gamma correction.
     GLXFBConfigPtr  m_FBConfig;
+#else
+    HDC             m_DC        = nullptr;
 #endif
     OSWindowSystem* m_Display   = nullptr;
 public:
@@ -84,6 +86,8 @@ public:
 
 #ifdef LINUX
     GLXFBConfigPtr getFBConfig() { return m_FBConfig; }
+#elif defined(_WIN32)
+    HDC getDC() { return m_DC;  }
 #endif
     OSWindow getWindowId() {  return m_Window; }
     
@@ -99,6 +103,9 @@ class GLContext
     // Because there is not a cannonical description what it should contain we pessimize the code.
     GLXFBConfigPtr  m_FBConfig;
     GLXContext      m_GLXContext = GLXContext();
+#elif defined(_WIN32)
+    HDC             m_DC         = nullptr;
+    HGLRC           m_HGLRC      = nullptr;
 #endif
     OSWindowSystem* m_Display    = nullptr;
 public:

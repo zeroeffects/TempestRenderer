@@ -26,4 +26,4 @@
 ADD_EXECUTABLE(WindowInitTest WIN32 window-init.cc)
 ADD_TEST(WindowInitTest WindowInitTest)
 
-TARGET_LINK_LIBRARIES(WindowInitTest tempest-shared tempest-main)
+TARGET_LINK_LIBRARIES(WindowInitTest tempest-static tempest-main)

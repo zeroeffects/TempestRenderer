@@ -24,6 +24,10 @@
 
 #include "tempest/utils/types.hh"
 
+#ifdef _WIN32
+    #include "tempest/utils/library.hh"
+#endif
+
 #include <vector>
 
 namespace Tempest
@@ -96,7 +100,16 @@ struct ControllerState
                     RightThumbY  = 0;
 };
 
-std::vector<ControllerDescription> GetControllerDescriptions();
+class ControllerLibrary
+{
+#ifdef _WIN32
+    Library         m_XInputLibrary;
+#endif
+public:
+    ControllerLibrary();
+
+    std::vector<ControllerDescription> GetControllerDescriptions();
+};
 
 class Controller
 {

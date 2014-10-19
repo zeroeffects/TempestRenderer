@@ -77,7 +77,9 @@ SET(TEMPEST_LIB_INC
 IF(UNIX)
     SET(TEMPEST_GL_PLATFORM_SPECIFIC_SRC graphics/opengl-backend/gl-window-x11.cc)
 ELSEIF(WIN32)
-
+	SET(TEMPEST_GL_PLATFORM_SPECIFIC_SRC
+		graphics/opengl-backend/gl-window-w32.cc
+		graphics/os-window-w32.cc)
 ENDIF()
    
 SET(TEMPEST_GRAPHICS_SRC
@@ -95,13 +97,24 @@ SET(TEMPEST_GRAPHICS_SRC
    )
 
 SET(TEMPEST_GRAPHICS_INC
-    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-library.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-all.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-backend.hh
-    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-utils.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-buffer.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-command-buffer.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-compiler.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-convenience.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-input-layout.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-input-layout.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-library.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-shader.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-texture.hh
-    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-definitions.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-utils.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-window.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/os-window.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-backend.hh
-   )
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-definitions.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/texture.hh
+  )
 
 SET(TEMPEST_IMAGE_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/image/image.hh

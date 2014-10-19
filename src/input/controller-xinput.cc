@@ -25,18 +25,35 @@
 #include "tempest/input/controller.hh"
 #include "tempest/utils/assert.hh"
 
-#include <XInput.h>
+#include <Windows.h>
+#include <Xinput.h>
 
 namespace Tempest
 {
-std::vector<ControllerDescription> GetControllerDescriptions()
+DWORD (WINAPI *_XInputGetCapabilities)(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES* pCapabilities);
+DWORD (WINAPI *_XInputGetState)(DWORD dwUserIndex, XINPUT_STATE* pState);
+
+ControllerLibrary::ControllerLibrary()
+    :   m_XInputLibrary("xinput1_3.dll")
+{
+    if(m_XInputLibrary.loaded())
+    {
+        _XInputGetCapabilities = reinterpret_cast<decltype(_XInputGetCapabilities)>(m_XInputLibrary.getProcAddress("XInputGetCapabilities"));
+        _XInputGetState = reinterpret_cast<decltype(_XInputGetState)>(m_XInputLibrary.getProcAddress("XInputGetState"));
+    }
+}
+
+std::vector<ControllerDescription> ControllerLibrary::GetControllerDescriptions()
 {
     std::vector<ControllerDescription> ctls;
+    if(_XInputGetCapabilities == nullptr)
+        return ctls;
+
     ControllerDescription desc;
     for(DWORD i = 0; i < 4; ++i)
     {
         XINPUT_CAPABILITIES caps;
-        if(XInputGetCapabilities(i, 0, &caps) != ERROR_SUCCESS)
+        if(_XInputGetCapabilities(i, 0, &caps) != ERROR_SUCCESS)
         {
             continue;
         }
@@ -107,7 +124,7 @@ bool Controller::getState(ControllerState* state)
 {
     XINPUT_STATE xstate;
     ZeroMemory(&xstate, sizeof(XINPUT_STATE));
-    if(XInputGetState(m_Index, &xstate) != ERROR_SUCCESS)
+    if(_XInputGetState(m_Index, &xstate) != ERROR_SUCCESS)
     {
         return false;
     }

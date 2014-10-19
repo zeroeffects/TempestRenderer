@@ -30,4 +30,4 @@ ADD_DEFINITIONS("-DCURRENT_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\""
 ADD_EXECUTABLE(ObjectFileViewerTest WIN32 object-file-viewer.cc)
 ADD_TEST(ObjectFileViewerTest ObjectFileViewerTest)
 
-TARGET_LINK_LIBRARIES(ObjectFileViewerTest tempest-shared tempest-main)
+TARGET_LINK_LIBRARIES(ObjectFileViewerTest tempest-static tempest-main)

@@ -28,4 +28,4 @@ ADD_DEFINITIONS("-DCURRENT_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 ADD_EXECUTABLE(DrawQuadTextureTest WIN32 draw-quad-texture.cc)
 ADD_TEST(DrawQuadTextureTest DrawQuadTextureTest)
 
-TARGET_LINK_LIBRARIES(DrawQuadTextureTest tempest-shared tempest-main)
+TARGET_LINK_LIBRARIES(DrawQuadTextureTest tempest-static tempest-main)

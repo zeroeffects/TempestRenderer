@@ -30,6 +30,6 @@ SET(TEMPEST_SHADER_COMPILER_SRC
     shader-compiler.cc
    )
 
-ADD_EXECUTABLE(shader-compiler ${TEMPEST_SHADER_COMPILER_SRC})
+ADD_EXECUTABLE(shader-compiler WIN32 ${TEMPEST_SHADER_COMPILER_SRC})
 
-TARGET_LINK_LIBRARIES(shader-compiler tempest-shared tempest-main)
+TARGET_LINK_LIBRARIES(shader-compiler tempest-static tempest-main)

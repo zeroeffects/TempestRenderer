@@ -37,7 +37,11 @@
 
 namespace Tempest
 {
-std::vector<ControllerDescription> GetControllerDescriptions()
+ControllerLibrary::ControllerLibrary()
+{
+}
+
+std::vector<ControllerDescription> ControllerLibrary::GetControllerDescriptions()
 {
     std::vector<ControllerDescription> desc_arr;
     

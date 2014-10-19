@@ -6,7 +6,8 @@
 
 TGE_TEST("Testing controller capabilities")
 {
-    std::vector<Tempest::ControllerDescription> controllers_descs = Tempest::GetControllerDescriptions();
+    Tempest::ControllerLibrary ctl_lib;
+    std::vector<Tempest::ControllerDescription> controllers_descs = ctl_lib.GetControllerDescriptions();
     
     std::vector<Tempest::Controller> controllers;
       

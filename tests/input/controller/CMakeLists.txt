@@ -23,7 +23,7 @@
 #   THE SOFTWARE.
 ##################################################################################
 
-ADD_EXECUTABLE(ControllerTest controller-test.cc)
+ADD_EXECUTABLE(ControllerTest WIN32 controller-test.cc)
 ADD_TEST(ControllerTest ControllerTest)
 
 TARGET_LINK_LIBRARIES(ControllerTest tempest-static tempest-main)
