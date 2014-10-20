@@ -23,6 +23,7 @@
 */
 
 #include "tempest/graphics/os-window.hh"
+#include "tempest/graphics/opengl-backend/gl-window.hh"
 #include "tempest/utils/logging.hh"
 
 namespace Tempest
@@ -33,7 +34,7 @@ OSWindowSystem::OSWindowSystem()
 
     wclass.cbSize = sizeof(WNDCLASSEX);
     wclass.style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC;
-    wclass.lpfnWndProc = nullptr;
+    wclass.lpfnWndProc = &GLWindow::WindowProc;
     wclass.cbClsExtra = 0;
     wclass.cbWndExtra = 0;
     wclass.hInstance = (HINSTANCE)GetModuleHandle(nullptr);

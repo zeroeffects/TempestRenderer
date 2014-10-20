@@ -369,11 +369,12 @@ GLLibrary::~GLLibrary()
 
 #ifdef _WIN32
 // Imagine that, you need regular context to query the extension.
-HGLRC w32hackCreateContextAttribs(HDC hDC, HGLRC hShareContext, const int *attribList)
+bool InitDummyContext(HDC hDC)
 {
-    if(!wglCreateContextAttribsARB)
+    if(!s_RC)
     {
-        PIXELFORMATDESCRIPTOR pfd = {
+        PIXELFORMATDESCRIPTOR pfd =
+        {
             sizeof(PIXELFORMATDESCRIPTOR),
             1,
             PFD_DRAW_TO_WINDOW |
@@ -399,13 +400,29 @@ HGLRC w32hackCreateContextAttribs(HDC hDC, HGLRC hShareContext, const int *attri
 
         s_RC = wglCreateContext(hDC);
         TGE_ASSERT(s_RC, "Expecting valid context");
-        if (!s_RC)
+        if(!s_RC)
+        {
             return false;
+        }
         wglMakeCurrent(hDC, s_RC);
 
         wglCreateContextAttribsARB = reinterpret_cast<decltype(wglCreateContextAttribsARB)>(GL_GET_PROC_ADDRESS("wglCreateContextAttribsARB"));
+        wglChoosePixelFormatARB = reinterpret_cast<decltype(wglChoosePixelFormatARB)>(GL_GET_PROC_ADDRESS("wglChoosePixelFormatARB"));
     }
+    return true;
+}
 
+BOOL w32hackChoosePixelFormatARB(HDC hDC, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats)
+{
+    if(!InitDummyContext(hDC) || !wglChoosePixelFormatARB)
+        return FALSE;
+    return wglChoosePixelFormatARB(hDC, piAttribIList, pfAttribFList, nMaxFormats, piFormats, nNumFormats);
+}
+
+HGLRC w32hackCreateContextAttribs(HDC hDC, HGLRC hShareContext, const int *attribList)
+{
+    if(!InitDummyContext(hDC) || !wglCreateContextAttribsARB)
+        return nullptr;
     return wglCreateContextAttribsARB(hDC, hShareContext, attribList);
 }
 #endif
@@ -423,9 +440,6 @@ bool GLLibrary::initGLX()
     GL_LIB_LOAD_FUNCTION(wglDeleteContext);
     GL_LIB_LOAD_FUNCTION(wglCreateContext);
     GL_LIB_LOAD_FUNCTION(wglGetProcAddress);
-
-    GL_LOAD_FUNCTION(wglGetExtensionsStringARB);
-    GL_LOAD_FUNCTION(wglChoosePixelFormatARB);
     return true;
 #elif defined(LINUX)
     GL_LIB_LOAD_FUNCTION(glXGetProcAddress);

@@ -66,6 +66,8 @@ GLWindow::~GLWindow()
     }
 }
 
+extern string GetLastErrorString();
+
 bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescription& wdesc)
 {
     auto ds_desc = TranslateDepthStencilBufferDescription(wdesc.DepthBufferFormat);
@@ -73,13 +75,14 @@ bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescri
     {
         WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
         WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+        WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
         WGL_DOUBLE_BUFFER_ARB, wdesc.Buffering != BufferingType::Single ? GL_TRUE : GL_FALSE,
         WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
         WGL_COLOR_BITS_ARB, TranslateColorBits(wdesc.ColorBufferFormat),
         WGL_DEPTH_BITS_ARB, ds_desc.DepthSize,
         WGL_STENCIL_BITS_ARB, ds_desc.StencilSize,
-        WGL_SAMPLES_ARB, static_cast<int>(wdesc.Samples),
-        0
+        WGL_SAMPLES_ARB, static_cast<int>(wdesc.Samples > 1 ? wdesc.Samples : 0),
+        0, 0
     };
 
     PIXELFORMATDESCRIPTOR pfd = 
@@ -90,7 +93,8 @@ bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescri
         PFD_TYPE_RGBA,
         24,
         0, 0, 0, 0, 0, 0,
-        8, 0,
+        8,
+        0,
         0,
         0, 0, 0, 0,
         24,
@@ -121,14 +125,23 @@ bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescri
 
     m_DC = GetDC(m_Window);
 
-    wglChoosePixelFormatARB(m_DC, pi_attr_list, NULL, 1, &pixel_format, &num_format);
+    if(!w32hackChoosePixelFormatARB(m_DC, pi_attr_list, NULL, 1, &pixel_format, &num_format))
+    {
+        Log(LogLevel::Error, "Failed to get pixel format");
+        return false;
+    }
     if(!SetPixelFormat(m_DC, pixel_format, &pfd))
     {
-        Log(LogLevel::Error, "Invalid pixel format");
+        Log(LogLevel::Error, "Invalid pixel format: ", GetLastErrorString());
         return false;
     }
     
     return true;
+}
+
+LRESULT CALLBACK GLWindow::WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
 void GLWindow::show()

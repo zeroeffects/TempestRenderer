@@ -91,10 +91,7 @@ extern PFNWGLMAKECURRENTPROC wglMakeCurrent;
 extern PFNWGLDELETECONTEXTPROC wglDeleteContext;
 extern PFNWGLCREATECONTEXTPROC wglCreateContext;
 
-extern PFNWGLGETEXTENSIONSSTRINGARBPROC wglGetExtensionsStringARB;
-extern PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB;
-extern PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
-
+BOOL w32hackChoosePixelFormatARB(HDC hDC, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
 HGLRC w32hackCreateContextAttribs(HDC hDC, HGLRC hShareContext, const int *attribList);
 #endif
 

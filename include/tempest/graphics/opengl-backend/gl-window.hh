@@ -84,6 +84,8 @@ public:
      */
     bool init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescription& wdesc);
 
+    static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+
 #ifdef LINUX
     GLXFBConfigPtr getFBConfig() { return m_FBConfig; }
 #elif defined(_WIN32)
