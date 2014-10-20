@@ -31,7 +31,7 @@
 namespace Tempest
 {
 //! Mathematical constant
-constexpr float math_pi = 3.141592f;
+const float math_pi = 3.141592f;
 
 inline float approx_eq(float lhs, float rhs)
 {

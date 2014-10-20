@@ -56,7 +56,7 @@ struct Vector2;
 template<class T> struct UniformValueBinding;
 #define UNIFORM_VALUE_BINDING(type, value) \
     template<> struct UniformValueBinding<type> { \
-        static constexpr UniformValueType value_type = value; };
+        static const UniformValueType value_type = value; };
 
 UNIFORM_VALUE_BINDING(GLTexture, UniformValueType::Texture);
 UNIFORM_VALUE_BINDING(Matrix4, UniformValueType::Matrix4);

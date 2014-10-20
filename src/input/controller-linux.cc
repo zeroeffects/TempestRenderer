@@ -126,7 +126,7 @@ bool Controller::getState(ControllerState* state)
     
     TGE_ASSERT(state, "Valid state must be passed to this function");
     
-    constexpr int event_buffer_size = 256;
+    const int event_buffer_size = 256;
     
     struct js_event evt;
     
