@@ -154,5 +154,12 @@ GLLinkedShaderProgram* GLShaderProgram::getUniqueLinkage(GLBakedResourceTable* _
 void GLLinkedShaderProgram::bind()
 {
     glUseProgram(m_Program);
+    if(m_Baked)
+    {
+        glUniformSubroutinesuiv(GL_VERTEX_SHADER, static_cast<GLsizei>(m_Baked->getSize())/sizeof(GLuint),
+                                reinterpret_cast<const GLuint*>(m_Baked->get()));
+        glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, static_cast<GLsizei>(m_Baked->getSize())/sizeof(GLuint),
+                                reinterpret_cast<const GLuint*>(m_Baked->get()));
+    }
 }
 }
