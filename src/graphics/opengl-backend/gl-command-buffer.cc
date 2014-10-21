@@ -195,7 +195,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
         if(prev_prog != cpu_cmd.LinkedShaderProgram ||
            prev_mode != cpu_cmd.PrimitiveType ||
            prev_layout != cpu_cmd.InputLayout ||
-           !vb_not_equal)
+           vb_not_equal)
         {
             GLuint layout_size = (GLuint)(prev_layout ? prev_layout->getAttributeCount() : 0);
             
