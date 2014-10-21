@@ -175,8 +175,13 @@ void Log(LogLevel log_level, string msg_str)
     else
     {
         auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
+#ifdef _MSC_VER
+        string _msg = msg_str + "\n";
+        OutputDebugString(_msg.c_str());
+#else
         LogMessage msg{ log_level, now.count(), msg_str };
         PrintMessage(GetStdOutput(log_level), msg);
+#endif
     }
 }
 }
