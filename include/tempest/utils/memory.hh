@@ -55,6 +55,13 @@
 
 #include "tempest/utils/patterns.hh"
 
+#ifdef _WIN32
+#   include <malloc.h>
+#   define TGE_ALLOCA _alloca
+#else
+#   include <alloca.h>
+#endif
+
 namespace Tempest
 {
 /*! \brief Allocator used for allocating memory for objects within Tempest Engine.

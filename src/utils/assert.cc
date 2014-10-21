@@ -24,9 +24,15 @@
 
 #include "tempest/utils/assert.hh"
 #include "tempest/utils/logging.hh"
+#include "tempest/utils/memory.hh"
 
 #if !defined(NDEBUG) && !defined(_WIN32) && defined(HAS_QT4)
 #   define QT_DEBUG_GUI
+#endif
+
+#ifdef _WIN32
+#   include <DbgHelp.h>
+#   pragma comment(lib, "Dbghelp.lib")
 #endif
 
 #if defined(_MSC_VER)
@@ -120,22 +126,42 @@ void CrashMessageBox(const string& title, const string& doc_msg)
 #if defined(_WIN32)
 string Backtrace(size_t start_frame, size_t end_frame)
 {
-    TGE_ASSERT(false, "Unimplemented. TODO: Stack walk");
-    return string();
+    auto stack_array = reinterpret_cast<void**>(TGE_ALLOCA(sizeof(void*)*end_frame));
+    auto process = GetCurrentProcess();
+    SymInitialize(process, NULL, TRUE);
+
+    auto frames = CaptureStackBackTrace(static_cast<DWORD>(start_frame), static_cast<DWORD>(end_frame), stack_array, NULL);
+    auto symbol = reinterpret_cast<SYMBOL_INFO *>(TGE_ALLOCA(sizeof(SYMBOL_INFO) + 256 * sizeof(char)));
+    symbol->MaxNameLen = 255;
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+    std::stringstream result;
+    result << "Backtrace:\n"
+              "==========\n";
+    
+    for(USHORT i = 0; i < frames; i++)
+    {
+        SymFromAddr(process, reinterpret_cast<DWORD64>(stack_array[i]), 0, symbol);
+
+        symbol->Name[symbol->NameLen] = 0;
+        result << symbol->Name << " - 0x" << std::hex << symbol->Address << "\n";
+    }
+
+    return result.str();
 }
 #elif defined(LINUX)
 string Backtrace(size_t start_frame, size_t end_frame)
 {
     string result = "Backtrace:\n"
                     "==========\n";
-    std::vector<void *> array(end_frame);
+    void** array = TGE_ALLOCA(end_frame);
     size_t size;
     int status;
     
     auto strings = CREATE_SCOPED(char**, ::free);
     
-    size = ::backtrace(&array.front(), array.size());
-    strings = ::backtrace_symbols(&array.front(), size);
+    size = ::backtrace(array, end_frame);
+    strings = ::backtrace_symbols(array, size);
     
     size_t end = std::min(end_frame, size);
     for(size_t i = start_frame; i < end; ++i)

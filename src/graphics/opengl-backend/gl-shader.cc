@@ -30,12 +30,6 @@
 #include "tempest/utils/logging.hh"
 #include "tempest/utils/assert.hh"
 
-#ifdef _WIN32
-    #define alloca _alloca
-#else
-    #include <alloca.h>
-#endif
-
 namespace Tempest
 {
 void GLResourceTable::setResource(ResourceIndex index, const GLTexture& tex)
