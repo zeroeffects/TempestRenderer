@@ -38,15 +38,17 @@ class Texture;
 class StateObject;
 class RenderTarget;
 class Framebuffer;
-class RasterizerStates;
-class BlendStates;
-class DepthStencilStates;
 class ConstantBuffer;
 class ShaderLoadingBackend;
 class ConstantManager;
 class DrawCommand;
 class CommandBuffer;
-    
+ 
+struct RasterizerStates;
+struct BlendStates;
+struct DepthStencilStates;
+
+
 struct FramebufferDescription
 {
     RenderTargetBindPoint bindPoint;

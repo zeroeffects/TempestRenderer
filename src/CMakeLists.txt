@@ -44,6 +44,7 @@ SET(TEMPEST_UTILS_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/utils/system.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/utils/testing.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/utils/types.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/utils/config.hh.in
    )
 
 IF(WIN32)
@@ -63,15 +64,7 @@ SET(TEMPEST_UTILS_SRC
    )
    
 SET(TEMPEST_LIB_INC
-    ${CMAKE_SOURCE_DIR}/include/tempest/utils/assert.hh
-    ${CMAKE_SOURCE_DIR}/include/tempest/utils/config.hh.in
-    ${CMAKE_SOURCE_DIR}/include/tempest/utils/memory.hh
-    ${CMAKE_SOURCE_DIR}/include/tempest/utils/parse-command-line.hh
-    ${CMAKE_SOURCE_DIR}/include/tempest/utils/patterns.hh
-    ${CMAKE_SOURCE_DIR}/include/tempest/utils/system.hh
-    ${CMAKE_SOURCE_DIR}/include/tempest/utils/macros.hh
-    ${CMAKE_SOURCE_DIR}/include/tempest/utils/library.hh
-    ${CMAKE_SOURCE_DIR}/include/tempest/utils/file-system.hh
+    
    )
 
 IF(UNIX)
@@ -93,6 +86,7 @@ SET(TEMPEST_GRAPHICS_SRC
     graphics/opengl-backend/gl-buffer.cc
     graphics/opengl-backend/gl-input-layout.cc
     graphics/opengl-backend/gl-texture.cc
+	graphics/opengl-backend/gl-state-object.cc
     graphics/rendering-convenience.cc
    )
 
@@ -110,9 +104,12 @@ SET(TEMPEST_GRAPHICS_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-texture.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-utils.hh
 	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-window.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-state-object.hh
 	${CMAKE_SOURCE_DIR}/include/tempest/graphics/os-window.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-backend.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-convenience.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-definitions.hh
+	${CMAKE_SOURCE_DIR}/include/tempest/graphics/state-object.hh
 	${CMAKE_SOURCE_DIR}/include/tempest/graphics/texture.hh
   )
 
@@ -231,7 +228,6 @@ SET(TEMPEST_MESH_INC
 SET(TEMPEST_LIBRARY_FILES
     ${TEMPEST_UTILS_INC}
     ${TEMPEST_UTILS_SRC}
-    ${TEMPEST_LIB_INC}
     ${TEMPEST_GRAPHICS_SRC}
     ${TEMPEST_GRAPHICS_INC}
     ${TEMPEST_PARSER_SRC}
@@ -243,6 +239,19 @@ SET(TEMPEST_LIBRARY_FILES
     ${TEMPEST_MATH_SRC}
     ${TEMPEST_MATH_INC}
    )
+
+SOURCE_GROUP("Utility functions" FILES ${TEMPEST_UTILS_INC}
+									   ${TEMPEST_UTILS_SRC})
+SOURCE_GROUP("Graphics" FILES ${TEMPEST_GRAPHICS_SRC}
+							  ${TEMPEST_GRAPHICS_INC})
+SOURCE_GROUP("File parser" FILES ${TEMPEST_PARSER_SRC}
+								 ${TEMPEST_PARSER_INC})
+SOURCE_GROUP("Image loader" FILES ${TEMPEST_IMAGE_SRC}
+								  ${TEMPEST_IMAGE_INC})
+SOURCE_GROUP("Input" FILES ${TEMPEST_INPUT_SRC}
+						   ${TEMPEST_INPUT_INC})
+SOURCE_GROUP("Math" FILES ${TEMPEST_MATH_SRC}
+						  ${TEMPEST_MATH_INC})
 
 IF(UNIX)
     SET(EXTRA_LIBS dl)

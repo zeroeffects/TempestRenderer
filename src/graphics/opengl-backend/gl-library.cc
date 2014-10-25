@@ -78,6 +78,8 @@ PFNGLVIEWPORTPROC glViewport = nullptr;
 PFNGLCLEARCOLORPROC glClearColor = nullptr;
 PFNGLCLEARPROC glClear = nullptr;
 PFNGLCOLORMASKPROC glColorMask = nullptr;
+PFNGLBLENDFUNCIPROC glBlendFunci = nullptr;
+PFNGLBLENDEQUATIONIPROC glBlendEquationi = nullptr;
 PFNGLBLENDFUNCPROC glBlendFunc = nullptr;
 PFNGLLOGICOPPROC glLogicOp = nullptr;
 PFNGLCULLFACEPROC glCullFace = nullptr;
@@ -482,6 +484,8 @@ bool GLLibrary::initGL()
     GL_LOAD_FUNCTION(glClearColor);
     GL_LOAD_FUNCTION(glClear);
     GL_LOAD_FUNCTION(glColorMask);
+    GL_LOAD_FUNCTION(glBlendFunci);
+    GL_LOAD_FUNCTION(glBlendEquationi);
     GL_LOAD_FUNCTION(glBlendFunc);
     GL_LOAD_FUNCTION(glLogicOp);
     GL_LOAD_FUNCTION(glCullFace);

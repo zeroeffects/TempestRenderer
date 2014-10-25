@@ -239,19 +239,7 @@ void GLTexture::setCompareFunction(ComparisonFunction compare_func)
     else
     {
         glTextureParameteriEXT(m_Texture, m_Target, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        GLenum gl_cmp_func;
-        switch(compare_func)
-        {
-        case ComparisonFunction::Never: gl_cmp_func = GL_NEVER; break;
-        case ComparisonFunction::Less: gl_cmp_func = GL_LESS; break;
-        case ComparisonFunction::Equal: gl_cmp_func = GL_EQUAL; break;
-        case ComparisonFunction::LessEqual: gl_cmp_func = GL_LEQUAL; break;
-        case ComparisonFunction::Greater: gl_cmp_func = GL_GREATER; break;
-        case ComparisonFunction::NotEqual: gl_cmp_func = GL_NOTEQUAL; break;
-        case ComparisonFunction::GreaterEqual: gl_cmp_func = GL_GEQUAL; break;
-        case ComparisonFunction::AlwaysPass: gl_cmp_func = GL_ALWAYS; break;
-        }
-        glTextureParameteriEXT(m_Texture, m_Target, GL_TEXTURE_COMPARE_FUNC, gl_cmp_func);
+        glTextureParameteriEXT(m_Texture, m_Target, GL_TEXTURE_COMPARE_FUNC, TranslateComparisonFunction(compare_func));
     }
 }
 

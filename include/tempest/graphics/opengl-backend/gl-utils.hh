@@ -32,10 +32,27 @@
 #include <GL/gl.h>
 
 #include "tempest/utils/logging.hh"
+#include "tempest/graphics/rendering-definitions.hh"
 
 namespace Tempest
 {
 string ConvertGLErrorToString(GLenum err);
+
+inline GLenum TranslateComparisonFunction(ComparisonFunction compare_func)
+{
+    switch(compare_func)
+    {
+    default: TGE_ASSERT(false, "Unknown comparison function");
+    case ComparisonFunction::Never: return GL_NEVER;
+    case ComparisonFunction::Less: return GL_LESS;
+    case ComparisonFunction::Equal: return GL_EQUAL;
+    case ComparisonFunction::LessEqual: return GL_LEQUAL;
+    case ComparisonFunction::Greater: return GL_GREATER;
+    case ComparisonFunction::NotEqual: return GL_NOTEQUAL;
+    case ComparisonFunction::GreaterEqual: return GL_GEQUAL;
+    case ComparisonFunction::AlwaysPass: return GL_ALWAYS;
+    }
+}
 
 #ifndef NDEBUG
 inline void CheckOpenGL()

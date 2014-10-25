@@ -26,6 +26,10 @@
 #define TEMPEST_GL_RENDERING_BACKEND_HH_
 
 #include "tempest/graphics/rendering-backend.hh"
+#include "tempest/graphics/opengl-backend/gl-state-object.hh"
+
+#include <unordered_set>
+#include <memory>
 
 namespace Tempest
 {
@@ -46,8 +50,40 @@ class GLTexture;
 class GLShaderProgram;
 class GLInputLayout;
 
+struct GLBlendStates;
+struct GLRasterizerStates;
+struct GLDepthStencilStates;
+
 class GLRenderingBackend
 {
+    template<class T>
+    struct CompareIndirect
+    {
+        bool operator()(const std::unique_ptr<T>& lhs, const std::unique_ptr<T>& rhs);
+    };
+
+    template<class T>
+    struct HashIndirect
+    {
+        size_t operator()(const std::unique_ptr<T>& state_obj);
+    };
+
+    template<class T>
+    using StateHashMap = std::unordered_set < std::unique_ptr<T>, HashIndirect<T>, CompareIndirect<T> >;
+
+    typedef StateHashMap<GLStateObject> GLStateObjectMap;
+    typedef StateHashMap<GLBlendStates> GLBlendStatesMap;
+    typedef StateHashMap<GLRasterizerStates> GLRasterizerStatesMap;
+    typedef StateHashMap<GLDepthStencilStates> GLDepthStencilStatesMap;
+    const GLStateObject*    m_CurrentStateObject = nullptr;
+    GLStateObjectMap        m_StateObjects;
+    GLBlendStatesMap        m_BlendStates;
+    GLRasterizerStatesMap   m_RasterizerStates;
+    GLDepthStencilStatesMap m_DepthStencilStates;
+
+    GLBlendStates           m_DefaultBlendState;
+    GLRasterizerStates      m_DefaultRasterizerStates;
+    GLDepthStencilStates    m_DefaultDepthStencilStates;
 public:
     typedef GLRenderTarget  RenderTargetType;
     typedef GLCommandBuffer CommandBufferType;
@@ -178,8 +214,17 @@ public:
      *  \param blend_states         a pointer to blend state description.
      *  \param depth_stencil_states a pointer to depth stencil state description.
      */
-    GLStateObject* createStateObject(const RasterizerStates* rasterizer_states, const BlendStates* blend_states, const DepthStencilStates* depth_stencil_states);
+    GLStateObject* createStateObject(const RasterizerStates* rasterizer_states = nullptr, const BlendStates* blend_states = nullptr, const DepthStencilStates* depth_stencil_states = nullptr);
     
+    /*! \brief Destroy a state object.
+    *
+    *   \remarks In this implementation it does nothing because it has elaborate duplication tracking mechanism which guarantees that every state
+    *            is unique. It is expected that the overall unique states are going to be constant and/or small amount.
+    *
+    *   \param state_obj  a pointer to the state object.
+    */
+    GLStateObject* destroyRenderResource(const GLStateObject* state_obj) {}
+
     /*! \brief Bind the state object to the pipeline.
      * 
      *  It binds all associated states to the pipeline. Some APIs are really chatty when it comes to states. However, making them in a single batch makes the binding
