@@ -184,5 +184,6 @@ bool GLContext::attach(OSWindowSystem& wnd_sys, GLWindow& window)
     }
     m_DC = window.getDC();
     wglMakeCurrent(m_DC, m_HGLRC);
+	return true;
 }
 }

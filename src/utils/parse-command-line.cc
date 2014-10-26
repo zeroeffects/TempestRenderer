@@ -101,6 +101,7 @@ bool CommandLineOptsParser::parse(int argc, char* argv[])
             return false;
         }
     }
+	return true;
 }
     
 void CommandLineOptsParser::printHelp(std::ostream& os)
