@@ -23,5 +23,5 @@ Thumbs.db
 *.o
 *.so
 *.kdev4
-nda-
+nda-*
 

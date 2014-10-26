@@ -23,6 +23,10 @@
 #   THE SOFTWARE.
 ##################################################################################
 
+IF(EXISTS ${CMAKE_SOURCE_DIR}/nda-build.cmake)
+	INCLUDE(nda-build.cmake)
+ENDIF()
+
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_BINARY_DIR}/include
                     ${CMAKE_SOURCE_DIR}/external
@@ -62,10 +66,6 @@ SET(TEMPEST_UTILS_SRC
     utils/file-system.cc
     utils/interleave-vertices.cc
    )
-   
-SET(TEMPEST_LIB_INC
-    
-   )
 
 IF(UNIX)
     SET(TEMPEST_GL_PLATFORM_SPECIFIC_SRC graphics/opengl-backend/gl-window-x11.cc)
@@ -77,6 +77,7 @@ ENDIF()
    
 SET(TEMPEST_GRAPHICS_SRC
 	${TEMPEST_GL_PLATFORM_SPECIFIC_SRC}
+	${TEMPEST_NDA_GRAPHICS_SRC}
     graphics/opengl-backend/gl-library.cc
     graphics/opengl-backend/gl-backend.cc
     graphics/opengl-backend/gl-convenience.cc
@@ -91,6 +92,7 @@ SET(TEMPEST_GRAPHICS_SRC
    )
 
 SET(TEMPEST_GRAPHICS_INC
+	${TEMPEST_NDA_GRAPHICS_INC}
 	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-all.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-backend.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-buffer.hh
