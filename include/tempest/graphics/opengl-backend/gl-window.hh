@@ -37,24 +37,6 @@
 
 namespace Tempest
 {
-enum class BufferingType
-{
-    Single,
-    Double,
-    Triple
-};
-    
-struct WindowDescription
-{
-    size_t          Width = 100,
-                    Height = 100;
-    string          Title = "Generic window";
-    DataFormat      ColorBufferFormat = DataFormat::RGBA8UNorm;
-    DataFormat      DepthBufferFormat = DataFormat::D24S8;
-    size_t          Samples = 1;
-    BufferingType   Buffering = BufferingType::Double;
-};
-
 #ifdef LINUX 
 struct XFreeRAII
 {
@@ -83,8 +65,6 @@ public:
      *  This function creates a window object that is usable for rendering.
      */
     bool init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescription& wdesc);
-
-    static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 #ifdef LINUX
     GLXFBConfigPtr getFBConfig() { return m_FBConfig; }

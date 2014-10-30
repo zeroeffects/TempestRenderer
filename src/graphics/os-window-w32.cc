@@ -34,7 +34,7 @@ OSWindowSystem::OSWindowSystem()
 
     wclass.cbSize = sizeof(WNDCLASSEX);
     wclass.style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC;
-    wclass.lpfnWndProc = &GLWindow::WindowProc;
+	wclass.lpfnWndProc = &DefWindowProc;
     wclass.cbClsExtra = 0;
     wclass.cbWndExtra = 0;
     wclass.hInstance = (HINSTANCE)GetModuleHandle(nullptr);

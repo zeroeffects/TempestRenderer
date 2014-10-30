@@ -26,24 +26,26 @@
 #define _GL_CONVENIENCE_HH_
 
 #include "tempest/graphics/os-window.hh"
+#include "tempest/graphics/opengl-backend/gl-backend.hh"
+#include "tempest/graphics/opengl-backend/gl-window.hh"
+#include "tempest/graphics/opengl-backend/gl-library.hh"
+#include "tempest/graphics/opengl-backend/gl-compiler.hh"
+#include "tempest/graphics/opengl-backend/gl-backend.hh"
 
 namespace Tempest
 {
-class GLLibrary;
-class GLContext;
-class GLWindow;
     
 struct GLSystem
 {
-    GLLibrary      Library;
-    GLWindow       Window;
-    GLContext      Context;
-    OSWindowSystem Display;
+    GLLibrary           Library;
+    GLWindow            Window;
+    GLContext           Context;
+    GLRenderingBackend  Backend;
+    GLShaderCompiler    ShaderCompiler;
+    OSWindowSystem      Display;
 };
 
 typedef std::unique_ptr<GLSystem> GLSystemPtr;
-
-GLSystemPtr CreateGLSystemAndWindow(const WindowDescription& wdesc);
 }
 
 #endif // _GL_CONVENIENCE_HH_

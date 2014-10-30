@@ -5,6 +5,7 @@
 #include "tempest/graphics/opengl-backend/gl-all.hh"
 
 // This one includes comments because it is used as proof of concept.
+#define TEMPEST_RENDERING_SYSTEM Tempest::GLSystem
 
 TGE_TEST("Testing the rendering context")
 {
@@ -13,13 +14,12 @@ TGE_TEST("Testing the rendering context")
     wdesc.Width = 800;
     wdesc.Height = 600;
     wdesc.Title = "Test window";
-    auto sys_obj = Tempest::CreateGLSystemAndWindow(wdesc);
+    auto sys_obj = Tempest::CreateSystemAndWindowSimple<TEMPEST_RENDERING_SYSTEM>(wdesc);
     TGE_ASSERT(sys_obj, "GL initialization failed");
     
     // You are going to need a command buffer. This is just a persistent mapped buffer and
     // a CPU buffer that contains description of draw commands (batches).
-    Tempest::GLRenderingBackend backend;
-    auto command_buf = Tempest::CreateCommandBuffer(&backend);
+    auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend);
     
     // Vertex buffer and index buffer.
     std::vector<Tempest::Vector2> arr{ Tempest::Vector2(0.0f, 0.0f),
@@ -29,18 +29,17 @@ TGE_TEST("Testing the rendering context")
     
     std::vector<Tempest::uint16> idx_arr{ 0, 1, 2, 3};
     
-    auto vertex_buf = Tempest::CreateBuffer(&backend, arr, Tempest::VBType::VertexBuffer);
-    auto index_buf = Tempest::CreateBuffer(&backend, idx_arr, Tempest::VBType::IndexBuffer);
+    auto vertex_buf = Tempest::CreateBuffer(&sys_obj->Backend, arr, Tempest::VBType::VertexBuffer);
+    auto index_buf = Tempest::CreateBuffer(&sys_obj->Backend, idx_arr, Tempest::VBType::IndexBuffer);
     
     // Compile a shader. This project contains a complicated shader parser, but you can
     // probably get away with minimal shader preprocessor just to fill the gaps between
     // shader languages.
-    Tempest::GLShaderCompiler compiler;
-    auto shader = Tempest::CreateShader(&compiler, CURRENT_SOURCE_DIR "/test.tfx");
+    auto shader = Tempest::CreateShader(&sys_obj->ShaderCompiler, CURRENT_SOURCE_DIR "/test.tfx");
     TGE_ASSERT(shader, "Expecting successful compilation");
     
     // A texture that we are going to attach to the draw batch's resource table.
-    auto tex = Tempest::CreateTexture(&backend, CURRENT_SOURCE_DIR "/Mandrill.tga");
+    auto tex = Tempest::CreateTexture(&sys_obj->Backend, CURRENT_SOURCE_DIR "/Mandrill.tga");
     tex->setFilter(Tempest::FilterMode::Linear, Tempest::FilterMode::Linear, Tempest::FilterMode::Linear);
     tex->setWrapMode(Tempest::WrapMode::Clamp, Tempest::WrapMode::Clamp, Tempest::WrapMode::Clamp);
     
@@ -64,7 +63,7 @@ TGE_TEST("Testing the rendering context")
         { 0, "VertexData", Tempest::DataFormat::RG32F, 0 }
     };
     
-    auto input_layout = Tempest::CreateInputLayout(&backend, shader.get(), layout_arr);
+    auto input_layout = Tempest::CreateInputLayout(&sys_obj->Backend, shader.get(), layout_arr);
     
     auto* shader_ptr = shader.get();
     
@@ -74,7 +73,8 @@ TGE_TEST("Testing the rendering context")
     // That's the actual batch. It describes all the stuff required for sucessful draw call. You
     // might want to attach a pipeline state to your draw batch. Also, you should pool allocate graphics
     // device objects, so that you can get away with 32-bit handles on 64-bit systems.
-    Tempest::GLDrawBatch batch;
+    typedef decltype(sys_obj->Backend) BackendType;
+    BackendType::CommandBufferType::DrawBatchType batch;
     batch.PrimitiveType = Tempest::DrawModes::TriangleStrip;
     batch.VertexCount = idx_arr.size();
     batch.ResourceTable = baked_table.get();
@@ -97,7 +97,7 @@ TGE_TEST("Testing the rendering context")
     // And that's the render loop. We have prebaked everything, so we are not doing anything special.
     for(;;)
     {
-        backend.submitCommandBuffer(command_buf.get());
+        sys_obj->Backend.submitCommandBuffer(command_buf.get());
         
         sys_obj->Window.swapBuffers();
     }

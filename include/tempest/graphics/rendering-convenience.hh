@@ -26,7 +26,9 @@
 #define TEMPEST_RENDERING_CONVENIENCE_HH
 
 #include "tempest/graphics/rendering-definitions.hh"
+#include "tempest/graphics/os-window.hh"
 #include "tempest/utils/file-system.hh"
+#include "tempest/utils/memory.hh"
 #include "tempest/parser/file-loader.hh"
 #include "tempest/graphics/texture.hh"
 #include "tempest/math/vector4.hh"
@@ -90,6 +92,33 @@ public:
         }
     }
 };
+
+template<class TSystem>
+std::unique_ptr<TSystem> CreateSystemAndWindowSimple(const WindowDescription& wdesc)
+{
+    typedef std::unique_ptr<TSystem> TSystemPtr;
+    auto sys = Tempest::make_unique<TSystem>();
+
+    auto status = sys->Library.initDeviceContextLibrary();
+    if(!status)
+        return TSystemPtr();
+
+    status = sys->Window.init(sys->Display, 0, wdesc);
+    if(!status)
+        return TSystemPtr();
+
+    status = sys->Context.attach(sys->Display, sys->Window);
+    if(!status)
+        return TSystemPtr();
+
+    status = sys->Library.initGraphicsLibrary();
+    if(!status)
+        return TSystemPtr();
+
+    sys->Backend.init(sys->Context);
+
+    return sys;
+}
 
 template<class TBackend, class TResource, class T>
 using UniqueSubresource = std::unique_ptr<T, SubresourceDestructor<TBackend, TResource, T>>;

@@ -139,11 +139,6 @@ bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescri
     return true;
 }
 
-LRESULT CALLBACK GLWindow::WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    return DefWindowProc(hwnd, message, wParam, lParam);
-}
-
 void GLWindow::show()
 {
     ShowWindow(m_Window, SW_SHOW);

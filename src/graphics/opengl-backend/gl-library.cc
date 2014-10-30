@@ -429,7 +429,7 @@ HGLRC w32hackCreateContextAttribs(HDC hDC, HGLRC hShareContext, const int *attri
 }
 #endif
 
-bool GLLibrary::initGLX()
+bool GLLibrary::initDeviceContextLibrary()
 {
     if(m_GLLib.loaded())
         return true;
@@ -461,7 +461,7 @@ bool GLLibrary::initGLX()
 #endif
 }
 
-bool GLLibrary::initGL()
+bool GLLibrary::initGraphicsLibrary()
 {
     GL_LOAD_FUNCTION(glDrawRangeElements);
     GL_LOAD_FUNCTION(glTexImage3D);

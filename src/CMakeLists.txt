@@ -23,17 +23,18 @@
 #   THE SOFTWARE.
 ##################################################################################
 
-IF(EXISTS ${CMAKE_SOURCE_DIR}/nda-build.cmake)
+IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/nda-build.cmake)
 	INCLUDE(nda-build.cmake)
 ENDIF()
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_BINARY_DIR}/include
                     ${CMAKE_SOURCE_DIR}/external
-					${FLEX_INCLUDE_DIRS}
+                    ${FLEX_INCLUDE_DIRS}
                     ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}
-                    ${WINDOW_SYSTEM_INCLUDE_DIR})
+                    ${WINDOW_SYSTEM_INCLUDE_DIR}
+                    ${NDA_INCLUDE_DIRS})
 
 SET(TEMPEST_UTILS_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/utils/assert.hh
@@ -80,7 +81,6 @@ SET(TEMPEST_GRAPHICS_SRC
 	${TEMPEST_NDA_GRAPHICS_SRC}
     graphics/opengl-backend/gl-library.cc
     graphics/opengl-backend/gl-backend.cc
-    graphics/opengl-backend/gl-convenience.cc
     graphics/opengl-backend/gl-command-buffer.cc
     graphics/opengl-backend/gl-compiler.cc
     graphics/opengl-backend/gl-shader.cc
@@ -270,10 +270,10 @@ IF(UNIX)
 ENDIF()
 
 ADD_LIBRARY(tempest-static STATIC ${TEMPEST_LIBRARY_FILES})
-TARGET_LINK_LIBRARIES(tempest-static ${EXTRA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} tempest-shader-tmp tempest-mesh-tmp xxhash)
+TARGET_LINK_LIBRARIES(tempest-static ${EXTRA_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} tempest-shader-tmp tempest-mesh-tmp xxhash)
 
 ADD_LIBRARY(tempest-shared SHARED ${TEMPEST_LIBRARY_FILES})
-TARGET_LINK_LIBRARIES(tempest-shared ${EXTRA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} tempest-shader-tmp tempest-mesh-tmp xxhash)
+TARGET_LINK_LIBRARIES(tempest-shared ${EXTRA_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} tempest-shader-tmp tempest-mesh-tmp xxhash)
 
 
 ADD_LIBRARY(tempest-main STATIC utils/tempest-main.cc)

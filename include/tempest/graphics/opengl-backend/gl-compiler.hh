@@ -30,7 +30,7 @@
 namespace Tempest
 {
 class FileLoader;
-class FileDescription;
+struct FileDescription;
 class GLShaderProgram;
 class GLRenderingBackend;
 

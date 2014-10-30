@@ -66,8 +66,8 @@ public:
     explicit GLLibrary()=default;
      ~GLLibrary();
 
-    bool initGLX();
-    bool initGL();
+    bool initDeviceContextLibrary();
+    bool initGraphicsLibrary();
 };
 
 

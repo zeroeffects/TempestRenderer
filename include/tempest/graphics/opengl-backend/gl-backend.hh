@@ -49,6 +49,7 @@ class GLStateObject;
 class GLTexture;
 class GLShaderProgram;
 class GLInputLayout;
+class GLContext;
 
 struct GLBlendStates;
 struct GLRasterizerStates;
@@ -104,6 +105,10 @@ public:
     
     //! \remarks Assignment constructor.
     GLRenderingBackend& operator=(const GLRenderingBackend&)=delete;
+
+    /*! \brief Performs the actual initialization process.
+     */
+    bool init(GLContext& gl_ctx);
 
     /*! \brief Create a render target (frame buffer) for off-screen rendering and later composition.
      * 

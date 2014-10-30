@@ -23,6 +23,7 @@
  */
 
 #include "tempest/utils/library.hh"
+#include "tempest/utils/logging.hh"
 #include <cassert>
 
 namespace Tempest
@@ -55,6 +56,8 @@ void Library::free()
     m_Lib = 0;
 }
 
+string GetLastErrorString();
+
 ProcType Library::getProcAddress(const string& str)
 {
     if(!m_Lib)
@@ -66,6 +69,11 @@ ProcType Library::getProcAddress(const string& str)
     } ptr;
 #ifdef _WIN32
     ptr.proc = GetProcAddress(m_Lib, str.c_str());
+    if(ptr.proc == nullptr)
+    {
+        Log(LogLevel::Error, "Failed to find symbol within library ", str, ": ", GetLastErrorString());
+        return nullptr;
+    }
 #elif defined(LINUX)
     ptr.symbol = GetProcAddress(m_Lib, str.c_str());
 #else

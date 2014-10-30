@@ -119,6 +119,14 @@ void DebugLoggingCallback(GLenum source, GLenum type, GLenum id, GLenum severity
 
 GLRenderingBackend::GLRenderingBackend()
 {
+}
+
+GLRenderingBackend::~GLRenderingBackend()
+{
+}
+
+bool GLRenderingBackend::init(GLContext& gl_ctx)
+{
 #ifndef NDEBUG
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(&DebugLoggingCallback, nullptr);
@@ -132,10 +140,14 @@ GLRenderingBackend::GLRenderingBackend()
     TranslateRasterizerStates(&default_rast_state, &m_DefaultRasterizerStates);
     TranslateBlendStates(&default_blend_state, &m_DefaultBlendState);
     TranslateDepthStencilStates(&default_depth_stencil_state, &m_DefaultDepthStencilStates);
-}
-
-GLRenderingBackend::~GLRenderingBackend()
-{
+    int opengl_err = glGetError();
+    if(opengl_err != GL_NO_ERROR)
+    {
+        Log(LogLevel::Error, "OpenGL: error: ", ConvertGLErrorToString(opengl_err));
+        TGE_ASSERT(opengl_err == GL_NO_ERROR, "An error has occurred while using OpenGL");
+        return false;
+    }
+    return true;
 }
 
 GLRenderTarget* GLRenderingBackend::createRenderTarget(const TextureDescription& desc, uint32 flags)
