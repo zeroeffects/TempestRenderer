@@ -532,12 +532,6 @@ struct NodeT
         return m_Impl == nullptr;
     }
 
-    void printLocation(std::ostream& os) const
-    {
-        // GLSL is stupid; we should parse numbers and do the look-up ourselves.
-        os << "#line " << m_Impl->getDeclarationLocation().startLine << " 0\n";
-    }  
-
     NodeT(const NodeT&) = delete;
     NodeT& operator=(const NodeT&) = delete;
 };
@@ -616,6 +610,7 @@ public:
     VisitorInterface() {}
     virtual ~VisitorInterface() {}
     
+    virtual void visit(const Location& loc)=0;
     virtual void visit(const Value<float>* value)=0;
     virtual void visit(const Value<int>* value)=0;
     virtual void visit(const Value<unsigned>* value)=0;
@@ -662,6 +657,17 @@ void PrintNode(PrinterInfrastructure* printer, const Value<T>* value) { printer-
 void PrintNode(AST::VisitorInterface* visitor, PrinterInfrastructure* printer, const ListElement* lst);
 void PrintNode(AST::VisitorInterface* visitor, PrinterInfrastructure* printer, const Block* _block);
 void PrintNode(PrinterInfrastructure* printer, const StringLiteral* value);
+
+inline void PrintLocation(PrinterInfrastructure* printer, const Location& loc, const char* filename = nullptr)
+{
+    // GLSL is stupid; we should parse numbers and do the look-up ourselves.
+    auto& os = printer->stream();
+    os << "#line " << loc.startLine; 
+    if(filename)
+        os << " \"" << filename << "\"\n";
+    else
+        os << " 0\n";
+}
 
 template<class T> class ListIterator;
 

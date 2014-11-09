@@ -38,6 +38,7 @@
 #include "tempest/utils/types.hh"
 #include "tempest/utils/assert.hh"
 #include "tempest/utils/patterns.hh"
+#include "tempest/graphics/shader.hh"
 #include "tempest/graphics/rendering-definitions.hh"
 
 namespace Tempest
@@ -67,15 +68,6 @@ UNIFORM_VALUE_BINDING(float, UniformValueType::Float);
 UNIFORM_VALUE_BINDING(int32, UniformValueType::Integer);
 UNIFORM_VALUE_BINDING(uint32, UniformValueType::UnsignedInteger);
 UNIFORM_VALUE_BINDING(bool, UniformValueType::Boolean);
-
-struct DataDescription
-{
-    string           Name;
-    UniformValueType Type;
-    uint16           ElementSize;
-    uint16           ElementCount;
-    uint32           Offset;
-};
 
 class GLBakedResourceTable
 {
@@ -114,32 +106,6 @@ public:
     const char* get() const { return m_Table; }
     
     size_t getSize() const { return m_Size; }
-};
-
-struct ResourceTableDescription
-{
-    string                       Name;
-    uint32                       BindPoint;
-    uint32                       BufferSize;
-    uint32                       ExtendablePart;
-    PACKED_DATA(DataDescription) Uniforms;
-    
-    ResourceTableDescription(const ResourceTableDescription&)=delete;
-    ResourceTableDescription& operator=(const ResourceTableDescription&)=delete;
-    
-private:
-	ResourceTableDescription(uint32 count, uint32 extendable_part, string name, uint32 bind_point)
-        :   ExtendablePart(extendable_part),
-            Name(name),
-            BindPoint(bind_point),
-            Uniforms(count) {}
-     ~ResourceTableDescription()=default;
-};
-
-struct ResourceIndex
-{
-    uint32 ResourceTableIndex = 0;
-    uint32 BaseOffset = 0;
 };
 
 class GLResourceTable

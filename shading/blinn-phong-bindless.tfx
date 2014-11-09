@@ -56,30 +56,17 @@ uniform subroutine IlluminationModel Illum;
 
 struct GlobalsDesc
 {
-    mat4 Transform;
-    vec4 AmbientDissolve;          // Ka, d (alpha)
-    vec4 DiffuseReflectivity;      // Kd, sharpness
-    vec4 Specular;                 // Ks, Ns
-//  vec4 Transmission;             // Tf, Ni
-    uint AmbientReflectivityMap;   // map_Ka
-    uint DiffuseReflectivityMap;   // map_Kd
-    uint SpecularReflectivityMap;  // map_Ks
-    uint SpecularExponentMap;      // map_Ns
-    uint DissolveMap;              // map_d
+    mat4      Transform;
+    vec4      AmbientDissolve;          // Ka, d (alpha)
+    vec4      DiffuseReflectivity;      // Kd, sharpness
+    vec4      Specular;                 // Ks, Ns
+//  vec4      Transmission;             // Tf, Ni
+    sampler2D AmbientReflectivityMap;   // map_Ka
+    sampler2D DiffuseReflectivityMap;   // map_Kd
+    sampler2D SpecularReflectivityMap;  // map_Ks
+    sampler2D SpecularExponentMap;      // map_Ns
+    sampler2D DissolveMap;              // map_d
 };
-
-void GetResourceIndex(in uint packed_res_idx, out uint tex_slot, out uint tex_slice)
-{
-    tex_slot  = packed_res_idx >> 16;
-    tex_slice = packed_res_idx & 0xFFFF;
-}
-
-// The main reason is APIs that support some non-bindless weirdness for the old hardware
-// sake.
-resources buffer ResourcesTable
-{
-    sampler2DArray Textures[16];
-}
 
 buffer GlobalsBuffer
 {
@@ -123,23 +110,12 @@ fragment shader FS_PTN
     {
         vec3 eye = normalize(InterpView);
         vec4 ambient, diffuse, specular;
-        uint ambient_slot, ambient_slice,
-             diffuse_slot, diffuse_slice,
-             specular_slot, specular_slice,
-             dissolve_slot, dissolve_slice,
-             specular_exp_slot, specular_exp_slice;
-        GetResourceIndex(Globals[DrawIndex].AmbientReflectivityMap, ambient_slot, ambient_slice);
-        GetResourceIndex(Globals[DrawIndex].DiffuseReflectivityMap, diffuse_slot, diffuse_slice);
-        GetResourceIndex(Globals[DrawIndex].SpecularReflectivityMap, specular_slot, specular_slice);
-        GetResourceIndex(Globals[DrawIndex].DissolveMap, dissolve_slot, dissolve_slice);
-        GetResourceIndex(Globals[DrawIndex].SpecularExponentMap, specular_exp_slot, specular_exp_slice);
-
-        ambient.xyz = Globals[DrawIndex].AmbientDissolve.xyz*texture(Textures[ambient_slot], vec3(InterpTexCoord, float(ambient_slice)).xyz;
-        diffuse.xyz = Globals[DrawIndex].DiffuseReflectivity.xyz*texture(Textures[diffuse_slot], vec3(InterpTexCoord, float(diffuse_slice)).xyz;
-        specular.xyz = Globals[DrawIndex].Specular.xyz*texture(Textures[specular_slot], vec3(InterpTexCoord, float(specular_slice)).xyz;
-        ambient.w = Globals[DrawIndex].AmbientDissolve.x*texture(Textures[dissolve_slot], vec3(InterpTexCoord, float(dissolve_slice)).x;
+        ambient.xyz = Globals[DrawIndex].AmbientDissolve.xyz*texture(Globals[DrawIndex].AmbientReflectivityMap, InterpTexCoord).xyz;
+        diffuse.xyz = Globals[DrawIndex].DiffuseReflectivity.xyz*texture(Globals[DrawIndex].DiffuseReflectivityMap, InterpTexCoord).xyz;
+        specular.xyz = Globals[DrawIndex].Specular.xyz*texture(Globals[DrawIndex].SpecularReflectivityMap, InterpTexCoord).xyz;
+        ambient.w = Globals[DrawIndex].AmbientDissolve.x*texture(Globals[DrawIndex].DissolveMap, InterpTexCoord).x;
         diffuse.w = Globals[DrawIndex].DiffuseReflectivity.w;
-        specular.w = texture(Textures[specular_exp_slot], vec3(InterpTexCoord, specular_exp_slice)).x;
+        specular.w = texture(Globals[DrawIndex].SpecularExponentMap, InterpTexCoord).x;
         vec3 normal = normalize(InterpNormal);
         
         FragmentColor = vec4(Illum(eye, SunDirection, normal, ambient, diffuse, specular), ambient.w);

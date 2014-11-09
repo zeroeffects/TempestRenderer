@@ -2,7 +2,7 @@
 #include "tempest/math/vector2.hh"
 #include "tempest/math/matrix4.hh"
 #include "tempest/graphics/rendering-convenience.hh"
-#include "tempest/graphics/opengl-backend/gl-all.hh"
+#include "tempest/graphics/api-all.hh"
 
 #define TEMPEST_RENDERING_SYSTEM Tempest::GLSystem
 

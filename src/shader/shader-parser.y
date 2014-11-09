@@ -116,6 +116,8 @@
 %token                  T_SUBROUTINE_QUALIFIER      "subroutine qualifier"
 %token                  T_CONSTANT_QUALIFIER        "constant qualifier"
 %token                  T_UNIFORM_QUALIFIER         "uniform qualifier"
+%token                  T_RESOURCE_QUALIFIER        "resource qualifier"
+%token                  T_STRUCTBUFFER_QUALIFIER    "structbuffer qualifier"
 
 %type <List>                        translation_unit shader_body technique_body pass_body function_variables_list statement_list switch_statement_list
 %type <List>                        layout_id_list layout_header definitions_block definitions_list function_variables_non_empty_list
@@ -200,6 +202,26 @@ external_declaration
 buffer
     : "constant qualifier" buffer_declaration               { auto buf = $2; buf->setBufferType(BufferType::Constant); $$ = std::move(buf); }
     | buffer_declaration                                    { $$ = $1; }
+    | "resource qualifier" buffer_declaration               { auto buf = $2; buf->setBufferType(BufferType::Resource); $$ = std::move(buf); }
+    // It is far from being an actual buffer. More of linear memory with externally defined bounds.
+    | "structbuffer qualifier" "type" "identifier" ';'      {
+                                                                auto type = $2;
+                                                                auto identifier = $3;
+                                                                TGE_ASSERT(type && identifier, "Valid type and identifier expected. Potential lexer bug");
+                                                                AST::NodeT<VariableRef> var;
+                                                                if(type->getTypeEnum() == Shader::ElementType::Struct)
+                                                                {
+                                                                    auto arr_type = driver.createInternalType<ArrayType>(ToLocation(@$), type.get(), AST::Node());
+                                                                    var = driver.createStackNode<Variable>(ToLocation(@$), arr_type.get(), identifier->getValue());
+                                                                    var->setStorage(StorageQualifier::StructBuffer);
+                                                                }
+                                                                else
+                                                                {
+                                                                    driver.error(ToLocation(@$), type->getNodeName() + " is not struct type. structbuffer is limited to struct types only.");
+                                                                }
+                                                                $$ = CreateNode<Declaration>(ToLocation(@$), std::move(var));
+                                                            }
+    | "structbuffer qualifier" "type" "variable" ';'        { ErrorRedefinition(driver, ToLocation(@$), $3); $2; $$ = NodeT<Declaration>(); }
     ;
 
 buffer_declaration
@@ -593,8 +615,8 @@ condition
     ;
 
 jump_statement
-    : "continue" ';'                                        { $$ = CreateNode<JumpStatement>(ToLocation(@$), TGE_EFFECT_CONTINUE_STATEMENT); }
-    | "break" ';'                                           { $$ = CreateNode<JumpStatement>(ToLocation(@$), TGE_EFFECT_BREAK_STATEMENT); }
+    : "continue" ';'                                        { $$ = CreateNode<JumpStatement>(ToLocation(@$), JumpStatementType::Continue); }
+    | "break" ';'                                           { $$ = CreateNode<JumpStatement>(ToLocation(@$), JumpStatementType::Break); }
     | "return" ';'                                          { $$ = CreateNode<ReturnStatement>(ToLocation(@$)); }
     | "return" expression ';'                               { 
                                                                 auto expr = $2;
@@ -783,22 +805,22 @@ invariant_variable
     ;
 
 interpolation_variable
-    : "flat qualifier" output_variable                      { auto var = $2; if(var) var->setInterpolation(TGE_EFFECT_FLAT_INTERPOLATION); $$ = std::move(var); }
-    | "noperspective qualifier" output_variable             { auto var = $2; if(var) var->setInterpolation(TGE_EFFECT_NOPERSPECTIVE_INTERPOLATION); $$ = std::move(var); }
-    | "smooth qualifier" output_variable                    { auto var = $2; if(var) var->setInterpolation(TGE_EFFECT_SMOOTH_INTERPOLATION); $$ = std::move(var); }
+    : "flat qualifier" output_variable                      { auto var = $2; if(var) var->setInterpolation(InterpolationQualifier::Flat); $$ = std::move(var); }
+    | "noperspective qualifier" output_variable             { auto var = $2; if(var) var->setInterpolation(InterpolationQualifier::Noperspective); $$ = std::move(var); }
+    | "smooth qualifier" output_variable                    { auto var = $2; if(var) var->setInterpolation(InterpolationQualifier::Smooth); $$ = std::move(var); }
     ;
 
 const_variable
-    : "const qualifier" variable                            { auto var = $2; if(var) var->setStorage(TGE_EFFECT_CONST_STORAGE); $$ = std::move(var); }
+    : "const qualifier" variable                            { auto var = $2; if(var) var->setStorage(StorageQualifier::Const); $$ = std::move(var); }
     ;
 
 output_variable
-    : "in qualifier" variable                               { auto var = $2; if(var) var->setStorage(TGE_EFFECT_IN_STORAGE); $$ = std::move(var); }
-    | "out qualifier" variable                              { auto var = $2; if(var) var->setStorage(TGE_EFFECT_OUT_STORAGE); $$ = std::move(var); }
-    | "centroid qualifier" "in qualifier" variable          { auto var = $3; if(var) var->setStorage(TGE_EFFECT_CENTROID_IN_STORAGE); $$ = std::move(var); }
-    | "centroid qualifier" "out qualifier" variable         { auto var = $3; if(var) var->setStorage(TGE_EFFECT_CENTROID_OUT_STORAGE); $$ = std::move(var); }
-    | "sample qualifier" "in qualifier" variable            { auto var = $3; if(var) var->setStorage(TGE_EFFECT_SAMPLE_IN_STORAGE); $$ = std::move(var); }
-    | "sample qualifier" "out qualifier" variable           { auto var = $3; if(var) var->setStorage(TGE_EFFECT_SAMPLE_OUT_STORAGE); $$ = std::move(var); }
+    : "in qualifier" variable                               { auto var = $2; if(var) var->setStorage(StorageQualifier::In); $$ = std::move(var); }
+    | "out qualifier" variable                              { auto var = $2; if(var) var->setStorage(StorageQualifier::Out); $$ = std::move(var); }
+    | "centroid qualifier" "in qualifier" variable          { auto var = $3; if(var) var->setStorage(StorageQualifier::CentroidIn); $$ = std::move(var); }
+    | "centroid qualifier" "out qualifier" variable         { auto var = $3; if(var) var->setStorage(StorageQualifier::CentroidOut); $$ = std::move(var); }
+    | "sample qualifier" "in qualifier" variable            { auto var = $3; if(var) var->setStorage(StorageQualifier::SampleIn); $$ = std::move(var); }
+    | "sample qualifier" "out qualifier" variable           { auto var = $3; if(var) var->setStorage(StorageQualifier::SampleOut); $$ = std::move(var); }
     ;
 
 function_variables_list
@@ -813,10 +835,10 @@ function_variables_non_empty_list
 
 function_variable
     : variable                                              { $$ = $1; }
-    | "in qualifier" function_variable                      { auto var = $2; if(var) var->setStorage(TGE_EFFECT_IN_STORAGE); $$ = std::move(var); }
-    | "out qualifier" function_variable                     { auto var = $2; if(var) var->setStorage(TGE_EFFECT_OUT_STORAGE); $$ = std::move(var); }
-    | "inout qualifier" function_variable                   { auto var = $2; if(var) var->setStorage(TGE_EFFECT_INOUT_STORAGE); $$ = std::move(var); }
-    | "const qualifier" function_variable                   { auto var = $2; if(var) var->setStorage(TGE_EFFECT_CONST_STORAGE); $$ = std::move(var); }
+    | "in qualifier" function_variable                      { auto var = $2; if(var) var->setStorage(StorageQualifier::In); $$ = std::move(var); }
+    | "out qualifier" function_variable                     { auto var = $2; if(var) var->setStorage(StorageQualifier::Out); $$ = std::move(var); }
+    | "inout qualifier" function_variable                   { auto var = $2; if(var) var->setStorage(StorageQualifier::InOut); $$ = std::move(var); }
+    | "const qualifier" function_variable                   { auto var = $2; if(var) var->setStorage(StorageQualifier::Const); $$ = std::move(var); }
     ;
 
 variable

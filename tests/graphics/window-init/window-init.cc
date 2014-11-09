@@ -1,5 +1,5 @@
 #include "tempest/utils/testing.hh"
-#include "tempest/graphics/opengl-backend/gl-all.hh"
+#include "tempest/graphics/api-all.hh"
 #include "tempest/graphics/rendering-convenience.hh"
 
 #define TEMPEST_RENDERING_SYSTEM Tempest::GLSystem

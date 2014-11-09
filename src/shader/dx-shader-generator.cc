@@ -26,9 +26,12 @@
 #include "tempest/parser/file-loader.hh"
 #include "tempest/shader/shader-ast.hh"
 #include "tempest/shader/shader-driver.hh"
+#include "tempest/shader/shader-common.hh"
 #include "tempest/parser/ast.hh"
 
 #include <unordered_map>
+#include <algorithm>
+#include <stack>
 
 namespace Tempest
 {
@@ -37,10 +40,15 @@ namespace DXFX
 typedef std::unordered_map<string, string> SamplerTextureAssociation;
 typedef std::vector<string> ShaderSignature;
 
+void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* m_Printer, const Shader::Buffer* buffer);
+
 class ShaderPrinter: public Shader::VisitorInterface
 {
     AST::PrinterInfrastructure m_Printer;
     
+    Shader::Driver&            m_Driver;
+
+    const char*                m_Filename;
     bool                       m_Valid;
     
     SamplerTextureAssociation  m_SamplerAssoc;
@@ -50,7 +58,7 @@ class ShaderPrinter: public Shader::VisitorInterface
     typedef bool (ShaderPrinter::*TranslationFunction)(const Shader::FunctionCall* func_call);
     std::unordered_map<string, TranslationFunction> m_FunctionTranslator;
 public:
-    ShaderPrinter(std::ostream& os, uint32 flags);
+    ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, uint32 flags);
     virtual ~ShaderPrinter();
 
     void setSamplerTextureAssociation(string texture, string sampler)
@@ -67,6 +75,9 @@ public:
 
     bool isValid() const { return m_Valid; }
     
+    const char* getFilename() const { return m_Filename; }
+
+    virtual void visit(const Location& loc) final { AST::PrintLocation(&m_Printer, loc, m_Filename); }
     virtual void visit(const AST::Value<float>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<int>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<unsigned>* value) final { AST::PrintNode(&m_Printer, value); }
@@ -84,7 +95,7 @@ public:
     virtual void visit(const Shader::SubroutineCall* subroutine_call) final { Shader::PrintNode(this, &m_Printer, subroutine_call); }
     virtual void visit(const Shader::ScalarType* scalar_type) final { Shader::PrintNode(&m_Printer, scalar_type); }
     virtual void visit(const Shader::VectorType* vector_type) final;
-    virtual void visit(const Shader::MatrixType* matrix_type) final { Shader::PrintNode(&m_Printer, matrix_type); }
+    virtual void visit(const Shader::MatrixType* matrix_type) final;
     virtual void visit(const Shader::SamplerType* sampler_type) final { Shader::PrintNode(&m_Printer, sampler_type); }
     virtual void visit(const Shader::ArrayType* array_type) final { Shader::PrintNode(this, &m_Printer, array_type); }
     virtual void visit(const Shader::Variable* var) final;
@@ -92,7 +103,7 @@ public:
     virtual void visit(const Shader::MemberVariable* mem_var) final { Shader::PrintNode(this, &m_Printer, mem_var); }
     virtual void visit(const Shader::ArrayElementVariable* array_elem) final { Shader::PrintNode(this, &m_Printer, array_elem); }
     virtual void visit(const Shader::InvariantDeclaration* invar_decl) final;
-    virtual void visit(const Shader::BinaryOperator* binop) final { Shader::PrintNode(this, &m_Printer, binop); }
+    virtual void visit(const Shader::BinaryOperator* binop) final;
     virtual void visit(const Shader::UnaryOperator* unaryop) final { Shader::PrintNode(this, &m_Printer, unaryop); }
     virtual void visit(const Shader::TernaryIf* ternary_if) final { Shader::PrintNode(this, &m_Printer, ternary_if); }
     virtual void visit(const Shader::WhileStatement* while_stmt) final { Shader::PrintNode(this, &m_Printer, while_stmt); }
@@ -110,7 +121,7 @@ public:
     virtual void visit(const Shader::Pass* _pass) final { _pass->printList(this, &m_Printer, "pass"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
-    virtual void visit(const Shader::Buffer* buffer) final { TGE_ASSERT(false, "Currently unsupported"); }
+    virtual void visit(const Shader::Buffer* buffer) final { PrintBuffer(this, &m_Printer, buffer); }
     virtual void visit(const Shader::Subroutine* subroutine) final { Shader::PrintNode(this, &m_Printer, subroutine); }
     // Some types that should not appear in AST
     virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
@@ -124,6 +135,209 @@ public:
 private:
     bool TranslateTexelFetch(const Shader::FunctionCall* func_call);
 };
+
+class TypeDeducer: public Shader::VisitorInterface
+{
+    Shader::Driver&                         m_Driver;
+    std::stack<const Shader::Type*>         m_TypeStack;
+public:
+    TypeDeducer(Shader::Driver& driver)
+        :   m_Driver(driver) {}
+
+    const Shader::Type* getResult() const { return m_TypeStack.top(); }
+
+    virtual void visit(const Location& loc) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const AST::Value<float>* value) final;
+    virtual void visit(const AST::Value<int>* value) final;
+    virtual void visit(const AST::Value<unsigned>* value) final;
+    virtual void visit(const AST::Value<bool>* value) final;
+    virtual void visit(const AST::Value<string>* value) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const AST::ListElement* lst) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const AST::Block* _block) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const AST::StringLiteral* value) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Typedef* _typedef) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Parentheses* parentheses) final;
+    virtual void visit(const Shader::FunctionDeclaration* func_decl) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::FunctionDefinition* func_def) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::FunctionCall* func_call) final;
+    virtual void visit(const Shader::ConstructorCall* constructor) final;
+    virtual void visit(const Shader::SubroutineCall* subroutine_call) final;
+    virtual void visit(const Shader::ScalarType* scalar_type) final { TGE_ASSERT(false, "Types should not be entered. Catching up a variable should be enough"); }
+    virtual void visit(const Shader::VectorType* vector_type) final { TGE_ASSERT(false, "Types should not be entered. Catching up a variable should be enough"); }
+    virtual void visit(const Shader::MatrixType* matrix_type) final { TGE_ASSERT(false, "Types should not be entered. Catching up a variable should be enough"); }
+    virtual void visit(const Shader::SamplerType* sampler_type) final { TGE_ASSERT(false, "Types should not be entered. Catching up a variable should be enough"); }
+    virtual void visit(const Shader::ArrayType* array_type) final { TGE_ASSERT(false, "Types should not be entered.Catching up a variable should be enough"); }
+    virtual void visit(const Shader::Variable* var) final;
+    virtual void visit(const Shader::Declaration* decl) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::MemberVariable* mem_var) final;
+    virtual void visit(const Shader::ArrayElementVariable* array_elem) final;
+    virtual void visit(const Shader::InvariantDeclaration* invar_decl) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::BinaryOperator* binop) final;
+    virtual void visit(const Shader::UnaryOperator* unaryop) final;
+    virtual void visit(const Shader::TernaryIf* ternary_if) final;
+    virtual void visit(const Shader::WhileStatement* while_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::ForStatement* for_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::SwitchStatement* switch_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::CaseStatement* case_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::JumpStatement* jump_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::ReturnStatement* return_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Profile* _profile) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Technique* _technique) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Import* _import) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::ShaderDeclaration* _shader) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::StructType* _struct) final { TGE_ASSERT(false, "Types should not be entered.Catching up a variable should be enough"); }
+    virtual void visit(const Shader::CompiledShader* compiled_shader) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Pass* _pass) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::IfStatement* if_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Type* type_stmt) final { TGE_ASSERT(false, "Types should not be entered.Catching up a variable should be enough"); }
+    virtual void visit(const Shader::Buffer* buffer) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Subroutine* subroutine) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    // Some types that should not appear in AST
+    virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Expression*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::FuncDeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::DeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::VarDeclList*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Value<Shader::ShaderType>*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+};
+
+void TypeDeducer::visit(const AST::Value<float>* value)
+{
+    m_TypeStack.push(m_Driver.find("float"));
+}
+
+void TypeDeducer::visit(const AST::Value<int>* value)
+{
+    m_TypeStack.push(m_Driver.find("int"));
+}
+
+void TypeDeducer::visit(const AST::Value<unsigned>* value)
+{
+    m_TypeStack.push(m_Driver.find("uint"));
+}
+
+void TypeDeducer::visit(const AST::Value<bool>* value)
+{
+    m_TypeStack.push(m_Driver.find("bool"));
+}
+
+void TypeDeducer::visit(const Shader::Parentheses* parentheses)
+{
+    parentheses->getExpression()->accept(this);
+}
+
+void TypeDeducer::visit(const Shader::FunctionCall* func_call)
+{
+    m_TypeStack.push(func_call->getFunction()->getReturnType());
+}
+
+void TypeDeducer::visit(const Shader::ConstructorCall* constructor)
+{
+    m_TypeStack.push(constructor->getType());
+}
+
+void TypeDeducer::visit(const Shader::SubroutineCall* subroutine_call)
+{
+    m_TypeStack.push(subroutine_call->getFunctionCall()->getFunction()->getReturnType());
+}
+
+void TypeDeducer::visit(const Shader::Variable* var)
+{
+    m_TypeStack.push(var->getType());
+}
+
+void TypeDeducer::visit(const Shader::MemberVariable* mem_var)
+{
+    m_TypeStack.push(mem_var->getVariable()->getType());
+}
+
+void TypeDeducer::visit(const Shader::ArrayElementVariable* array_elem)
+{
+    m_TypeStack.push(array_elem->getVariable()->getType());
+}
+
+void TypeDeducer::visit(const Shader::BinaryOperator* binop)
+{
+    binop->getLHSOperand()->accept(this);
+    binop->getRHSOperand()->accept(this);
+    auto* rhs_type = m_TypeStack.top();
+    m_TypeStack.pop();
+    auto* lhs_type = m_TypeStack.top();
+    m_TypeStack.pop();
+    m_TypeStack.push(lhs_type->binaryOperatorResultType(m_Driver, binop->getOperation(), rhs_type));
+}
+
+void TypeDeducer::visit(const Shader::UnaryOperator* unaryop)
+{
+    unaryop->getOperand()->accept(this);
+    auto* type = m_TypeStack.top();
+    m_TypeStack.pop();
+    m_TypeStack.push(type->unaryOperatorResultType(m_Driver, unaryop->getOperation()));
+}
+
+void TypeDeducer::visit(const Shader::TernaryIf* ternary_if)
+{
+    ternary_if->getTrueExpression()->accept(this);
+    // And it should contain the right type.
+}
+
+const Shader::Type* DeduceType(Shader::Driver& driver, const AST::Node* _node)
+{
+    TypeDeducer td(driver);
+    _node->accept(&td);
+    return td.getResult();
+}
+
+void ShaderPrinter::visit(const Shader::BinaryOperator* binop)
+{
+    if(binop->getOperation() == Shader::TGE_EFFECT_MULTIPLY &&
+       binop->getLHSOperand())
+    {
+        auto* lhs_operand = binop->getLHSOperand();
+        auto* rhs_operand = binop->getRHSOperand();
+        auto* lhs_type = DeduceType(m_Driver, lhs_operand);
+        auto* rhs_type = DeduceType(m_Driver, rhs_operand);
+        if(lhs_type->getTypeEnum() == Shader::ElementType::Matrix ||
+           rhs_type->getTypeEnum() == Shader::ElementType::Matrix)
+        {
+            auto& os = m_Printer.stream();
+            os << "mul(";
+            lhs_operand->accept(this);
+            os << ", ";
+            rhs_operand->accept(this);
+            os << ")";
+            return;
+        }
+    }
+    Shader::PrintNode(this, &m_Printer, binop);
+}
+
+void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* m_Printer, const Shader::Buffer* buffer)
+{
+    auto& os = m_Printer->stream();
+    switch(buffer->getBufferType())
+    {
+    case Shader::BufferType::Constant:
+    {
+        os << "cbuffer " << buffer->getNodeName() << " {\n";
+            visitor->visit(buffer->getBody());
+        os << "};\n";
+    } break;
+    case Shader::BufferType::Regular:
+    {
+        os << "struct " << buffer->getNodeName() << "Struct__" << " {\n";
+            visitor->visit(buffer->getBody());
+        os << "};\n"
+              "StructuredBuffer<" << buffer->getNodeName() << "Struct__> " << buffer->getNodeName() << ";";
+
+    } break;
+    case Shader::BufferType::Resource:
+    {
+        TGE_ASSERT(false, "Unsupported");
+    } break;
+    }
+}
 
 bool ShaderPrinter::TranslateTexelFetch(const Shader::FunctionCall* func_call)
 {
@@ -205,8 +419,10 @@ bool ShaderPrinter::TranslateTexelFetch(const Shader::FunctionCall* func_call)
     return true;
 }
 
-ShaderPrinter::ShaderPrinter(std::ostream& os, uint32 flags)
+ShaderPrinter::ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, uint32 flags)
     :   m_Printer(os, flags),
+        m_Driver(driver),
+        m_Filename(filename),
         m_Valid(true)
 {
     m_FunctionTranslator["texelFetch"] = &ShaderPrinter::TranslateTexelFetch;
@@ -251,9 +467,20 @@ void ShaderPrinter::visit(const Shader::VectorType* vector_type)
     m_Printer.stream() << vector_type->getBasicType()->getNodeName() << vector_type->getDimension();
 }
 
+void ShaderPrinter::visit(const Shader::MatrixType* matrix_type)
+{
+    m_Printer.stream() << matrix_type->getBasicType()->getNodeName() << matrix_type->getRows() << "x" << matrix_type->getColumns();
+}
+
 void ShaderPrinter::visit(const Shader::Variable* var)
 {
-    auto var_name = var->getNodeName();
+    string var_name = var->getNodeName();
+    if(var->getNodeName() == "tge_DrawID")
+    {
+        m_Printer.stream() << "shader_in__.InstanceID__";
+        return;
+    }
+
     for(auto i = m_InputSignature.begin(), iend = m_InputSignature.end(); i != iend; ++i)
         if(*i == var_name)
         {
@@ -265,7 +492,7 @@ void ShaderPrinter::visit(const Shader::Variable* var)
         {
             // That's safer because we are sure that it is vertex shader and no one is screwing with us.
             if(var_name == "gl_Position")
-                m_Printer.stream() << "shader_out__.Position";
+                m_Printer.stream() << "shader_out__.Position__";
             else
                 m_Printer.stream() << "shader_out__." << var_name;
             return;
@@ -297,16 +524,18 @@ void ShaderPrinter::visit(const Shader::InvariantDeclaration* invar_decl)
 
 class Generator: public Shader::VisitorInterface
 {
+    Shader::Driver&            m_Driver;
     std::stringstream          m_RawImportStream;
-    Shader::Printer            m_RawImport;
+    ShaderPrinter              m_RawImport;
 
     bool                       m_Valid;
     Shader::EffectDescription  m_Effect;
     FileLoader*                m_FileLoader;
 public:
-    Generator(FileLoader* include_loader);
+    Generator(Shader::Driver& driver, const char* filename, FileLoader* include_loader);
     virtual ~Generator();
 
+    virtual void visit(const Location& loc) final { m_RawImport.visit(loc); }
     virtual void visit(const AST::Value<float>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<int>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<unsigned>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -326,7 +555,7 @@ public:
     virtual void visit(const Shader::SamplerType* sampler_type) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ArrayType* array_type) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Variable* var) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const Shader::Declaration* decl) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
+    virtual void visit(const Shader::Declaration* decl) final;
     virtual void visit(const Shader::MemberVariable* mem_var) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ArrayElementVariable* array_elem) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::InvariantDeclaration* invar_decl) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -366,8 +595,9 @@ public:
     Shader::EffectDescription getEffect() const { return m_Effect; }
 };
 
-Generator::Generator(FileLoader* include_loader)
-    :   m_RawImport(m_RawImportStream, AST::TGE_AST_PRINT_LINE_LOCATION),
+Generator::Generator(Shader::Driver& driver, const char* filename, FileLoader* include_loader)
+    :   m_Driver(driver),
+        m_RawImport(driver, filename, m_RawImportStream, AST::TGE_AST_PRINT_LINE_LOCATION),
         m_Valid(true),
         m_FileLoader(include_loader) {}
 
@@ -402,11 +632,16 @@ string ConvertGLSLVersionToHLSL(Shader::ShaderType _type, const string& profile_
         return shader_type + "5_0";
     else if(profile_name == "glsl_4_1_0")
         return shader_type + "5_0";
-    else if(profile_name == "glsl_4_2_0")
+    else if(profile_name == "glsl_4_2_0" || profile_name == "glsl_4_4_0")
         return shader_type + "5_0";
     
     Log(LogLevel::Error, "unknown profile: ", profile_name);
     return "";
+}
+
+void Generator::visit(const Shader::Buffer* _buffer)
+{
+    m_RawImport.visit(_buffer);
 }
 
 void Generator::visit(const Shader::Technique* _technique)
@@ -504,17 +739,50 @@ void Generator::visit(const Shader::Technique* _technique)
     m_Effect.addTechnique(technique_desc);
 }
 
-void Generator::visit(const Shader::Buffer* buffer)
+void Generator::visit(const Shader::Declaration* decl)
 {
-    m_RawImportStream << "cbuffer " << buffer->getNodeName() << " {";
-        m_RawImport.visit(buffer->getBody());
-    m_RawImportStream << "};";
+    if(decl == nullptr)
+        return;
+    auto* var_node = decl->getVariables();
+    auto var_type = var_node->getNodeType();
+    TGE_ASSERT(var_type == Shader::TGE_EFFECT_VARIABLE ||
+               var_type == Shader::TGE_EFFECT_TYPE, "Expecting variable or type declaration");
+    if(var_type == Shader::TGE_EFFECT_TYPE)
+    {
+        m_RawImport.visit(decl);
+    }
+    else if(var_type == Shader::TGE_EFFECT_VARIABLE)
+    {
+        auto* var = var_node->extract<Shader::Variable>();
+        if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
+        {
+            auto name = var->getNodeName();
+            auto* var_type = var->getType();
+            TGE_ASSERT(var_type->getTypeEnum() == Shader::ElementType::Array, "Unexpected type");
+            auto* array_type = var_type->extract<Shader::ArrayType>();
+            auto* elem_type = array_type->getArrayElementType();
+            Shader::ElementType type_enum = elem_type->getTypeEnum();
+            TGE_ASSERT(type_enum == Shader::ElementType::Struct, "Structured buffer should have struct type");
+
+            m_RawImportStream << "StructuredBuffer<" << elem_type->getNodeName() << "> " << name;
+        }
+        else
+        {
+            Log(LogLevel::Error, "Unexpected variable declaration ", var->getNodeName(), ".");
+            m_Valid = false;
+            return;
+        }
+    }
 }
 
 void Generator::visit(const AST::ListElement* lst)
 {
     for(auto i = lst->current(), iend = lst->end(); i != iend; ++i)
+    {
         i->accept(this);
+        if(!i->isBlockStatement())
+            m_RawImport.stream() << ";\n";
+    }
 }
 
 void Generator::visit(const Shader::Type* type_stmt)
@@ -574,18 +842,23 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                                 
     // The actual trick out here is that we want the common stuff to be printed through
     // the extended version which accumulates all associations.
-    ShaderPrinter   common_printer(ss, AST::TGE_AST_PRINT_LINE_LOCATION),
-                    in_printer(in_signature_ss, AST::TGE_AST_PRINT_LINE_LOCATION),
-                    out_printer(out_signature_ss, AST::TGE_AST_PRINT_LINE_LOCATION);
+    ShaderPrinter   common_printer(m_Driver, m_RawImport.getFilename(), ss, AST::TGE_AST_PRINT_LINE_LOCATION),
+                    in_printer(m_Driver, m_RawImport.getFilename(), in_signature_ss, AST::TGE_AST_PRINT_LINE_LOCATION),
+                    out_printer(m_Driver, m_RawImport.getFilename(), out_signature_ss, AST::TGE_AST_PRINT_LINE_LOCATION);
     const Shader::FunctionDefinition* entrypoint = nullptr;
     
     if(_shader->getType() == Shader::ShaderType::VertexShader)
     {
         output_signature.push_back("gl_Position");
-        out_signature_ss << "shader_input_signature__ shader_in__\n"
+        out_signature_ss << "struct shader_output_signature__\n"
                             "{\n"
-                            "\tfloat4 Position: SV_POSITION;\n";
+                            "\tfloat4 Position__: SV_POSITION;\n";
+        input_signature.push_back("InstanceID__");
+        in_signature_ss << "struct shader_input_signature__\n"
+                           "{\n"
+                           "\tuint InstanceID__: SV_INSTANCEID;\n";
     }
+    size_t target = 0;
     for(auto j = _shader->getBody()->current(); j != _shader->getBody()->end(); ++j)
     {
         TGE_ASSERT(*j, "Valid node expected. Bad parsing beforehand.");
@@ -614,37 +887,9 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                 {
                     auto* binop = k->extract<Shader::BinaryOperator>();
                     auto layout_id = binop->getLHSOperand()->extract<Shader::Identifier>()->getValue();
-                    if(layout_id == "semanticExt")
-                    {
-                        auto _storage = var->getStorage();
-                        if(_storage == Shader::TGE_EFFECT_DEFAULT_STORAGE || _storage == Shader::TGE_EFFECT_CONST_STORAGE)
-                        {
-                            Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Semantic can't be applied on variables that are not associated with input or output signature: ", var->getNodeName());
-                            m_Valid = false;
-                            return;
-                        }
-                            
-                        if(!suffix.empty())
-                        {
-                            Log(LogLevel::Error, "There should not be more than one semantic values per object");
-                            m_Valid = false;
-                            return;
-                        }
-                        
-                        auto* semantic_name_val = binop->getRHSOperand()->extract<Shader::Identifier>();
-                        if(_storage == Shader::TGE_EFFECT_IN_STORAGE || _storage == Shader::TGE_EFFECT_CENTROID_IN_STORAGE)
-                        {
-                            Shader::InputParameter param(var->getType()->getTypeEnum(), var->getNodeName(), semantic_name_val->getValue());
-                            shader_desc.addInputParameter(param);
-                        }
-                        string semantic = semantic_name_val->getValue();
-                        suffix = ": " + semantic;
-                    }
-                    else
-                    {
-                        Log(LogLevel::Error, k->getDeclarationLocation(), ": Unsupported layout qualifier: ", layout_id);
-                        return;
-                    }
+                    // TODO: support for qualifiers
+                    Log(LogLevel::Error, k->getDeclarationLocation(), ": Unsupported layout qualifier: ", layout_id);
+                    return;
                 }
             }
 
@@ -652,53 +897,64 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
             ShaderPrinter* current_printer = &common_printer;
             switch(var->getStorage())
             {
-            case Shader::TGE_EFFECT_DEFAULT_STORAGE: j->printLocation(ss); break;
-            case Shader::TGE_EFFECT_CONST_STORAGE: j->printLocation(ss); prefix = "const "; break;
-            case Shader::TGE_EFFECT_IN_STORAGE:
+            case Shader::StorageQualifier::StructBuffer:
+            {
+                auto name = var->getNodeName();
+                auto* var_type = var->getType();
+                TGE_ASSERT(var_type->getTypeEnum() == Shader::ElementType::Array, "Unexpected type");
+                auto* array_type = var_type->extract<Shader::ArrayType>();
+                auto* elem_type = array_type->getArrayElementType();
+                TGE_ASSERT(elem_type->getTypeEnum() != Shader::ElementType::Struct, "Structured buffer should have struct type");
+
+                common_printer.stream() << "StructuredBuffer<" << elem_type->getNodeName() << "> " << name << ";";
+            } break;
+            case Shader::StorageQualifier::Default: common_printer.visit(j->getDeclarationLocation()); break;
+            case Shader::StorageQualifier::Const: common_printer.visit(j->getDeclarationLocation()); prefix = "const "; break;
+            case Shader::StorageQualifier::In:
             {
                 if(input_signature.empty())
                     in_signature_ss << "struct shader_input_signature__\n{" << std::endl;
                 current_ss = &in_signature_ss;
-                j->printLocation(in_signature_ss);
+                in_printer.visit(j->getDeclarationLocation());
                 in_signature_ss << "\t";
                 current_printer = &in_printer;
                 input_signature.push_back(var->getNodeName());
             } break;
-            case Shader::TGE_EFFECT_CENTROID_IN_STORAGE: 
+            case Shader::StorageQualifier::CentroidIn:
             {
                 if(input_signature.empty())
                     in_signature_ss << "struct shader_input_signature__\n{" << std::endl;
                 prefix = "centroid ";
                 current_ss = &in_signature_ss;
-                j->printLocation(in_signature_ss);
+                in_printer.visit(j->getDeclarationLocation());
                 in_signature_ss << "\t";
                 current_printer = &in_printer;
                 input_signature.push_back(var->getNodeName());
             } break;
-            case Shader::TGE_EFFECT_SAMPLE_IN_STORAGE: TGE_ASSERT(false, "Unsupported"); break;
-            case Shader::TGE_EFFECT_OUT_STORAGE:
+            case Shader::StorageQualifier::SampleIn: TGE_ASSERT(false, "Unsupported"); break;
+            case Shader::StorageQualifier::Out:
             {
                 if(output_signature.empty())
                     out_signature_ss << "struct shader_output_signature__\n{" << std::endl;
                 current_ss = &out_signature_ss;
-                j->printLocation(out_signature_ss);
+                out_printer.visit(j->getDeclarationLocation());
                 out_signature_ss << "\t";
                 current_printer = &out_printer;
                 output_signature.push_back(var->getNodeName());
             } break;
-            case Shader::TGE_EFFECT_CENTROID_OUT_STORAGE:
+            case Shader::StorageQualifier::CentroidOut:
             {
                 if(output_signature.empty())
                     out_signature_ss << "struct shader_output_signature__\n{" << std::endl;
                 prefix = "centroid ";
                 current_ss = &out_signature_ss;
-                j->printLocation(out_signature_ss);
+                out_printer.visit(j->getDeclarationLocation());
                 out_signature_ss<< "\t";
                 current_printer = &out_printer;
                 output_signature.push_back(var->getNodeName());
             } break;
-            case Shader::TGE_EFFECT_SAMPLE_OUT_STORAGE: TGE_ASSERT(false, "Unsupported"); break;
-            case Shader::TGE_EFFECT_INOUT_STORAGE: TGE_ASSERT(false, "Unexpected storage format."); break;
+            case Shader::StorageQualifier::SampleOut: TGE_ASSERT(false, "Unsupported"); break;
+            case Shader::StorageQualifier::InOut: TGE_ASSERT(false, "Unexpected storage format."); break;
             default:
                 TGE_ASSERT(false, "Unsupported storage type.");
             }
@@ -706,11 +962,20 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
             if(!prefix.empty())
                 *current_ss << prefix << " ";
             var->getType()->accept(current_printer);
-            *current_ss << " " << var->getNodeName() << suffix << ";\n";
+            *current_ss << " " << var->getNodeName() << suffix;
+            if(_shader->getType() == Shader::ShaderType::FragmentShader && current_ss == &out_signature_ss)
+            {
+                *current_ss << ": SV_TARGET" << target++;
+            }
+            else
+            {
+                *current_ss << ": PARAM_" << var->getNodeName();
+            }
+            *current_ss << ";\n";
         }
         else
         {
-            j->printLocation(ss);
+            common_printer.visit(j->getDeclarationLocation());
             j->accept(&common_printer);
             if(!j->isBlockStatement())
                 ss << ";\n";
@@ -731,7 +996,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     
     for(auto i = sampler_state.begin(), iend = sampler_state.end(); i != iend; ++i)
         ss << "SamplerState " << *i << ";\n";
-    ss << in_signature_ss.str() << out_signature_ss.str();
+    ss << m_RawImportStream.str() << in_signature_ss.str() << out_signature_ss.str();
     
     if(output_signature.empty())
         ss << "void ";
@@ -796,7 +1061,7 @@ bool LoadEffect(const string& filename, FileLoader* loader, Shader::EffectDescri
     if(!root_node)
         return false;
 
-    DXFX::Generator _generator(loader);
+    DXFX::Generator _generator(effect_driver, filename.c_str(), loader);
     _generator.visit(root_node);
     effect = _generator.getEffect();
     return _generator.isValid();

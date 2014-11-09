@@ -46,14 +46,16 @@ class ShaderPrinter: public Shader::VisitorInterface
     Shader::ShaderType         m_ShaderType = Shader::ShaderType::GenericShader;
     bool                       m_DrawIDInUse = false;
     
-    size_t                     m_BindingCounter = 0;
+    size_t                     m_BindingCounter;
     
 public:
-    ShaderPrinter(std::ostream& os, uint32 flags)
-        :   m_Printer(os, flags) {}
+    ShaderPrinter(std::ostream& os, size_t binding_counter, uint32 flags)
+        :   m_Printer(os, flags),
+            m_BindingCounter(binding_counter) {}
     virtual ~ShaderPrinter()=default;
 
     std::ostream& stream() { return m_Printer.stream(); }
+    size_t getIndentation() const { return m_Printer.getIndentation(); }
 
     void setShaderType(Shader::ShaderType shader_type) { m_ShaderType = shader_type; }
     bool isDrawIDInUse() const { return m_DrawIDInUse; }
@@ -61,6 +63,7 @@ public:
     // That's pretty much top-level declaration, so no recursion is supported
     void printSubroutine(const Shader::Subroutine* subroutine) { Shader::PrintNode(this, &m_Printer, subroutine); }
     
+    virtual void visit(const Location& loc) final { AST::PrintLocation(&m_Printer, loc); }
     virtual void visit(const AST::Value<float>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<int>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<unsigned>* value) final { AST::PrintNode(&m_Printer, value); }
@@ -83,7 +86,7 @@ public:
     virtual void visit(const Shader::ArrayType* array_type) final { Shader::PrintNode(this, &m_Printer, array_type); }
     virtual void visit(const Shader::StructType* _struct) final { Shader::PrintNode(this, &m_Printer, _struct); }
     virtual void visit(const Shader::Variable* var) final;
-    virtual void visit(const Shader::Declaration* decl) final { Shader::PrintNode(this, &m_Printer, decl); }
+    virtual void visit(const Shader::Declaration* decl) final;
     virtual void visit(const Shader::MemberVariable* mem_var) final { Shader::PrintNode(this, &m_Printer, mem_var); }
     virtual void visit(const Shader::ArrayElementVariable* array_elem) final { Shader::PrintNode(this, &m_Printer, array_elem); }
     virtual void visit(const Shader::InvariantDeclaration* invar_decl) final { Shader::PrintNode(this, &m_Printer, invar_decl); }
@@ -116,6 +119,32 @@ public:
     virtual void visit(const AST::Value<Shader::ShaderType>*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
 };
 
+void ShaderPrinter::visit(const Shader::Declaration* decl)
+{
+    auto* vars = decl->getVariables();
+    if(vars->getNodeType() == Shader::TGE_EFFECT_VARIABLE)
+    {
+        auto* var = vars->extract<Shader::Variable>();
+        if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
+        {
+            auto& os = m_Printer.stream();
+            for(size_t i = 0, indentation = m_Printer.getIndentation(); i < indentation; ++i)
+                os << "\t";
+            os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer " << var->getNodeName() << "_StructBuffer "
+                << "{\n";
+            for(size_t i = 0, indentation = m_Printer.getIndentation(); i < indentation + 1; ++i)
+                os << "\t";
+            os << var->getType()->getNodeName() << " " << var->getNodeName() << "[]";
+            for(size_t i = 0, indentation = m_Printer.getIndentation(); i < indentation; ++i)
+                os << "\t";
+            os << "};\n";
+            return;
+        }
+    }
+    
+    Shader::PrintNode(this, &m_Printer, decl);
+}
+
 void ShaderPrinter::visit(const Shader::Variable* var)
 {
     if(var->getNodeName() == "tge_DrawID")
@@ -133,6 +162,7 @@ class Generator: public Shader::VisitorInterface
     std::stringstream          m_RawImportStream;
     ShaderPrinter              m_RawImport;
 
+    size_t                     m_BindingCounter;
     bool                       m_Valid;
     Shader::EffectDescription  m_Effect;
     FileLoader*                m_FileLoader;
@@ -140,6 +170,7 @@ public:
     Generator(FileLoader* include_loader);
     virtual ~Generator();
     
+    virtual void visit(const Location& loc) final { m_RawImport.visit(loc); }
     virtual void visit(const AST::Value<float>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<int>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<unsigned>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -200,7 +231,7 @@ public:
 };
 
 Generator::Generator(FileLoader* include_loader)
-    :   m_RawImport(m_RawImportStream, AST::TGE_AST_PRINT_LINE_LOCATION),
+    :   m_RawImport(m_RawImportStream, m_BindingCounter, AST::TGE_AST_PRINT_LINE_LOCATION),
         m_Valid(true),
         m_FileLoader(include_loader) {}
 
@@ -739,7 +770,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     Shader::ShaderDescription shader_desc(_shader->getType(), _shader->getNodeName());
     std::stringstream ss;
     ss << m_RawImportStream.str();
-    ShaderPrinter shader_printer(ss, AST::TGE_AST_PRINT_LINE_LOCATION);
+    ShaderPrinter shader_printer(ss, m_BindingCounter, AST::TGE_AST_PRINT_LINE_LOCATION);
     shader_printer.setShaderType(shader_type);
     
     switch(_shader->getType())
@@ -756,7 +787,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     
     for(auto j = _shader->getBody()->current(); j != _shader->getBody()->end(); ++j)
     {
-        j->printLocation(shader_printer.stream());
+        shader_printer.visit(j->getDeclarationLocation());
         
         TGE_ASSERT(*j, "Valid node expected. Bad parsing beforehand.");
         auto node_type = j->getNodeType();
@@ -790,62 +821,62 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                 {
                     auto* binop = k->extract<Shader::BinaryOperator>();
                     auto layout_id = binop->getLHSOperand()->extract<Shader::Identifier>()->getValue();
-                    if(layout_id == "semanticExt")
+                    if(!layout_started)
                     {
-                        auto _storage = var->getStorage();
-                        if(_storage == Shader::TGE_EFFECT_DEFAULT_STORAGE || _storage == Shader::TGE_EFFECT_CONST_STORAGE)
-                        {
-                            Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Semantic can't be applied on variables that are not associated with input or output signature: ", var->getNodeName());
-                            m_Valid = false;
-                            return;
-                        }
-                        
-                        auto* semantic_name_val = binop->getRHSOperand()->extract<Shader::Identifier>();
-                        Shader::InputParameter param(var->getType()->getTypeEnum(), var->getNodeName(), semantic_name_val->getValue());
-                        shader_desc.addInputParameter(param);
+                        layout_started = true;
+                        shader_printer.stream() << "layout(";
                     }
                     else
-                    {
-                        if(!layout_started)
-                        {
-                            layout_started = true;
-                            shader_printer.stream() << "layout(";
-                        }
-                        else
-                            shader_printer.stream() << ", ";
-                        shader_printer.visit(binop);
-                    }
+                        shader_printer.stream() << ", ";
+                    shader_printer.visit(binop);
                 }
                 if(layout_started)
                     shader_printer.stream() << ") ";
             }
             
-            switch(var->getInterpolation())
+            if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
             {
-            default: TGE_ASSERT(false, "Unknown interpolation type");
-            case Shader::TGE_EFFECT_DEFAULT_INTERPOLATION: break;
-            case Shader::TGE_EFFECT_SMOOTH_INTERPOLATION: shader_printer.stream() << "smooth "; break;
-            case Shader::TGE_EFFECT_FLAT_INTERPOLATION: shader_printer.stream() << "flat "; break;
-            case Shader::TGE_EFFECT_NOPERSPECTIVE_INTERPOLATION: shader_printer.stream() << "noperspective "; break;
+                auto& os = shader_printer.stream();
+                for(size_t i = 0, indentation = shader_printer.getIndentation(); i < indentation; ++i)
+                    os << "\t";
+                os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer " << var->getNodeName() << "_StructBuffer "
+                    << "{\n";
+                for(size_t i = 0, indentation = shader_printer.getIndentation() + 1; i < indentation; ++i)
+                    os << "\t";
+                os << var->getType()->getNodeName() << " " << var->getNodeName() << "[]";
+                for(size_t i = 0, indentation = shader_printer.getIndentation(); i < indentation; ++i)
+                    os << "\t";
+                os << "};\n";
             }
-            
-            switch(var->getStorage())
+            else
             {
-            case Shader::TGE_EFFECT_DEFAULT_STORAGE: break;
-            case Shader::TGE_EFFECT_CONST_STORAGE: shader_printer.stream() << "const "; break;
-            case Shader::TGE_EFFECT_IN_STORAGE: shader_printer.stream() << "in "; break;
-            case Shader::TGE_EFFECT_CENTROID_IN_STORAGE: shader_printer.stream() << "centroid in ";break;
-            case Shader::TGE_EFFECT_SAMPLE_IN_STORAGE: TGE_ASSERT(false, "sample out "); break;
-            case Shader::TGE_EFFECT_OUT_STORAGE: shader_printer.stream() << "out "; break;
-            case Shader::TGE_EFFECT_CENTROID_OUT_STORAGE: shader_printer.stream() << "centroid out "; break;
-            case Shader::TGE_EFFECT_SAMPLE_OUT_STORAGE: TGE_ASSERT(false, "sample in "); break;
-            case Shader::TGE_EFFECT_INOUT_STORAGE: TGE_ASSERT(false, "Unexpected storage format.");
-            default:
-                TGE_ASSERT(false, "Unsupported storage type.");
+                switch(var->getInterpolation())
+                {
+                default: TGE_ASSERT(false, "Unknown interpolation type");
+                case Shader::InterpolationQualifier::Default: break;
+                case Shader::InterpolationQualifier::Smooth: shader_printer.stream() << "smooth "; break;
+                case Shader::InterpolationQualifier::Flat: shader_printer.stream() << "flat "; break;
+                case Shader::InterpolationQualifier::Noperspective: shader_printer.stream() << "noperspective "; break;
+                }
+
+                switch(var->getStorage())
+                {
+                case Shader::StorageQualifier::Default: break;
+                case Shader::StorageQualifier::Const: shader_printer.stream() << "const "; break;
+                case Shader::StorageQualifier::In: shader_printer.stream() << "in "; break;
+                case Shader::StorageQualifier::CentroidIn: shader_printer.stream() << "centroid in "; break;
+                case Shader::StorageQualifier::SampleIn: TGE_ASSERT(false, "sample out "); break;
+                case Shader::StorageQualifier::Out: shader_printer.stream() << "out "; break;
+                case Shader::StorageQualifier::CentroidOut: shader_printer.stream() << "centroid out "; break;
+                case Shader::StorageQualifier::SampleOut: TGE_ASSERT(false, "sample in "); break;
+                case Shader::StorageQualifier::InOut: TGE_ASSERT(false, "Unexpected storage format.");
+                default:
+                    TGE_ASSERT(false, "Unsupported storage type.");
+                }
+
+                var->getType()->accept(&shader_printer);
+                shader_printer.stream() << " " << var->getNodeName();
             }
-            
-            var->getType()->accept(&shader_printer);
-            shader_printer.stream() << " " << var->getNodeName();
         }
         if(!j->isBlockStatement())
            shader_printer.stream() << ";\n";

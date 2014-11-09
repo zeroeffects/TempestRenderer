@@ -100,6 +100,8 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 "flat"                                  *yylval = AST::Node(); return Parser::token::T_FLAT_QUALIFIER;
 "smooth"                                *yylval = AST::Node(); return Parser::token::T_SMOOTH_QUALIFIER;
 "noperspective"                         *yylval = AST::Node(); return Parser::token::T_NOPERSPECTIVE_QUALIFIER;
+"resource"                              *yylval = AST::Node(); return Parser::token::T_RESOURCE_QUALIFIER;
+"structbuffer"                          *yylval = AST::Node(); return Parser::token::T_STRUCTBUFFER_QUALIFIER;
 {IDENTIFIER}                            {
                                             auto node = driver.findIdentifier(yytext);
                                             if(node)

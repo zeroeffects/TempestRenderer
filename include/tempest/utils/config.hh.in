@@ -29,3 +29,4 @@
 #cmakedefine HAS_SSE
 #cmakedefine HAS_ARM_NEON
 #cmakedefine HAS_LIBPNG
+#cmakedefine TEMPEST_NDA_APIS

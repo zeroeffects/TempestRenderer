@@ -47,11 +47,6 @@ class GLLinkedShaderProgram;
 class GLInputLayout;
 class GLBuffer;
 
-#ifndef MAX_VERTEX_BUFFERS
-    // Ok, you can have two. More is just going to ruin your performance
-    #define MAX_VERTEX_BUFFERS 2
-#endif
-
 struct GLVertexBufferDescription
 {
     GLBuffer*               VertexBuffer = nullptr;

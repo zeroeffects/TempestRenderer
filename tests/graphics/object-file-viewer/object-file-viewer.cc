@@ -1,6 +1,6 @@
 #include "tempest/utils/testing.hh"
 #include "tempest/graphics/rendering-convenience.hh"
-#include "tempest/graphics/opengl-backend/gl-all.hh"
+#include "tempest/graphics/api-all.hh"
 #include "tempest/mesh/obj-loader.hh"
 
 TGE_TEST("Testing loading object files directly into the engine for testing purposes")

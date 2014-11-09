@@ -66,7 +66,8 @@ enum class ElementType
 enum class BufferType
 {
     Regular,  //!< Generally this is buffer in memory. It comes with the expected latency and bandwidth limitations.
-    Constant  /*!< On some graphics cards its content might be assigned to registers. */
+    Constant, /*!< On some graphics cards its content might be assigned to registers. */
+    Resource  //!< This one is mostly for non-bindless style APIs that declare stuff in weird fashion.
 };
 
 class PassShaderDescription

@@ -2,7 +2,7 @@
 #include "tempest/math/vector2.hh"
 #include "tempest/math/matrix4.hh"
 #include "tempest/graphics/rendering-convenience.hh"
-#include "tempest/graphics/opengl-backend/gl-all.hh"
+#include "tempest/graphics/api-all.hh"
 
 // This one includes comments because it is used as proof of concept.
 #define TEMPEST_RENDERING_SYSTEM Tempest::GLSystem
@@ -76,7 +76,7 @@ TGE_TEST("Testing the rendering context")
     typedef decltype(sys_obj->Backend) BackendType;
     BackendType::CommandBufferType::DrawBatchType batch;
     batch.PrimitiveType = Tempest::DrawModes::TriangleStrip;
-    batch.VertexCount = idx_arr.size();
+    batch.VertexCount = static_cast<Tempest::uint16>(idx_arr.size());
     batch.ResourceTable = baked_table.get();
     batch.LinkedShaderProgram = linked_shader_prog;
     batch.IndexBuffer = index_buf.get();

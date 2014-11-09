@@ -1,20 +1,12 @@
 struct GlobalsDesc
 {
-    mat4 Transform;
-    uint TextureID;
+    mat4        Transform;
+    sampler2D   Texture;
 };
 
-resources ResourcesTable
+buffer GlobalsBuffer
 {
-    sampler2DArray Textures[16];
-}
-
-structbuffer GlobalsDesc Globals;
-
-void GetResourceIndex(in uint packed_res_idx, out uint tex_slot, out uint tex_slice)
-{
-    tex_slot  = packed_res_idx >> 16;
-    tex_slice = packed_res_idx & 0xFFFF;
+    GlobalsDesc Globals[];
 }
 
 vertex shader VS
@@ -41,9 +33,7 @@ fragment shader FS
 
     void main()
     {
-        uint tex_slot, tex_slice;
-        GetResourceIndex(Globals[DrawIndex].TextureID, tex_slot, tex_slice);
-        vec3 color = texture(Textures[tex_slot], vec3(TexCoord, tex_slice)).xyz;
+        vec3 color = texture(Globals[DrawIndex].Texture, TexCoord).xyz;
         FragmentColor = vec4(color, 1.0);
     }
 }

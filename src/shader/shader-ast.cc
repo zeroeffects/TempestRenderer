@@ -989,8 +989,8 @@ const Type* StructType::getMemberType(Driver& driver, const Type* this_type, con
 
 Variable::Variable(const Type* _type, string name)
     :   m_Name(name),
-        m_Interpolation(TGE_EFFECT_DEFAULT_INTERPOLATION),
-        m_Storage(TGE_EFFECT_DEFAULT_STORAGE),
+        m_Interpolation(InterpolationQualifier::Default),
+        m_Storage(StorageQualifier::Default),
         m_Invariant(false),
 		m_InvariantDecl(nullptr),
         m_Type(_type)
@@ -999,7 +999,7 @@ Variable::Variable(const Type* _type, string name)
 
 Variable::Variable(StorageQualifier _storage, const Type* _type, string name)
     :   m_Name(name),
-        m_Interpolation(TGE_EFFECT_DEFAULT_INTERPOLATION),
+        m_Interpolation(InterpolationQualifier::Default),
         m_Storage(_storage),
         m_Invariant(false),
 		m_InvariantDecl(nullptr),
@@ -1105,34 +1105,35 @@ void PrintType(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
         os << "invariant ";
     switch(var->getStorage())
     {
-    case TGE_EFFECT_DEFAULT_STORAGE:
+    case StorageQualifier::StructBuffer:
+    case StorageQualifier::Default:
         break;
-    case TGE_EFFECT_CONST_STORAGE:
+    case StorageQualifier::Const:
         os << "const "; break;
-    case TGE_EFFECT_IN_STORAGE:
+    case StorageQualifier::In:
         os << "in "; break;
-    case TGE_EFFECT_CENTROID_IN_STORAGE:
+    case StorageQualifier::CentroidIn:
         os << "centroid in "; break;
-    case TGE_EFFECT_SAMPLE_IN_STORAGE:
+    case StorageQualifier::SampleIn:
         os << "sample in "; break;
-    case TGE_EFFECT_OUT_STORAGE:
+    case StorageQualifier::Out:
         os << "out "; break;
-    case TGE_EFFECT_CENTROID_OUT_STORAGE:
+    case StorageQualifier::CentroidOut:
         os << "centroid out "; break;
-    case TGE_EFFECT_SAMPLE_OUT_STORAGE:
+    case StorageQualifier::SampleOut:
         os << "sample out "; break;
-    case TGE_EFFECT_INOUT_STORAGE:
+    case StorageQualifier::InOut:
         os << "inout "; break;
     }
     switch(var->getInterpolation())
     {
-    case TGE_EFFECT_DEFAULT_INTERPOLATION:
+    case InterpolationQualifier::Default:
         break;
-    case TGE_EFFECT_SMOOTH_INTERPOLATION:
+    case InterpolationQualifier::Smooth:
         os << "smooth "; break;
-    case TGE_EFFECT_FLAT_INTERPOLATION:
+    case InterpolationQualifier::Flat:
         os << "flat "; break;
-    case TGE_EFFECT_NOPERSPECTIVE_INTERPOLATION:
+    case InterpolationQualifier::Noperspective:
         os << "noperspective "; break;
     }
     visitor->visit(var->getType());
@@ -1962,8 +1963,8 @@ void PrintNode(AST::PrinterInfrastructure* printer, const JumpStatement* jump_st
     auto& os = printer->stream();
     switch(jump_stmt->getJumpType())
     {
-    case TGE_EFFECT_CONTINUE_STATEMENT: os << "continue"; break;
-    case TGE_EFFECT_BREAK_STATEMENT: os << "break"; break;
+    case JumpStatementType::Continue: os << "continue"; break;
+    case JumpStatementType::Break: os << "break"; break;
     default: TGE_ASSERT(false, "Unsupported jump expression");
     }
 }

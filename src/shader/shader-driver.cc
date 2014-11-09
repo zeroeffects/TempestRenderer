@@ -575,7 +575,7 @@ struct _In
      */ 
     inline static void apply(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, Variable* var)
     {
-        var->setStorage(TGE_EFFECT_IN_STORAGE);
+        var->setStorage(StorageQualifier::In);
     }
 };
 
@@ -595,7 +595,7 @@ struct _Out
      */ 
     inline static void apply(AST::ObjectPoolType& obj_pool, AST::StackType& _stack, Variable* var)
     {
-        var->setStorage(TGE_EFFECT_OUT_STORAGE);
+        var->setStorage(StorageQualifier::Out);
     }
 };
 
@@ -1382,21 +1382,21 @@ Driver::Driver()
 
     // Variables
     // -- Constants
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_CLIP_DISTANCE] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxClipDistance");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_DRAW_BUFFERS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxDrawBuffers");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryTextureImageUnits");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_TEXTURE_IMAGE_UNITS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxTextureImageUnits");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VERTEX_ATTRIBS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVertexAttribs");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVertexTextureImageUnits");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxCombinedTextureImageUnits");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_VARYING_COMPONENTS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryVaryingComponents");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VARYING_COMPONENTS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVaryingComponents");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VARYING_FLOATS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVaryingFloats");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_OUTPUT_VERTICES] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryOutputVertices");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_FRAGMENT_UNIFORM_COMPONENTS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxFragmentUniformComponents");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryTotalOutputComponents");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_UNIFORM_COMPONENTS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryUniformComponents");
-    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VERTEX_UNIFORM_COMPONENTS] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVertexUniformComponents");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_CLIP_DISTANCE] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxClipDistance");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_DRAW_BUFFERS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxDrawBuffers");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryTextureImageUnits");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_TEXTURE_IMAGE_UNITS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxTextureImageUnits");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VERTEX_ATTRIBS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVertexAttribs");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVertexTextureImageUnits");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxCombinedTextureImageUnits");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_VARYING_COMPONENTS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryVaryingComponents");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VARYING_COMPONENTS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVaryingComponents");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VARYING_FLOATS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVaryingFloats");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_OUTPUT_VERTICES] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryOutputVertices");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_FRAGMENT_UNIFORM_COMPONENTS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxFragmentUniformComponents");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryTotalOutputComponents");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_GEOMETRY_UNIFORM_COMPONENTS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxGeometryUniformComponents");
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_GL_MAX_VERTEX_UNIFORM_COMPONENTS] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_MaxVertexUniformComponents");
     TGE_ASSERT(std::find_if(m_ShaderBuiltIns.begin(), m_ShaderBuiltIns.end(), [this](size_t idx){ return !this->m_ObjectPool[idx]; }) == m_ShaderBuiltIns.end(), "Unfilled built-ins");
 
     m_Stack.assign(m_ShaderBuiltIns.begin(), m_ShaderBuiltIns.end());
@@ -1439,14 +1439,14 @@ Driver::Driver()
     BuiltInFunction<void (CompiledShaderType)>::addTo(m_ObjectPool, m_TechniqueBuiltIns, func_set);
     m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_COMPILE_SHADER] = createFunctionSet(&func_set, "CompileShader");
     BuiltInFunction<CompiledShaderType (ProfileType, ShaderBlockType)>::addTo(m_ObjectPool, m_TechniqueBuiltIns, func_set);
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_1_4_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_1_4_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_1_5_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_1_5_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_3_3_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_3_3_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_0_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_0_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_1_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_1_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_2_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_2_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_3_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_3_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_4_0] = createBuiltInNode<Variable>(TGE_EFFECT_CONST_STORAGE, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_4_0");
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_1_4_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_1_4_0");
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_1_5_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_1_5_0");
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_3_3_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_3_3_0");
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_0_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_0_0");
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_1_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_1_0");
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_2_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_2_0");
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_3_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_3_0");
+    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_4_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_4_0");
     TGE_ASSERT(std::find_if(m_TechniqueBuiltIns.begin(), m_TechniqueBuiltIns.end(), [this](size_t idx){ return !this->m_ObjectPool[idx]; }) == m_TechniqueBuiltIns.end(), "Unfilled technique built-ins");
 }
 
@@ -1466,14 +1466,14 @@ void Driver::beginShader(ShaderType shader_type)
         size_t current_size = m_Stack.size();
         m_Stack.resize(m_Stack.size() + TGE_EFFECT_BUILTINS_VS);
         StackType::iterator::pointer vs_p = &m_Stack[current_size];
-        vs_p[TGE_EFFECT_BUILTIN_IN_TGE_DRAW_ID] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "tge_DrawID");
-        vs_p[TGE_EFFECT_BUILTIN_IN_GL_VERTEX_ID] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_VertexID");
-        vs_p[TGE_EFFECT_BUILTIN_IN_GL_INSTANTCE_ID] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_InstanceID");
-        vs_p[TGE_EFFECT_BUILTIN_OUT_GL_POSITION] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC4), "gl_Position");
-        vs_p[TGE_EFFECT_BUILTIN_OUT_GL_POINT_SIZE] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_FLOAT), "gl_PointSize");
+        vs_p[TGE_EFFECT_BUILTIN_IN_TGE_DRAW_ID] = createBuiltInNode<Variable>(StorageQualifier::In, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "tge_DrawID");
+        vs_p[TGE_EFFECT_BUILTIN_IN_GL_VERTEX_ID] = createBuiltInNode<Variable>(StorageQualifier::In, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_VertexID");
+        vs_p[TGE_EFFECT_BUILTIN_IN_GL_INSTANTCE_ID] = createBuiltInNode<Variable>(StorageQualifier::In, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_InstanceID");
+        vs_p[TGE_EFFECT_BUILTIN_OUT_GL_POSITION] = createBuiltInNode<Variable>(StorageQualifier::Out, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC4), "gl_Position");
+        vs_p[TGE_EFFECT_BUILTIN_OUT_GL_POINT_SIZE] = createBuiltInNode<Variable>(StorageQualifier::Out, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_FLOAT), "gl_PointSize");
         auto arr_size = createBuiltInType<ArrayType>(extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_FLOAT),
                                                                  AST::CreateNode<AST::Reference<Variable>>(TGE_DEFAULT_LOCATION, extractNode<Variable>(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_GL_MAX_CLIP_DISTANCE)));
-        vs_p[TGE_EFFECT_BUILTIN_OUT_GL_CLIP_DISTANCE] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE,
+        vs_p[TGE_EFFECT_BUILTIN_OUT_GL_CLIP_DISTANCE] = createBuiltInNode<Variable>(StorageQualifier::Out,
                                                                                    m_ObjectPool[arr_size].extract<Type>(),
                                                                                    "gl_ClipDistance");
     //  TGE_ASSERT(std::find(m_Stack.begin(), m_Stack.end(), StackASTNodePtr()) == m_Stack.end(), "Unfilled stack");
@@ -1489,21 +1489,21 @@ void Driver::beginShader(ShaderType shader_type)
         fs_p[TGE_EFFECT_BUILTIN_INTERPOLATEATCENTROID] = m_FSBuiltIns[TGE_EFFECT_BUILTIN_INTERPOLATEATCENTROID];
         fs_p[TGE_EFFECT_BUILTIN_INTERPOLATEATSAMPLE] = m_FSBuiltIns[TGE_EFFECT_BUILTIN_INTERPOLATEATSAMPLE];
         fs_p[TGE_EFFECT_BUILTIN_INTERPOLATEATOFFSET] = m_FSBuiltIns[TGE_EFFECT_BUILTIN_INTERPOLATEATOFFSET];
-        fs_p[TGE_EFFECT_BUILTIN_IN_GL_FRAG_COORD] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC4), "gl_FragCoord");
-        fs_p[TGE_EFFECT_BUILTIN_IN_GL_FRONT_FACING] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_BOOL), "gl_FrontFacing");
+        fs_p[TGE_EFFECT_BUILTIN_IN_GL_FRAG_COORD] = createBuiltInNode<Variable>(StorageQualifier::In, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC4), "gl_FragCoord");
+        fs_p[TGE_EFFECT_BUILTIN_IN_GL_FRONT_FACING] = createBuiltInNode<Variable>(StorageQualifier::In, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_BOOL), "gl_FrontFacing");
         auto cdist_arr_size = createBuiltInType<ArrayType>(extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_FLOAT),
                                                                        AST::CreateNode<AST::Reference<Variable>>(TGE_DEFAULT_LOCATION, extractNode<Variable>(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_GL_MAX_CLIP_DISTANCE)));
-        fs_p[TGE_EFFECT_BUILTIN_IN_GL_CLIP_DISTANCE] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE,
+        fs_p[TGE_EFFECT_BUILTIN_IN_GL_CLIP_DISTANCE] = createBuiltInNode<Variable>(StorageQualifier::In,
                                                                                 m_ObjectPool[cdist_arr_size].extract<Type>(),
                                                                                 "gl_ClipDistance");
-        fs_p[TGE_EFFECT_BUILTIN_IN_GL_POINT_COORD] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC4), "gl_PointCoord");
-        fs_p[TGE_EFFECT_BUILTIN_IN_GL_PRIMITIVE_ID] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_PrimitiveID");
-        fs_p[TGE_EFFECT_BUILTIN_IN_GL_SAMPLE_ID] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_SampleID");
-        fs_p[TGE_EFFECT_BUILTIN_IN_GL_SAMPLE_POSITION] = createBuiltInNode<Variable>(TGE_EFFECT_IN_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC2), "gl_SamplePosition");
-        fs_p[TGE_EFFECT_BUILTIN_OUT_GL_FRAG_DEPTH] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_FLOAT), "gl_FragDepth");
+        fs_p[TGE_EFFECT_BUILTIN_IN_GL_POINT_COORD] = createBuiltInNode<Variable>(StorageQualifier::In, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC4), "gl_PointCoord");
+        fs_p[TGE_EFFECT_BUILTIN_IN_GL_PRIMITIVE_ID] = createBuiltInNode<Variable>(StorageQualifier::In, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_PrimitiveID");
+        fs_p[TGE_EFFECT_BUILTIN_IN_GL_SAMPLE_ID] = createBuiltInNode<Variable>(StorageQualifier::In, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_INT), "gl_SampleID");
+        fs_p[TGE_EFFECT_BUILTIN_IN_GL_SAMPLE_POSITION] = createBuiltInNode<Variable>(StorageQualifier::In, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_VEC2), "gl_SamplePosition");
+        fs_p[TGE_EFFECT_BUILTIN_OUT_GL_FRAG_DEPTH] = createBuiltInNode<Variable>(StorageQualifier::Out, extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_FLOAT), "gl_FragDepth");
         auto samp_arr_size = createBuiltInType<ArrayType>(extractType(m_ShaderBuiltIns, TGE_EFFECT_BUILTIN_FLOAT),
                                                                       AST::Node()); // TODO: check whether it is working
-        fs_p[TGE_EFFECT_BUILTIN_OUT_GL_SAMPLER_MASK] = createBuiltInNode<Variable>(TGE_EFFECT_OUT_STORAGE,
+        fs_p[TGE_EFFECT_BUILTIN_OUT_GL_SAMPLER_MASK] = createBuiltInNode<Variable>(StorageQualifier::Out,
                                                                                 m_ObjectPool[samp_arr_size].extract<Type>(),
                                                                                 "gl_SampleMask");
     //  TGE_ASSERT(std::find(m_Stack.begin(), m_Stack.end(), StackASTNodePtr()) == m_Stack.end(), "Unfilled stack");

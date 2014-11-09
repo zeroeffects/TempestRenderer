@@ -257,7 +257,9 @@ void PrintNode(AST::VisitorInterface* visitor, PrinterInfrastructure* printer, c
         if(format == TGE_AST_SEMICOLON_SEPARATED_LIST)
         {
             if(printer->hasFlags(TGE_AST_PRINT_LINE_LOCATION))
-                i->printLocation(os);
+            {
+                visitor->visit(i->getDeclarationLocation());
+            }
             for(size_t i = 0; i < printer->getIndentation(); ++i)
                 os << "\t";
         }

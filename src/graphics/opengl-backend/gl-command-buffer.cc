@@ -131,7 +131,6 @@ void GLCommandBuffer::prepareCommandBuffer()
                       lhs.SortKey < rhs.SortKey :
                       lhs.LinkedShaderProgram < rhs.LinkedShaderProgram;
               });
-                  
 }
 
 static void AllocateBuffer(GLenum type, size_t req_size, size_t* size, GLuint* gpu_buf, void** gpu_buf_ptr)

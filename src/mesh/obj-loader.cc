@@ -199,7 +199,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
         
         auto& batch = (*batches)[i];
         batch.PrimitiveType = DrawModes::TriangleList;
-        batch.VertexCount   = res_inds.size() - prev_size;
+        batch.VertexCount   = static_cast<uint16>(res_inds.size() - prev_size);
         batch.BaseVertex    = 0;
         batch.SortKey       = 0; // This could be regenerated on the fly
         

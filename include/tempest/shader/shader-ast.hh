@@ -688,39 +688,40 @@ public:
     bool hasValidConstructor(const List* var_list) const { return false; }
 };
 
-enum InterpolationQualifier
+enum class InterpolationQualifier: uint32
 {
-    TGE_EFFECT_DEFAULT_INTERPOLATION,
-    TGE_EFFECT_SMOOTH_INTERPOLATION,
-    TGE_EFFECT_FLAT_INTERPOLATION,
-    TGE_EFFECT_NOPERSPECTIVE_INTERPOLATION
+    Default,
+    Smooth,
+    Flat,
+    Noperspective
 };
 
-enum StorageQualifier
+enum class StorageQualifier: uint32
 {
-    TGE_EFFECT_DEFAULT_STORAGE,
-    TGE_EFFECT_CONST_STORAGE,
-    TGE_EFFECT_IN_STORAGE,
-    TGE_EFFECT_CENTROID_IN_STORAGE,
-    TGE_EFFECT_SAMPLE_IN_STORAGE,
-    TGE_EFFECT_OUT_STORAGE,
-    TGE_EFFECT_CENTROID_OUT_STORAGE,
-    TGE_EFFECT_SAMPLE_OUT_STORAGE,
-    TGE_EFFECT_INOUT_STORAGE
+    Default,
+    Const,
+    In,
+    CentroidIn,
+    SampleIn,
+    Out,
+    CentroidOut,
+    SampleOut,
+    InOut,
+    StructBuffer
 };
 
-enum PrecisionQualifier
+enum class PrecisionQualifier: uint32
 {
-    TGE_EFFECT_HIGH_PRECISION,
-    TGE_EFFECT_MEDIUM_PRECISION,
-    TGE_EFFECT_LOW_PRECISION
+    HighPrecision,
+    MediumPrecision,
+    LowPrecision
 };
 
-enum JumpStatementType
+enum class JumpStatementType: uint32
 {
-    TGE_EFFECT_CONTINUE_STATEMENT,
-    TGE_EFFECT_BREAK_STATEMENT
-    //TGE_EFFECT_GOTO_STATEMENT
+    Continue,
+    Break
+    //Goto
 };
 
 class Variable
@@ -806,6 +807,9 @@ public:
     AST::Node* getParent() { return &m_Parent; }
     const AST::Node* getParent() const { return &m_Parent; }
     
+    Variable* getVariable() { return &m_Variable; }
+    const Variable* getVariable() const { return &m_Variable; }
+
     AST::Node* getIndex() { return &m_Expr; }
     const AST::Node* getIndex() const { return &m_Expr; }
     
@@ -1261,6 +1265,7 @@ public:
 
     std::ostream& stream() { return m_Printer.stream(); }
 
+    virtual void visit(const Location& loc) override { AST::PrintLocation(&m_Printer, loc); }
     virtual void visit(const AST::Value<float>* value) override { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<int>* value) override { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<unsigned>* value) override { AST::PrintNode(&m_Printer, value); }

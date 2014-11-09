@@ -25,6 +25,8 @@
 
 IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/nda-build.cmake)
 	INCLUDE(nda-build.cmake)
+    SET(TEMPEST_NDA_CMAKE nda-build.cmake)
+    SET(TEMPEST_NDA_APIS on PARENT_SCOPE)
 ENDIF()
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
@@ -92,28 +94,30 @@ SET(TEMPEST_GRAPHICS_SRC
    )
 
 SET(TEMPEST_GRAPHICS_INC
-	${TEMPEST_NDA_GRAPHICS_INC}
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-all.hh
+    ${TEMPEST_NDA_GRAPHICS_INC}
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-all.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-backend.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-buffer.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-command-buffer.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-compiler.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-convenience.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-input-layout.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-input-layout.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-command-buffer.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-compiler.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-convenience.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-input-layout.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-input-layout.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-library.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-shader.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-shader.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-texture.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-utils.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-window.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-state-object.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/os-window.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-window.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-state-object.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/api-all.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/os-window.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-backend.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-convenience.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-convenience.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-definitions.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/state-object.hh
-	${CMAKE_SOURCE_DIR}/include/tempest/graphics/texture.hh
-  )
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/state-object.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/texture.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/shader.hh
+   )
 
 SET(TEMPEST_IMAGE_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/image/image.hh
@@ -151,6 +155,8 @@ FLEX_TARGET(TempestScanner "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader-lexer.l"
 ADD_FLEX_BISON_DEPENDENCY(TempestScanner TempestParser)
 
 SET(TEMPEST_SHADER_SRC
+    shader/shader-parser.y
+    shader/shader-lexer.l
     shader/dx-shader-generator.cc
     shader/gl-shader-generator.cc
     shader/shader-common.cc
@@ -228,6 +234,7 @@ SET(TEMPEST_MESH_INC
    )
 
 SET(TEMPEST_LIBRARY_FILES
+    ${TEMPEST_NDA_CMAKE}
     ${TEMPEST_UTILS_INC}
     ${TEMPEST_UTILS_SRC}
     ${TEMPEST_GRAPHICS_SRC}

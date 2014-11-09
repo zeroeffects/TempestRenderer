@@ -3,10 +3,7 @@ struct GlobalsDesc
     mat4 Transform;
 };
 
-buffer GlobalsBuffer
-{
-    GlobalsDesc Globals[];
-}
+structbuffer GlobalsDesc Globals;
 
 vertex shader VS
 {

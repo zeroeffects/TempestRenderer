@@ -63,14 +63,14 @@ ELSE(MSVC)
     ENDIF(HAS_SSE)
 ENDIF(MSVC)
 
-CONFIGURE_FILE(
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/tempest/utils/config.hh.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/include/tempest/utils/config.hh"
-    )
-
 ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(share)
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(tests)
 ADD_SUBDIRECTORY(tools)
 ADD_SUBDIRECTORY(external/xxhash)
+
+CONFIGURE_FILE(
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/tempest/utils/config.hh.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/tempest/utils/config.hh"
+    )
