@@ -79,84 +79,81 @@ static GLenum TranslateDrawMode(DrawModes mode)
     }
 }
 
-GLCommandBuffer::GLCommandBuffer()
+GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
+    :   m_CommandBuffer(new GLDrawBatch[desc.CommandCount])
 {
-    m_CommandBuffer.reserve(10000);
+    GLuint buffers[2];
+    glGenBuffers(2, buffers);
+    m_GPUCommandBuffer = buffers[0];
+    m_ConstantBuffer = buffers[1];
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_GPUCommandBuffer);
+    GLuint cmd_buf_size = m_CommandBufferSize*sizeof(DrawElementsIndirectCommand);
+#ifndef DISABLE_NV_OPTIMIZATION
+    if(glMultiDrawElementsIndirectBindlessNV)
+    {
+        cmd_buf_size += m_CommandBufferSize*(sizeof(GLuint) + MAX_VERTEX_BUFFERS*sizeof(BindlessPtrNV));
+    }
+#endif
+    glBufferStorage(GL_DRAW_INDIRECT_BUFFER, cmd_buf_size, 0,
+                    GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+    m_GPUCommandBufferPtr = glMapBufferRange(GL_DRAW_INDIRECT_BUFFER, 0, cmd_buf_size,
+                                             GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+
+    GLuint const_buf_size = desc.ConstantsBufferSize;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ConstantBuffer);
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER, const_buf_size, 0,
+                    GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+    m_GPUCommandBufferPtr = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, const_buf_size,
+                                             GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 }
 
 GLCommandBuffer::~GLCommandBuffer()
 {
-    if(m_GPUCommandBufferSize)
-        glDeleteBuffers(1, &m_GPUCommandBuffer);
-    if(m_ConstantBufferRingSize)
-        glDeleteBuffers(1, &m_ConstantBufferRing);
+    GLuint buffers[] = { m_GPUCommandBuffer, m_ConstantBuffer };
+    glDeleteBuffers(TGE_FIXED_ARRAY_SIZE(buffers), buffers);
     if(m_GPUFence)
         glDeleteSync(m_GPUFence);
 }
 
 void GLCommandBuffer::clear()
 {
-    m_CommandBuffer.clear();
-    m_ConstantBufferReqRingSize = 0;
-    m_CommandBufferReqSize = 0;
+    m_ConstantBufferSize = 0;
+    m_CommandCount = 0;
 }
 
-void GLCommandBuffer::enqueueBatch(const GLDrawBatch& draw_batch)
+bool GLCommandBuffer::enqueueBatch(const GLDrawBatch& draw_batch)
 {
-    if(draw_batch.LinkedShaderProgram == nullptr)
-        return; // We don't care about broken programs.
-    m_CommandBuffer.push_back(draw_batch);
+    if(draw_batch.PipelineState == nullptr)
+        return true; // We don't care about broken pipeline state.
+
+    if(m_CommandCount == m_CommandBufferSize)
+        return false;
+
     if(draw_batch.ResourceTable)
-        m_ConstantBufferReqRingSize += draw_batch.ResourceTable->getSize();
-#ifndef DISABLE_NV_OPTIMIZATION
-    if(glMultiDrawElementsIndirectBindlessNV)
     {
-        m_CommandBufferReqSize += sizeof(DrawElementsIndirectCommand) + 
-                                sizeof(GLuint) +
-                                sizeof(BindlessPtrNV)*(draw_batch.InputLayout ? (draw_batch.InputLayout->getAttributeCount() + 1) : 1);
+        auto size = draw_batch.ResourceTable->getSize();
+        if(m_ConstantBufferReqSize + size > m_ConstantBufferSize)
+            return false;
+
+        m_ConstantBufferReqSize += static_cast<uint32>(draw_batch.ResourceTable->getSize());
     }
-    else
-#endif
-    {
-        m_CommandBufferReqSize += sizeof(DrawElementsIndirectCommand);
-    }
+
+    m_CommandBuffer[m_CommandCount++] = draw_batch;
+    return true;
 }
 
 void GLCommandBuffer::prepareCommandBuffer()
 {
-    std::sort(m_CommandBuffer.begin(), m_CommandBuffer.end(),
+    std::sort(m_CommandBuffer.get(), m_CommandBuffer.get() + m_CommandBufferSize,
               [](const GLDrawBatch& lhs, const GLDrawBatch& rhs)
               {
-                  return lhs.LinkedShaderProgram == rhs.LinkedShaderProgram ?
-                      lhs.SortKey < rhs.SortKey :
-                      lhs.LinkedShaderProgram < rhs.LinkedShaderProgram;
+                  return lhs.PipelineState == rhs.PipelineState ?
+                         lhs.SortKey < rhs.SortKey :
+                         lhs.PipelineState < rhs.PipelineState;
               });
 }
 
-static void AllocateBuffer(GLenum type, size_t req_size, size_t* size, GLuint* gpu_buf, void** gpu_buf_ptr)
-{
-    if(req_size > *size)
-    {
-        if(*size)
-        {
-            glDeleteBuffers(1, gpu_buf);
-        }
-        glGenBuffers(1, gpu_buf);
-        glBindBuffer(type, *gpu_buf);
-        *size = 2*req_size;
-        glBufferStorage(type, *size, 0,
-                        GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-        *gpu_buf_ptr = glMapBufferRange(type, 0, *size,
-                                        GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
-        CheckOpenGL();
-    }
-    else
-    {
-        glBindBuffer(type, *gpu_buf);
-    }
-}
-
-static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vector<GLDrawBatch>& cpu_cmd_buf, GLvoid* gpu_cmd_buf_ptr, GLuint const_buf_ring, GLvoid* const_buf_ptr)
+static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLvoid* gpu_cmd_buf_ptr, GLuint const_buf_ring, GLvoid* const_buf_ptr)
 {
     // Naive to start with. TODO: Ring buffer.
     char *cmd_buf = reinterpret_cast<char*>(gpu_cmd_buf_ptr),
@@ -164,10 +161,9 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
          *res_buf = reinterpret_cast<char*>(const_buf_ptr),
          *res_start = res_buf;
     GLuint cnt = 0;
-    auto& first = cpu_cmd_buf.front();
-    GLLinkedShaderProgram* prev_prog = first.LinkedShaderProgram;
-    GLInputLayout* prev_layout = first.InputLayout;
-    DrawModes prev_mode = first.PrimitiveType;
+    auto& first = *cpu_cmd_buf;
+    auto* prev_state = first.PipelineState;
+    DrawModes prev_mode = first.PipelineState->getPrimitiveType();
     GLVertexBufferDescription prev_vert_buffers[MAX_VERTEX_BUFFERS];
     std::copy_n(first.VertexBuffers, MAX_VERTEX_BUFFERS, prev_vert_buffers);
     for(GLuint i = 0; i < MAX_VERTEX_BUFFERS; ++i)
@@ -179,11 +175,11 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
         }
     }
     
-    prev_prog->bind();
-    backend->bindInputLayout(prev_layout);
+    prev_state->setup(nullptr);
     
-    for(auto& cpu_cmd : cpu_cmd_buf)
+    for(uint32 cmd_idx = 0; cmd_idx < cpu_cmd_buf_size; ++cmd_idx)
     {
+        auto& cpu_cmd = cpu_cmd_buf[cmd_idx];
         auto& gpu_cmd = *reinterpret_cast<DrawElementsIndirectBindlessCommandNV*>(cmd_buf);
         bool vb_not_equal = !std::equal(prev_vert_buffers, prev_vert_buffers + MAX_VERTEX_BUFFERS, cpu_cmd.VertexBuffers,
                                         [](const GLVertexBufferDescription& lhs, const GLVertexBufferDescription& rhs)
@@ -191,12 +187,10 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
                                             return lhs.Stride == rhs.Stride &&
                                                    lhs.Offset == rhs.Offset;
                                         });
-        if(prev_prog != cpu_cmd.LinkedShaderProgram ||
-           prev_mode != cpu_cmd.PrimitiveType ||
-           prev_layout != cpu_cmd.InputLayout ||
+        if(prev_state != cpu_cmd.PipelineState ||
            vb_not_equal)
         {
-            GLuint layout_size = (GLuint)(prev_layout ? prev_layout->getAttributeCount() : 0);
+            GLuint layout_size = (GLuint)(prev_state->getInputLayout() ? prev_state->getInputLayout()->getAttributeCount() : 0);
             
             if(res_buf != res_start)
             {
@@ -211,15 +205,10 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
             res_start = res_buf;
             cnt = 0;
             
-            if(prev_prog != cpu_cmd.LinkedShaderProgram)
+            if(prev_state != cpu_cmd.PipelineState)
             {
-                cpu_cmd.LinkedShaderProgram->bind();
-                prev_prog = cpu_cmd.LinkedShaderProgram;
-            }
-            if(prev_layout != cpu_cmd.InputLayout)
-            {
-                backend->bindInputLayout(cpu_cmd.InputLayout);
-                prev_layout = cpu_cmd.InputLayout;
+                cpu_cmd.PipelineState->setup(prev_state);
+                prev_state = cpu_cmd.PipelineState;
             }
             if(vb_not_equal)
             {
@@ -234,10 +223,10 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
                 std::copy_n(cpu_cmd.VertexBuffers, MAX_VERTEX_BUFFERS, prev_vert_buffers);
             }
             
-            prev_mode = cpu_cmd.PrimitiveType;
+            prev_mode = cpu_cmd.PipelineState->getPrimitiveType();
         }
         
-        size_t layout_size = cpu_cmd.InputLayout ? cpu_cmd.InputLayout->getAttributeCount() : 0;
+        size_t layout_size = cpu_cmd.PipelineState->getInputLayout() ? cpu_cmd.PipelineState->getInputLayout()->getAttributeCount() : 0;
         
         if(cpu_cmd.ResourceTable)
         {
@@ -257,8 +246,8 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
         gpu_cmd.indexBuffer.length = cpu_cmd.IndexBuffer->getSize();
         for(size_t i = 0; i < layout_size; ++i)
         {
-            auto* attr = prev_layout->getAttribute(i);
-            auto bind_point = cpu_cmd.InputLayout->getAttribute(i)->Binding;
+            auto* attr = prev_state->getInputLayout()->getAttribute(i);
+            auto bind_point = cpu_cmd.PipelineState->getInputLayout()->getAttribute(i)->Binding;
             auto& vb = cpu_cmd.VertexBuffers[bind_point];
             auto& gpu_vb = gpu_cmd.vertexBuffers[i];
             gpu_vb.index = bind_point;
@@ -283,7 +272,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
     
     if(cnt)
     {
-        auto* layout = cpu_cmd_buf.back().InputLayout;
+        auto* layout = prev_state->getInputLayout();
         auto offset = (char*)nullptr + (cmd_start - reinterpret_cast<char*>(gpu_cmd_buf_ptr));
         
         if(res_buf != res_start)
@@ -297,22 +286,20 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, const std::vecto
     }
 }
 
-static void ExecuteCommandBufferARB(GLRenderingBackend* backend, const std::vector<GLDrawBatch>& cpu_cmd_buf, GLvoid* gpu_cmd_buf_ptr, GLuint const_buf_ring, GLvoid* const_buf_ptr)
+static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLvoid* gpu_cmd_buf_ptr, GLuint const_buf_ring, GLvoid* const_buf_ptr)
 {
     char *cmd_buf = reinterpret_cast<char*>(gpu_cmd_buf_ptr),
          *cmd_start = cmd_buf,
          *res_buf = reinterpret_cast<char*>(const_buf_ptr),
          *res_start = res_buf;
     GLuint cnt = 0;
-    auto& first = cpu_cmd_buf.front();
-    GLLinkedShaderProgram* prev_prog = first.LinkedShaderProgram;
-    GLInputLayout* prev_layout = first.InputLayout;
+    auto& first = *cpu_cmd_buf;
+    auto* prev_state = first.PipelineState;
     GLBuffer* prev_index_buffer = first.IndexBuffer;
     GLVertexBufferDescription prev_vert_buffers[MAX_VERTEX_BUFFERS];
     std::copy_n(first.VertexBuffers, MAX_VERTEX_BUFFERS, prev_vert_buffers);
-    DrawModes prev_mode = first.PrimitiveType;
+    DrawModes prev_mode = first.PipelineState->getPrimitiveType();
     
-    prev_prog->bind();
     prev_index_buffer->bindIndexBuffer();
     for(GLuint vb_idx = 0; vb_idx < MAX_VERTEX_BUFFERS; ++vb_idx)
     {
@@ -322,25 +309,23 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, const std::vect
             vb.VertexBuffer->bindVertexBuffer(vb_idx, vb.Offset, vb.Stride);
         }
     }
-    backend->bindInputLayout(prev_layout);
     
-    for(auto& cpu_cmd : cpu_cmd_buf)
+    for(uint32 cmd_idx = 0; cmd_idx < cpu_cmd_buf_size; ++cmd_idx)
     {
+        auto& cpu_cmd = cpu_cmd_buf[cmd_idx];
         bool vb_not_equal = !std::equal(prev_vert_buffers, prev_vert_buffers + MAX_VERTEX_BUFFERS, cpu_cmd.VertexBuffers,
                                         [](const GLVertexBufferDescription& lhs, const GLVertexBufferDescription& rhs)
                                         {
                                             return lhs.VertexBuffer == rhs.VertexBuffer &&
-                                                    lhs.Stride == rhs.Stride &&
-                                                    lhs.Offset == rhs.Offset;
+                                                   lhs.Stride == rhs.Stride &&
+                                                   lhs.Offset == rhs.Offset;
                                         });
         auto& gpu_cmd = *reinterpret_cast<DrawElementsIndirectCommand*>(cmd_buf);
-        if(prev_prog != cpu_cmd.LinkedShaderProgram ||
-           prev_mode != cpu_cmd.PrimitiveType ||
-           prev_layout != cpu_cmd.InputLayout ||
+        if(prev_state != cpu_cmd.PipelineState ||
            prev_index_buffer != cpu_cmd.IndexBuffer ||
            vb_not_equal)
         {
-            size_t layout_size = prev_layout ? prev_layout->getAttributeCount() : 0;
+            size_t layout_size = prev_state->getInputLayout() ? prev_state->getInputLayout()->getAttributeCount() : 0;
             
             if(res_buf != res_start)
             {
@@ -355,10 +340,10 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, const std::vect
             res_start = res_buf;
             cnt = 0;
             
-            if(prev_prog != cpu_cmd.LinkedShaderProgram)
+            if(prev_state != cpu_cmd.PipelineState)
             {
-                cpu_cmd.LinkedShaderProgram->bind();
-                prev_prog = cpu_cmd.LinkedShaderProgram;    
+                cpu_cmd.PipelineState->setup(prev_state);
+                prev_state = cpu_cmd.PipelineState;
             }
             if(prev_index_buffer != cpu_cmd.IndexBuffer)
             {
@@ -380,16 +365,11 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, const std::vect
                     }
                 }
             }
-            if(prev_layout != cpu_cmd.InputLayout)
-            {
-                backend->bindInputLayout(cpu_cmd.InputLayout);
-                prev_layout = cpu_cmd.InputLayout;
-            }
             
-            prev_mode = cpu_cmd.PrimitiveType;
+            prev_mode = cpu_cmd.PipelineState->getPrimitiveType();
         }
         
-        size_t layout_size = cpu_cmd.InputLayout ? cpu_cmd.InputLayout->getAttributeCount() : 0;
+        size_t layout_size = cpu_cmd.PipelineState->getInputLayout() ? cpu_cmd.PipelineState->getInputLayout()->getAttributeCount() : 0;
         
         if(cpu_cmd.ResourceTable)
         {
@@ -410,7 +390,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, const std::vect
     
     if(cnt)
     {
-        auto* layout = cpu_cmd_buf.back().InputLayout;
+        auto* layout = prev_state->getInputLayout();
         auto offset = (char*)nullptr + (cmd_start - reinterpret_cast<char*>(gpu_cmd_buf_ptr));
         
         if(res_buf != res_start)
@@ -427,11 +407,11 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, const std::vect
 void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
 {
     // Early out, don't bother with empty stuff.
-    if(m_CommandBuffer.empty())
+    if(m_CommandCount == 0)
         return;
     
-    AllocateBuffer(GL_DRAW_INDIRECT_BUFFER, m_CommandBufferReqSize, &m_GPUCommandBufferSize, &m_GPUCommandBuffer, &m_GPUCommandBufferPtr);
-    AllocateBuffer(GL_SHADER_STORAGE_BUFFER, m_ConstantBufferReqRingSize, &m_ConstantBufferRingSize, &m_ConstantBufferRing, &m_ConstantBufferPtr);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_GPUCommandBuffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ConstantBuffer);
     
     // Well, we pretty much wait forever, so don't bother with loops.
     if(m_GPUFence)
@@ -442,12 +422,12 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
 #ifndef DISABLE_NV_OPTIMIZATION
     if(glMultiDrawElementsIndirectBindlessNV)
     {
-        ExecuteCommandBufferNV(backend, m_CommandBuffer, m_GPUCommandBufferPtr, m_ConstantBufferRing, m_ConstantBufferPtr);
+        ExecuteCommandBufferNV(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr, m_ConstantBuffer, m_ConstantBufferPtr);
     }
     else
 #endif
     {
-        ExecuteCommandBufferARB(backend, m_CommandBuffer, m_GPUCommandBufferPtr, m_ConstantBufferRing, m_ConstantBufferPtr);
+        ExecuteCommandBufferARB(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr, m_ConstantBuffer, m_ConstantBufferPtr);
     }   
 
     m_GPUFence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);

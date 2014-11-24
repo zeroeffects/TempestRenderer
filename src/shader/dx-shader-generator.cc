@@ -27,6 +27,7 @@
 #include "tempest/shader/shader-ast.hh"
 #include "tempest/shader/shader-driver.hh"
 #include "tempest/shader/shader-common.hh"
+#include "tempest/shader/shader-convert-common.hh"
 #include "tempest/parser/ast.hh"
 
 #include <unordered_map>
@@ -92,7 +93,6 @@ public:
     virtual void visit(const Shader::FunctionDefinition* func_def) final { Shader::PrintNode(this, &m_Printer, func_def); }
     virtual void visit(const Shader::FunctionCall* func_call) final;
     virtual void visit(const Shader::ConstructorCall* constructor) final { Shader::PrintNode(this, &m_Printer, constructor); }
-    virtual void visit(const Shader::SubroutineCall* subroutine_call) final { Shader::PrintNode(this, &m_Printer, subroutine_call); }
     virtual void visit(const Shader::ScalarType* scalar_type) final { Shader::PrintNode(&m_Printer, scalar_type); }
     virtual void visit(const Shader::VectorType* vector_type) final;
     virtual void visit(const Shader::MatrixType* matrix_type) final;
@@ -122,7 +122,6 @@ public:
     virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
     virtual void visit(const Shader::Buffer* buffer) final { PrintBuffer(this, &m_Printer, buffer); }
-    virtual void visit(const Shader::Subroutine* subroutine) final { Shader::PrintNode(this, &m_Printer, subroutine); }
     // Some types that should not appear in AST
     virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
@@ -161,7 +160,6 @@ public:
     virtual void visit(const Shader::FunctionDefinition* func_def) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionCall* func_call) final;
     virtual void visit(const Shader::ConstructorCall* constructor) final;
-    virtual void visit(const Shader::SubroutineCall* subroutine_call) final;
     virtual void visit(const Shader::ScalarType* scalar_type) final { TGE_ASSERT(false, "Types should not be entered. Catching up a variable should be enough"); }
     virtual void visit(const Shader::VectorType* vector_type) final { TGE_ASSERT(false, "Types should not be entered. Catching up a variable should be enough"); }
     virtual void visit(const Shader::MatrixType* matrix_type) final { TGE_ASSERT(false, "Types should not be entered. Catching up a variable should be enough"); }
@@ -191,7 +189,6 @@ public:
     virtual void visit(const Shader::IfStatement* if_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::Type* type_stmt) final { TGE_ASSERT(false, "Types should not be entered.Catching up a variable should be enough"); }
     virtual void visit(const Shader::Buffer* buffer) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::Subroutine* subroutine) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     // Some types that should not appear in AST
     virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
@@ -235,11 +232,6 @@ void TypeDeducer::visit(const Shader::FunctionCall* func_call)
 void TypeDeducer::visit(const Shader::ConstructorCall* constructor)
 {
     m_TypeStack.push(constructor->getType());
-}
-
-void TypeDeducer::visit(const Shader::SubroutineCall* subroutine_call)
-{
-    m_TypeStack.push(subroutine_call->getFunctionCall()->getFunction()->getReturnType());
 }
 
 void TypeDeducer::visit(const Shader::Variable* var)
@@ -527,6 +519,7 @@ class Generator: public Shader::VisitorInterface
     Shader::Driver&            m_Driver;
     std::stringstream          m_RawImportStream;
     ShaderPrinter              m_RawImport;
+    size_t                     m_StructBufferBinding = 0;
 
     bool                       m_Valid;
     Shader::EffectDescription  m_Effect;
@@ -547,7 +540,6 @@ public:
     virtual void visit(const Shader::Typedef* _typedef) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Parentheses* parentheses) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::FunctionCall* func_call) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const Shader::SubroutineCall* subroutine_call) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ConstructorCall* constructor) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ScalarType* scalar_type) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::VectorType* vector_type) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -580,7 +572,6 @@ public:
     virtual void visit(const Shader::IfStatement* if_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Type* type_stmt) final;
     virtual void visit(const Shader::Buffer* buffer) final;
-    virtual void visit(const Shader::Subroutine* subroutine) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     // Some types that should not appear in AST
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
     virtual void visit(const Shader::Expression*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
@@ -624,15 +615,13 @@ string ConvertGLSLVersionToHLSL(Shader::ShaderType _type, const string& profile_
     
     if(profile_name == "glsl_1_4_0")
         return shader_type + "3_0";
-    else if(profile_name == "glsl_1_5_0")
-        return shader_type + "4_0"; // Because geometry shaders.
-    else if(profile_name == "glsl_3_3_0")
+    else if(profile_name == "glsl_1_5_0" ||
+            profile_name == "glsl_3_3_0")
         return shader_type + "4_0";
-    else if(profile_name == "glsl_4_0_0")
-        return shader_type + "5_0";
-    else if(profile_name == "glsl_4_1_0")
-        return shader_type + "5_0";
-    else if(profile_name == "glsl_4_2_0" || profile_name == "glsl_4_4_0")
+    else if(profile_name == "glsl_4_0_0" ||
+            profile_name == "glsl_4_1_0" ||
+            profile_name == "glsl_4_2_0" ||
+            profile_name == "glsl_4_4_0")
         return shader_type + "5_0";
     
     Log(LogLevel::Error, "unknown profile: ", profile_name);
@@ -642,6 +631,8 @@ string ConvertGLSLVersionToHLSL(Shader::ShaderType _type, const string& profile_
 void Generator::visit(const Shader::Buffer* _buffer)
 {
     m_RawImport.visit(_buffer);
+
+    ConvertBuffer(_buffer, &m_Effect);
 }
 
 void Generator::visit(const Shader::Technique* _technique)
@@ -764,7 +755,9 @@ void Generator::visit(const Shader::Declaration* decl)
             Shader::ElementType type_enum = elem_type->getTypeEnum();
             TGE_ASSERT(type_enum == Shader::ElementType::Struct, "Structured buffer should have struct type");
 
-            m_RawImportStream << "StructuredBuffer<" << elem_type->getNodeName() << "> " << name;
+            m_RawImportStream << "StructuredBuffer<" << elem_type->getNodeName() << "> " << name << ": register(t" << m_StructBufferBinding++ << ")";
+
+            ConvertStructBuffer(var, &m_Effect);
         }
         else
         {

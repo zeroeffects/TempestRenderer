@@ -24,6 +24,8 @@
 
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/graphics/opengl-backend/gl-state-object.hh"
+#include "tempest/graphics/opengl-backend/gl-input-layout.hh"
+#include "tempest/graphics/opengl-backend/gl-shader.hh"
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
 #include "tempest/graphics/state-object.hh"
 #include "tempest/utils/assert.hh"
@@ -165,10 +167,20 @@ void TranslateDepthStencilStates(const DepthStencilStates* depth_stencil_states,
     TranslateStencilFaceOperations(&depth_stencil_states->BackFace, &gl_depth_stencil_states->BackFace);
 }
 
-GLStateObject::GLStateObject(const GLRasterizerStates* rasterizer_states, const GLBlendStates* blend_states, const GLDepthStencilStates* depth_stencil_states)
-    :   m_RasterStates(rasterizer_states),
+GLStateObject::GLStateObject(const GLInputLayout* input_layout,
+                             const GLShaderProgram* shader_prog,
+                             DrawModes prim_type,
+                             const GLRasterizerStates* rasterizer_states,
+                             const GLBlendStates* blend_states,
+                             const GLDepthStencilStates* depth_stencil_states)
+    :   m_InputLayout(input_layout),
+        m_ShaderProgram(shader_prog),
+        m_PrimitiveType(prim_type),
+        m_RasterStates(rasterizer_states),
         m_BlendStates(blend_states),
-        m_DepthStencilStates(depth_stencil_states) {}
+        m_DepthStencilStates(depth_stencil_states)
+{
+}
 
 bool operator==(const GLRasterizerStates& lhs, const GLRasterizerStates& rhs)
 {
@@ -238,7 +250,10 @@ bool operator==(const GLDepthStencilStates& lhs, const GLDepthStencilStates& rhs
 
 bool GLStateObject::operator==(const GLStateObject& state_obj) const
 {
-    return m_RasterStates == state_obj.m_RasterStates &&
+    return m_InputLayout == state_obj.m_InputLayout &&
+           m_ShaderProgram == state_obj.m_ShaderProgram &&
+           m_PrimitiveType == state_obj.m_PrimitiveType &&
+           m_RasterStates == state_obj.m_RasterStates &&
            m_BlendStates == state_obj.m_BlendStates &&
            m_DepthStencilStates == state_obj.m_DepthStencilStates;
 }
@@ -260,6 +275,16 @@ void SetupState(uint32 mode_diff, uint32 misc_states, uint32 state, GLenum gl_st
 
 void GLStateObject::setup(const GLStateObject* prev_state) const
 {
+	if(m_ShaderProgram != prev_state->m_ShaderProgram)
+	{
+		m_ShaderProgram->bind();
+	}
+
+	if(m_InputLayout != prev_state->m_InputLayout)
+	{
+		m_InputLayout->bind();
+	}
+
     if(m_RasterStates != prev_state->m_RasterStates)
     {
         auto* cur_rast_state = m_RasterStates;

@@ -24,6 +24,8 @@
  */
 
 #include "tempest/graphics/opengl-backend/gl-input-layout.hh"
+#include "tempest/graphics/opengl-backend/gl-library.hh"
+#include "tempest/graphics/opengl-backend/gl-utils.hh"
 #include "tempest/graphics/rendering-definitions.hh"
 #include "tempest/utils/assert.hh"
 
@@ -92,7 +94,7 @@ static void TranslateDataFormat(DataFormat vtype, GLsizei* elements, GLenum* typ
     }
 }
 
-GLInputLayout::GLInputLayout(size_t count, const VertexAttributeDescription* arr)
+GLInputLayout::GLInputLayout(uint32 count, const VertexAttributeDescription* arr)
     :   m_Attributes(count)
 {
     for(size_t i = 0; i < count; ++i)
@@ -108,5 +110,17 @@ GLInputLayout::GLInputLayout(size_t count, const VertexAttributeDescription* arr
         vert_attr.Size = elements;
         vert_attr.Type = type;
     }
+}
+
+void GLInputLayout::bind() const
+{
+    for(GLuint i = 0, iend = m_Attributes.Count; i < iend; ++i)
+    {
+        auto& vert_attr = m_Attributes.Values[i];
+        glVertexAttribFormat(i, vert_attr.Size, vert_attr.Type, vert_attr.Normalized, vert_attr.Offset);
+        glVertexAttribBinding(i, vert_attr.Binding);
+        glEnableVertexAttribArrayARB(i);
+    }
+    CheckOpenGL();
 }
 }

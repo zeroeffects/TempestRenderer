@@ -89,7 +89,6 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 "sample"                                *yylval = AST::Node(); return Parser::token::T_SAMPLE_QUALIFIER;
 "invariant"                             *yylval = AST::Node(); return Parser::token::T_INVARIANT_QUALIFIER;
 "buffer"                                *yylval = AST::Node(); return Parser::token::T_BUFFER_QUALIFIER;
-"subroutine"                            *yylval = AST::Node(); return Parser::token::T_SUBROUTINE_QUALIFIER;
 "constant"                              *yylval = AST::Node(); return Parser::token::T_CONSTANT_QUALIFIER;
 "const"                                 *yylval = AST::Node(); return Parser::token::T_CONST_QUALIFIER;
 "uniform"                               *yylval = AST::Node(); return Parser::token::T_UNIFORM_QUALIFIER;

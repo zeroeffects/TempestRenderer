@@ -123,43 +123,8 @@ void GLShaderProgram::destroyRenderResource(GLResourceTable* buffer)
     delete buffer;
 }
 
-GLInputLayout* GLShaderProgram::createInputLayout(GLRenderingBackend* backend, const VertexAttributeDescription* arr, size_t count)
-{
-    return CreatePackedData<GLInputLayout>(count, arr);
-}
-
-void GLShaderProgram::destroyRenderResource(GLRenderingBackend* backend, GLInputLayout* input_layout)
-{
-    DestroyPackedData(input_layout);
-}
-
-GLLinkedShaderProgram* GLShaderProgram::getUniqueLinkage(GLBakedResourceTable* _table)
-{
-    auto iter = std::find_if(std::begin(m_Programs), std::end(m_Programs),
-                             [_table](const std::unique_ptr<GLLinkedShaderProgram>& prog) {
-                                 return _table == nullptr ?
-                                     prog->m_Baked == nullptr :
-                                     std::equal(prog->m_Baked->get(), prog->m_Baked->get() + prog->m_Baked->getSize(), _table->get());
-                             });
-    if(iter != m_Programs.end())
-    {
-        delete _table;
-        return iter->get();
-    }
-    auto* res = new GLLinkedShaderProgram(m_Program, _table);
-    m_Programs.push_back(std::unique_ptr<GLLinkedShaderProgram>(res));
-    return res;
-}
-    
-void GLLinkedShaderProgram::bind()
+void GLShaderProgram::bind() const
 {
     glUseProgram(m_Program);
-    if(m_Baked)
-    {
-        glUniformSubroutinesuiv(GL_VERTEX_SHADER, static_cast<GLsizei>(m_Baked->getSize())/sizeof(GLuint),
-                                reinterpret_cast<const GLuint*>(m_Baked->get()));
-        glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, static_cast<GLsizei>(m_Baked->getSize())/sizeof(GLuint),
-                                reinterpret_cast<const GLuint*>(m_Baked->get()));
-    }
 }
 }

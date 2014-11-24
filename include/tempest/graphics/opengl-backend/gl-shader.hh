@@ -126,21 +126,6 @@ public:
     
     ResourceIndex getResourceIndex(const string& name);
     
-    inline void setSubroutine(ResourceIndex index, ResourceIndex subroutine_func)
-    {
-        TGE_ASSERT(index.ResourceTableIndex < m_ResourceTable->Uniforms.Count || m_ResourceTable->Uniforms.Count == std::numeric_limits<size_t>::max(), "Unknown index");
-        if(index.ResourceTableIndex >= m_ResourceTable->Uniforms.Count)
-            return;
-        TGE_ASSERT(index.BaseOffset < m_ResourceTable->BufferSize + m_ExtendedUnits*m_ResourceTable->ExtendablePart, "Buffer overflow");
-        TGE_ASSERT(m_BakedResourceTable, "The baked table is already extracted");
-        m_BakedResourceTable.setValue(index.BaseOffset, subroutine_func.ResourceTableIndex);
-    }
-    
-    inline void setSubroutine(const string& name, const string& func)
-    {
-        setSubroutine(getResourceIndex(name), getResourceIndex(func));
-    }
-    
     void setResource(ResourceIndex index, const GLTexture& tex);
     
     template<class T>
@@ -175,34 +160,16 @@ public:
 };
 
 class GLShaderProgram;
-class GLInputLayout;
 class GLRenderingBackend;
 struct VertexAttributeDescription;
-
-class GLLinkedShaderProgram
-{
-    friend GLShaderProgram;
-    GLuint                m_Program;
-    GLBakedResourceTable* m_Baked;
-public:
-    GLLinkedShaderProgram(GLuint prog, GLBakedResourceTable* table)
-        :   m_Program(prog),
-            m_Baked(table) {}
-    
-    void bind();
-};
-
-typedef std::vector<std::unique_ptr<GLLinkedShaderProgram>> DynamicLinkageCache;
 
 class GLShaderProgram
 {
     GLuint                                       m_Program;
-    DynamicLinkageCache                          m_Programs;
     std::unique_ptr<ResourceTableDescription*[]> m_ResourceTables;
     GLint                                        m_ResourceTableCount;
 
 public:
-    typedef GLInputLayout InputLayoutType;
     typedef GLResourceTable ResourceTableType;
     
     explicit GLShaderProgram(GLuint shader_program, ResourceTableDescription* resource_tables[], uint32 res_table_count);
@@ -213,11 +180,7 @@ public:
     GLShaderProgram(GLShaderProgram&&)=delete;
     GLShaderProgram& operator=(GLShaderProgram&&)=delete;
  
-    //! \remarks Don't deallocate
-    GLLinkedShaderProgram* getUniqueLinkage(GLBakedResourceTable* _table);
-    
-    GLInputLayout* createInputLayout(GLRenderingBackend* backend, const VertexAttributeDescription* arr, size_t count);
-    void destroyRenderResource(GLRenderingBackend* backend, GLInputLayout* input_layout);
+    void bind() const;
     
     GLResourceTable* createResourceTable(const string& name, size_t extended = 0);
     void destroyRenderResource(GLResourceTable* buffer);

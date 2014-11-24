@@ -106,7 +106,7 @@ struct PackedData
 };
 
 template<class T, class... TArgs>
-T* CreatePackedData(size_t count, TArgs&&... args)
+T* CreatePackedData(uint32 count, TArgs&&... args)
 {
     return new (malloc(sizeof(T) + count*sizeof(typename T::PackType))) T(count, args...);
 }
@@ -120,7 +120,7 @@ void DestroyPackedData(T* ptr)
 
 #define PACKED_DATA(type) \
     typedef type PackType; \
-    template<class T, class... TArgs> friend T* Tempest::CreatePackedData(size_t count, TArgs&&... args); \
+    template<class T, class... TArgs> friend T* Tempest::CreatePackedData(uint32 count, TArgs&&... args); \
     template<class T> friend void Tempest::DestroyPackedData(T* ptr); \
     Tempest::PackedData<type>  
 

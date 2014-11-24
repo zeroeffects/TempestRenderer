@@ -77,36 +77,6 @@ public:
     
     void swapBuffers();
 };
-
-//! \brief The OpenGL rendering context. Makes it possible to attach the rendering system to different windows.
-class GLContext
-{
-#ifdef LINUX
-    // Because there is not a cannonical description what it should contain we pessimize the code.
-    GLXFBConfigPtr  m_FBConfig;
-    GLXContext      m_GLXContext = GLXContext();
-#elif defined(_WIN32)
-    HDC             m_DC         = nullptr;
-    HGLRC           m_HGLRC      = nullptr;
-#endif
-    OSWindowSystem* m_Display    = nullptr;
-public:
-    explicit GLContext()=default;
-     ~GLContext();
-    
-    /*! \brief Attaches the rendering context to the specified window.
-     * 
-     *  This function does the whole heavy-lifting when it comes to attaching a rendering context to particular
-     *  window.
-     * 
-     *  \remarks Have in mind that the windows must have similar setting. Else it might not be possible to
-     *           attach the rendering context.
-     * 
-     *  \param wnd_sys  the operating system specific window system.
-     *  \param window   the window that is going to be attached to this rendering context.
-     */
-    bool attach(OSWindowSystem& wnd_sys, GLWindow& window);
-};
 }
 
 #endif // _GL_WINDOW_HH_

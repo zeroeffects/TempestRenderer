@@ -27,6 +27,7 @@
 
 #include "tempest/graphics/rendering-backend.hh"
 #include "tempest/graphics/opengl-backend/gl-state-object.hh"
+#include "tempest/graphics/os-window.hh"
 
 #include <unordered_set>
 #include <memory>
@@ -49,7 +50,7 @@ class GLStateObject;
 class GLTexture;
 class GLShaderProgram;
 class GLInputLayout;
-class GLContext;
+class GLWindow;
 
 struct GLBlendStates;
 struct GLRasterizerStates;
@@ -58,33 +59,51 @@ struct GLDepthStencilStates;
 class GLRenderingBackend
 {
     template<class T>
+    struct PackDeleter
+    {
+        void operator()(T* ptr) { DestroyPackedData(ptr); }
+    };
+
+    template<class T, class TDeleter>
     struct CompareIndirect
     {
-        bool operator()(const std::unique_ptr<T>& lhs, const std::unique_ptr<T>& rhs);
+        bool operator()(const std::unique_ptr<T, TDeleter>& lhs, const std::unique_ptr<T, TDeleter>& rhs);
     };
 
-    template<class T>
+    template<class T, class TDeleter>
     struct HashIndirect
     {
-        size_t operator()(const std::unique_ptr<T>& state_obj);
+        size_t operator()(const std::unique_ptr<T, TDeleter>& state_obj);
     };
 
-    template<class T>
-    using StateHashMap = std::unordered_set < std::unique_ptr<T>, HashIndirect<T>, CompareIndirect<T> >;
+    template<class T, class TDeleter = std::default_delete<T>>
+    using StateHashMap = std::unordered_set < std::unique_ptr<T, TDeleter>, HashIndirect<T, TDeleter>, CompareIndirect<T, TDeleter> >;
 
     typedef StateHashMap<GLStateObject> GLStateObjectMap;
     typedef StateHashMap<GLBlendStates> GLBlendStatesMap;
     typedef StateHashMap<GLRasterizerStates> GLRasterizerStatesMap;
     typedef StateHashMap<GLDepthStencilStates> GLDepthStencilStatesMap;
+    typedef StateHashMap<GLInputLayout, PackDeleter<GLInputLayout>> GLInputLayoutMap;
     const GLStateObject*    m_CurrentStateObject = nullptr;
     GLStateObjectMap        m_StateObjects;
     GLBlendStatesMap        m_BlendStates;
     GLRasterizerStatesMap   m_RasterizerStates;
     GLDepthStencilStatesMap m_DepthStencilStates;
+    GLInputLayoutMap        m_InputLayoutMap;
 
     GLBlendStates           m_DefaultBlendState;
     GLRasterizerStates      m_DefaultRasterizerStates;
     GLDepthStencilStates    m_DefaultDepthStencilStates;
+
+#ifdef LINUX
+    // Because there is not a cannonical description what it should contain we pessimize the code.
+    GLXFBConfigPtr  m_FBConfig;
+    GLXContext      m_GLXContext = GLXContext();
+#elif defined(_WIN32)
+    HDC             m_DC = nullptr;
+    HGLRC           m_HGLRC = nullptr;
+#endif
+    OSWindowSystem* m_Display = nullptr;
 public:
     typedef GLRenderTarget  RenderTargetType;
     typedef GLCommandBuffer CommandBufferType;
@@ -106,9 +125,14 @@ public:
     //! \remarks Assignment constructor.
     GLRenderingBackend& operator=(const GLRenderingBackend&)=delete;
 
-    /*! \brief Performs the actual initialization process.
+    /*! \brief Attaches the rendering backend to a window.
      */
-    bool init(GLContext& gl_ctx);
+    bool attach(OSWindowSystem& wnd_sys, GLWindow& gl_ctx);
+
+    /*! \brief Setups the initial state. Requires the library to be completely loaded.
+     *  \remarks Load library functions before calling this function.
+     */
+    void init();
 
     /*! \brief Create a render target (frame buffer) for off-screen rendering and later composition.
      * 
@@ -147,10 +171,11 @@ public:
      * 
      *  The command buffer might be safely accessed through other threads, which makes it convenient for building
      *  multi-threaded applications.
-     * 
+     *  
+     *  \param cmd_buf_desc     Used for specifying command buffer dimensions.
      *  \returns Returns a new command buffer object.
      */
-    GLCommandBuffer* createCommandBuffer();
+    GLCommandBuffer* createCommandBuffer(const CommandBufferDescription& cmd_buf_desc);
     
     /*! \brief Submit a command buffer.
      *  
@@ -219,7 +244,16 @@ public:
      *  \param blend_states         a pointer to blend state description.
      *  \param depth_stencil_states a pointer to depth stencil state description.
      */
-    GLStateObject* createStateObject(const RasterizerStates* rasterizer_states = nullptr, const BlendStates* blend_states = nullptr, const DepthStencilStates* depth_stencil_states = nullptr);
+    GLStateObject* createStateObject(const VertexAttributeDescription* va_arr,
+                                     size_t va_count,
+                                     DataFormat*,
+                                     size_t,
+                                     GLShaderProgram* shader_program,
+                                     DrawModes primitive_type = DrawModes::TriangleList,
+                                     const RasterizerStates* rasterizer_states = nullptr,
+                                     const BlendStates* blend_states = nullptr,
+                                     const DepthStencilStates* depth_stencil_state = nullptr
+                                     );
     
     /*! \brief Destroy a state object.
     *
@@ -228,7 +262,7 @@ public:
     *
     *   \param state_obj  a pointer to the state object.
     */
-    GLStateObject* destroyRenderResource(const GLStateObject* state_obj) {}
+    void destroyRenderResource(GLStateObject* state_obj) {}
 
     /*! \brief Bind the state object to the pipeline.
      * 
@@ -272,8 +306,6 @@ public:
      *  \param stencil the stencil value.
      */
     void clearDepthStencilBuffer(float depth=1.0f, uint8 stencil=0);
-    
-    void bindInputLayout(GLInputLayout* layout);
 };
 }
 

@@ -69,6 +69,7 @@ public:
     }
 
     T* get() { return m_Ptr; }
+    const T* get() const { return m_Ptr; }
 
     T** operator&(){ return &m_Ptr; }
     operator T*() const { return m_Ptr; }

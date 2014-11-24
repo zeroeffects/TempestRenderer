@@ -11,8 +11,12 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
     wdesc.Title = "Test window";
     auto sys_obj = Tempest::CreateSystemAndWindowSimple<Tempest::GLSystem>(wdesc);
     TGE_ASSERT(sys_obj, "GL initialization failed");
-    
-    auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend);
+
+    Tempest::CommandBufferDescription cmd_buffer_desc;
+    cmd_buffer_desc.CommandCount = 16;
+    cmd_buffer_desc.ConstantsBufferSize = 1024;
+
+    auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend, cmd_buffer_desc);
     
     auto shader_wo_tex = Tempest::CreateShader(&sys_obj->ShaderCompiler, SOURCE_SHADING_DIR "/blinn-phong.tfx", "PN");
     auto shader_tex = Tempest::CreateShader(&sys_obj->ShaderCompiler, SOURCE_SHADING_DIR "/blinn-phong.tfx", "PTN");

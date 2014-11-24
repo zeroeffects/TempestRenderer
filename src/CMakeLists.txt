@@ -159,6 +159,7 @@ SET(TEMPEST_SHADER_SRC
     shader/shader-lexer.l
     shader/dx-shader-generator.cc
     shader/gl-shader-generator.cc
+    shader/shader-convert-common.cc
     shader/shader-common.cc
     shader/shader-driver.cc
     shader/shader-ast.cc
@@ -169,6 +170,7 @@ SET(TEMPEST_SHADER_SRC
 SET(TEMPEST_SHADER_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/dx-shader-generator.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/gl-shader-generator.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-convert-common.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-common.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-driver.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-ast.hh

@@ -39,7 +39,6 @@ struct GLSystem
 {
     GLLibrary           Library;
     GLWindow            Window;
-    GLContext           Context;
     GLRenderingBackend  Backend;
     GLShaderCompiler    ShaderCompiler;
     OSWindowSystem      Display;

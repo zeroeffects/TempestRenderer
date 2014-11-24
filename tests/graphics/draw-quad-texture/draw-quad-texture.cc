@@ -19,7 +19,10 @@ TGE_TEST("Testing the rendering context")
     
     // You are going to need a command buffer. This is just a persistent mapped buffer and
     // a CPU buffer that contains description of draw commands (batches).
-    auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend);
+    Tempest::CommandBufferDescription cmd_buffer_desc;
+    cmd_buffer_desc.CommandCount = 16;
+    cmd_buffer_desc.ConstantsBufferSize = 1024;
+    auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend, cmd_buffer_desc);
     
     // Vertex buffer and index buffer.
     std::vector<Tempest::Vector2> arr{ Tempest::Vector2(0.0f, 0.0f),
@@ -63,24 +66,19 @@ TGE_TEST("Testing the rendering context")
         { 0, "VertexData", Tempest::DataFormat::RG32F, 0 }
     };
     
-    auto input_layout = Tempest::CreateInputLayout(&sys_obj->Backend, shader.get(), layout_arr);
+    Tempest::DataFormat rt_fmt = Tempest::DataFormat::RGBA8;
+
+    auto state_obj = Tempest::CreateStateObject(&sys_obj->Backend, layout_arr, &rt_fmt, 1, shader.get(), Tempest::DrawModes::TriangleStrip);
     
-    auto* shader_ptr = shader.get();
-    
-    // Unique linkage because we might want to use subroutines for some reason.
-    auto linked_shader_prog = shader_ptr->getUniqueLinkage(nullptr);
-    
-    // That's the actual batch. It describes all the stuff required for sucessful draw call. You
-    // might want to attach a pipeline state to your draw batch. Also, you should pool allocate graphics
-    // device objects, so that you can get away with 32-bit handles on 64-bit systems.
+    // That's the actual batch. It describes all the stuff required for sucessful draw call.
+    // Also, you should pool allocate graphics device objects, so that you can get away with
+    // 32-bit handles on 64-bit systems.
     typedef decltype(sys_obj->Backend) BackendType;
     BackendType::CommandBufferType::DrawBatchType batch;
-    batch.PrimitiveType = Tempest::DrawModes::TriangleStrip;
     batch.VertexCount = static_cast<Tempest::uint16>(idx_arr.size());
     batch.ResourceTable = baked_table.get();
-    batch.LinkedShaderProgram = linked_shader_prog;
+    batch.PipelineState = state_obj.get();
     batch.IndexBuffer = index_buf.get();
-    batch.InputLayout = input_layout.get();
     batch.VertexBuffers[0].VertexBuffer = vertex_buf.get();
     batch.VertexBuffers[0].Stride = sizeof(Tempest::Vector2);
     

@@ -41,6 +41,10 @@ namespace Tempest
 {
 template<class T>
 struct ConvertTextureFormat;
+struct RasterizerStates;
+struct BlendStates;
+struct DepthStencilStates;
+struct CommandBufferDescription;
 
 #define CONVERT_TEXTURE_FORMAT(T, fmt) template<> struct ConvertTextureFormat<T> { static const DataFormat format = fmt; }
 
@@ -107,7 +111,7 @@ std::unique_ptr<TSystem> CreateSystemAndWindowSimple(const WindowDescription& wd
     if(!status)
         return TSystemPtr();
 
-    status = sys->Context.attach(sys->Display, sys->Window);
+    status = sys->Backend.attach(sys->Display, sys->Window);
     if(!status)
         return TSystemPtr();
 
@@ -115,7 +119,7 @@ std::unique_ptr<TSystem> CreateSystemAndWindowSimple(const WindowDescription& wd
     if(!status)
         return TSystemPtr();
 
-    sys->Backend.init(sys->Context);
+    sys->Backend.init();
 
     return sys;
 }
@@ -162,15 +166,9 @@ UniqueResource<TBackend, typename TBackend::TextureType> CreateTexture(TBackend*
 }
 
 template<class TBackend>
-UniqueResource<TBackend, typename TBackend::CommandBufferType> CreateCommandBuffer(TBackend* backend)
+UniqueResource<TBackend, typename TBackend::CommandBufferType> CreateCommandBuffer(TBackend* backend, const CommandBufferDescription& desc)
 {
-    return CreateUniqueResource(backend, backend->createCommandBuffer());
-}
-
-template<class TBackend, class TShader, class T>
-UniqueSubresource<TBackend, TShader, typename TShader::InputLayoutType> CreateInputLayout(TBackend* backend, TShader* shader, const T& arr)
-{
-    return CreateUniqueSubresource(backend, shader, shader->createInputLayout(backend, &arr.front(), arr.size()));
+    return CreateUniqueResource(backend, backend->createCommandBuffer(desc));
 }
 
 class BasicFileLoader: public FileLoader
@@ -204,6 +202,35 @@ template<class TShader>
 std::unique_ptr<typename TShader::LinkedShaderProgram> LinkShaderProgram(TShader* shader, typename TShader::ResourceTableType::BakedResourceTableType* baked_table)
 {
     return std::unique_ptr<typename TShader::LinkedShaderProgram>(shader->link(baked_table));
+}
+
+template<class TBackend>
+UniqueResource<TBackend, typename TBackend::StateObjectType> CreateStateObject(TBackend* backend,
+                                                                               const VertexAttributeDescription* va_arr,
+                                                                               size_t va_count,
+                                                                               DataFormat* rt_fmt,
+                                                                               size_t rt_count,
+                                                                               typename TBackend::ShaderProgramType* shader_program,
+                                                                               DrawModes primitive_type = DrawModes::TriangleList,
+                                                                               const RasterizerStates* rasterizer_states = nullptr,
+                                                                               const BlendStates* blend_states = nullptr,
+                                                                               const DepthStencilStates* depth_stencil_state = nullptr)
+{
+    return std::unique_ptr<typename TBackend::StateObjectType>(backend->createStateObject(va_arr, va_count, rt_fmt, rt_count, shader_program, primitive_type, rasterizer_states, blend_states, depth_stencil_state));
+}
+
+template<class TBackend, template <class T, class TAlloc> class TArr, class TAlloc>
+UniqueResource<TBackend, typename TBackend::StateObjectType> CreateStateObject(TBackend* backend,
+                                                                               const TArr<VertexAttributeDescription, TAlloc>& va_arr,
+                                                                               DataFormat* rt_fmt,
+                                                                               size_t rt_count,
+                                                                               typename TBackend::ShaderProgramType* shader_program,
+                                                                               DrawModes primitive_type = DrawModes::TriangleList,
+                                                                               const RasterizerStates* rasterizer_states = nullptr,
+                                                                               const BlendStates* blend_states = nullptr,
+                                                                               const DepthStencilStates* depth_stencil_state = nullptr)
+{
+    return CreateUniqueResource(backend, backend->createStateObject(&va_arr.front(), va_arr.size(), rt_fmt, rt_count, shader_program, primitive_type, rasterizer_states, blend_states, depth_stencil_state));
 }
 }
 

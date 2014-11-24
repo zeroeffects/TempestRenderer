@@ -26,11 +26,14 @@
 #define _GL_STATE_OBJECT_HH_
 
 #include "tempest/utils/types.hh"
+#include "tempest/graphics/rendering-definitions.hh"
 
 #include <GL/gl.h>
 
 namespace Tempest
 {
+class GLInputLayout;
+class GLShaderProgram;
 struct RasterizerStates;
 struct BlendStates;
 struct DepthStencilStates;
@@ -95,13 +98,24 @@ bool operator==(const GLDepthStencilStates& lhs, const GLDepthStencilStates& rhs
 
 class GLStateObject
 {
+    const GLInputLayout        *m_InputLayout;
+    const GLShaderProgram      *m_ShaderProgram;
+    DrawModes                   m_PrimitiveType;
     const GLRasterizerStates   *m_RasterStates;
     const GLBlendStates        *m_BlendStates;
     const GLDepthStencilStates *m_DepthStencilStates;
 public:
-    GLStateObject(const GLRasterizerStates* rasterizer_states, const GLBlendStates* blend_states, const GLDepthStencilStates* depth_stencil_states);
+    GLStateObject(const GLInputLayout* input_layout,
+                  const GLShaderProgram* shader_prog,
+                  DrawModes prim_type,
+                  const GLRasterizerStates* rasterizer_states,
+                  const GLBlendStates* blend_states,
+                  const GLDepthStencilStates* depth_stencil_states);
 
     bool operator==(const GLStateObject&) const;
+
+    const GLInputLayout* getInputLayout() { return m_InputLayout; }
+    DrawModes getPrimitiveType() { return m_PrimitiveType; }
 
     // prev_state is purely for optimization purposes.
     void setup(const GLStateObject* prev_state) const;

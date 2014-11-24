@@ -23,6 +23,7 @@
  */
 
 #include "tempest/shader/gl-shader-generator.hh"
+#include "tempest/shader/shader-convert-common.hh"
 #include "tempest/shader/shader-ast.hh"
 #include "tempest/shader/shader-driver.hh"
 #include "tempest/parser/file-loader.hh"
@@ -60,9 +61,6 @@ public:
     void setShaderType(Shader::ShaderType shader_type) { m_ShaderType = shader_type; }
     bool isDrawIDInUse() const { return m_DrawIDInUse; }
     
-    // That's pretty much top-level declaration, so no recursion is supported
-    void printSubroutine(const Shader::Subroutine* subroutine) { Shader::PrintNode(this, &m_Printer, subroutine); }
-    
     virtual void visit(const Location& loc) final { AST::PrintLocation(&m_Printer, loc); }
     virtual void visit(const AST::Value<float>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<int>* value) final { AST::PrintNode(&m_Printer, value); }
@@ -77,7 +75,6 @@ public:
     virtual void visit(const Shader::FunctionDeclaration* func_decl) final { Shader::PrintNode(this, &m_Printer, func_decl); }
     virtual void visit(const Shader::FunctionDefinition* func_def) final { Shader::PrintNode(this, &m_Printer, func_def); }
     virtual void visit(const Shader::FunctionCall* func_call) final { Shader::PrintNode(this, &m_Printer, func_call); }
-    virtual void visit(const Shader::SubroutineCall* subroutine_call) final { Shader::PrintNode(this, &m_Printer, subroutine_call); }
     virtual void visit(const Shader::ConstructorCall* constructor) final { Shader::PrintNode(this, &m_Printer, constructor); }
     virtual void visit(const Shader::ScalarType* scalar_type) final { Shader::PrintNode(&m_Printer, scalar_type); }
     virtual void visit(const Shader::VectorType* vector_type) final { Shader::PrintNode(&m_Printer, vector_type); }
@@ -108,7 +105,6 @@ public:
     virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
     virtual void visit(const Shader::Buffer* buffer) final { PrintBuffer(this, &m_Printer, buffer, &m_BindingCounter); }
-    virtual void visit(const Shader::Subroutine* subroutine) final { Shader::PrintNode(this, &m_Printer, subroutine); }
     // Some types that should not appear in AST
     virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
@@ -182,7 +178,6 @@ public:
     virtual void visit(const Shader::Typedef* _typedef) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Parentheses* parentheses) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::FunctionCall* func_call) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const Shader::SubroutineCall* subroutine_call) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ConstructorCall* constructor) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ScalarType* scalar_type) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::VectorType* vector_type) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -215,7 +210,6 @@ public:
     virtual void visit(const Shader::IfStatement* if_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Type* type_stmt) final;
     virtual void visit(const Shader::Buffer* buffer) final;
-    virtual void visit(const Shader::Subroutine* subroutine) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     // Some types that should not appear in AST
     virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
@@ -289,288 +283,14 @@ void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
     }
 }
 
-static void ConvertVariable(const string& base, const Shader::Variable* var, size_t* offset, Shader::BufferDescription* buf_desc);
-
-static void ConvertType(const string& base, const Shader::Type* _type, UniformValueType* uniform_type, size_t* elem_size, size_t* offset, Shader::BufferDescription* buf_desc)
-{
-    switch(_type->getTypeEnum())
-    {
-    case Shader::ElementType::Vector:
-    {
-        auto* vector_type = _type->extract<Shader::VectorType>();
-        auto* basic_type = vector_type->getBasicType()->extract<Shader::ScalarType>();
-        switch(vector_type->getDimension())
-        {
-        case 2: 
-        {
-            if(basic_type->getNodeName() == "int")
-                *uniform_type = UniformValueType::IntegerVector2;
-            else if(basic_type->getNodeName() == "bool")
-                *uniform_type = UniformValueType::BooleanVector2;
-            else if(basic_type->getNodeName() == "uint")
-                *uniform_type = UniformValueType::UnsignedIntegerVector2;
-            else if(basic_type->getNodeName() == "float")
-                *uniform_type = UniformValueType::Vector2;
-            else
-                TGE_ASSERT(false, "Unknown vector type");
-        } break;
-        case 3:
-        {
-            if(basic_type->getNodeName() == "int")
-                *uniform_type = UniformValueType::IntegerVector3;
-            else if(basic_type->getNodeName() == "bool")
-                *uniform_type = UniformValueType::BooleanVector3;
-            else if(basic_type->getNodeName() == "uint")
-                *uniform_type = UniformValueType::UnsignedIntegerVector3;
-            else if(basic_type->getNodeName() == "float")
-                *uniform_type = UniformValueType::Vector3;
-            else
-                TGE_ASSERT(false, "Unknown vector type");
-        } break;
-        case 4:
-        {
-            if(basic_type->getNodeName() == "int")
-                *uniform_type = UniformValueType::IntegerVector4;
-            else if(basic_type->getNodeName() == "bool")
-                *uniform_type = UniformValueType::BooleanVector4;
-            else if(basic_type->getNodeName() == "uint")
-                *uniform_type = UniformValueType::UnsignedIntegerVector4;
-            else if(basic_type->getNodeName() == "float")
-                *uniform_type = UniformValueType::Vector4;
-            else
-                TGE_ASSERT(false, "Unknown vector type");
-        } break;
-        default:
-            TGE_ASSERT(false, "Unknown vector type");
-        }
-        *elem_size = UniformValueTypeSize(*uniform_type);
-    } break;
-    case Shader::ElementType::Matrix:
-    {
-        auto* matrix_type = _type->extract<Shader::MatrixType>();
-        size_t rows = matrix_type->getRows();
-        size_t columns = matrix_type->getColumns();
-        switch(columns)
-        {
-        case 2:
-            switch(rows)
-            {
-            case 2: *uniform_type = UniformValueType::Matrix2; break;
-            case 3: *uniform_type = UniformValueType::Matrix2x3; break;
-            case 4: *uniform_type = UniformValueType::Matrix2x4; break;
-            default: TGE_ASSERT(false, "Unsupported matrix type"); break;
-            }
-            break;
-        case 3:
-            switch(rows)
-            {
-            case 2: *uniform_type = UniformValueType::Matrix3x2; break;
-            case 3: *uniform_type = UniformValueType::Matrix3; break;
-            case 4: *uniform_type = UniformValueType::Matrix3x4; break;
-            default: TGE_ASSERT(false, "Unsupported matrix type"); break;
-            }
-            break;
-        case 4:
-            switch(rows)
-            {
-            case 2: *uniform_type = UniformValueType::Matrix4x2; break;
-            case 3: *uniform_type = UniformValueType::Matrix4x3; break;
-            case 4: *uniform_type = UniformValueType::Matrix4; break;
-            default: TGE_ASSERT(false, "Unsupported matrix type"); break;
-            }
-            break;
-        default: TGE_ASSERT(false, "Unsupported matrix type"); break;
-        }
-        *elem_size = UniformValueTypeSize(*uniform_type);
-    } break;
-    case Shader::ElementType::Struct:
-    {
-        *offset = (*offset + 4*sizeof(float) - 1) & ~(4*sizeof(float) - 1);
-        size_t struct_offset = 0; // members are in relative offset units
-        auto* struct_type = _type->extract<Shader::StructType>();
-        auto* struct_body = struct_type->getBody();
-        for(auto elem_iter = struct_body->current(), elem_iter_end = struct_body->end(); elem_iter != elem_iter_end; ++elem_iter)
-        {
-            TGE_ASSERT(elem_iter->getNodeType() == Shader::TGE_EFFECT_DECLARATION, "Expecting only declarations");
-            auto* decl = elem_iter->extract<Shader::Declaration>();
-            auto* vars = decl->getVariables();
-            switch(vars->getNodeType())
-            {
-            case Shader::TGE_EFFECT_VARIABLE:
-            {
-                ConvertVariable(base, vars->extract<Shader::Variable>(), &struct_offset, buf_desc);
-            } break;
-            case Shader::TGE_AST_LIST_ELEMENT:
-            {
-                auto _list = vars->extract<AST::ListElement>();
-                for(auto var_iter = _list->current(), var_iter_end = _list->end(); var_iter != var_iter_end; ++var_iter)
-                {
-                    TGE_ASSERT(var_iter->getNodeType() == Shader::TGE_EFFECT_VARIABLE, "Expecting variable");
-                    auto* var = var_iter->extract<Shader::Variable>();
-                    ConvertVariable(base, var, &struct_offset, buf_desc);    
-                }
-            } break;
-            default: TGE_ASSERT(false, "Unexpected node");
-            }
-        }
-        *uniform_type = UniformValueType::Struct;
-        *elem_size = struct_offset;
-    } break;
-    default: TGE_ASSERT(false, "Unexpected type"); break;
-    }
-    TGE_ASSERT(*elem_size > 0, "Element size should be greater than one. Otherwise, it is pointless to define it");
-}
-
-static size_t GetAlignment(UniformValueType _type)
-{
-    switch(_type)
-    {
-    case UniformValueType::Float: return sizeof(float);
-    case UniformValueType::Vector2: return 2*sizeof(float);
-    case UniformValueType::Vector3: return 4*sizeof(float);
-    case UniformValueType::Vector4: return 4*sizeof(float);
-    case UniformValueType::Integer: return sizeof(int32);
-    case UniformValueType::IntegerVector2: return 2*sizeof(int32);
-    case UniformValueType::IntegerVector3: return 4*sizeof(int32);
-    case UniformValueType::IntegerVector4: return 4*sizeof(int32);
-    case UniformValueType::UnsignedInteger: return sizeof(uint32);
-    case UniformValueType::UnsignedIntegerVector2: return 2*sizeof(uint32);
-    case UniformValueType::UnsignedIntegerVector3: return 4*sizeof(uint32);
-    case UniformValueType::UnsignedIntegerVector4: return 4*sizeof(uint32);
-    case UniformValueType::Boolean: return sizeof(uint32);
-    case UniformValueType::BooleanVector2: return 2*sizeof(uint32);
-    case UniformValueType::BooleanVector3: return 4*sizeof(uint32);
-    case UniformValueType::BooleanVector4: return 4*sizeof(uint32);
-    case UniformValueType::Matrix2: return 2*2*sizeof(float);
-    case UniformValueType::Matrix3: return 3*3*sizeof(float);
-    case UniformValueType::Matrix4: return 4*4*sizeof(float);
-    case UniformValueType::Matrix2x3: return 2*4*sizeof(float);
-    case UniformValueType::Matrix2x4: return 2*4*sizeof(float);
-    case UniformValueType::Matrix3x2: return 3*2*sizeof(float);
-    case UniformValueType::Matrix3x4: return 3*4*sizeof(float);
-    case UniformValueType::Matrix4x2: return 4*2*sizeof(float);
-    case UniformValueType::Matrix4x3: return 4*4*sizeof(float);
-    case UniformValueType::Texture: return sizeof(uint64);
-    case UniformValueType::Struct: return 4*sizeof(float);
-    case UniformValueType::SubroutineUniform: return sizeof(uint32);
-    case UniformValueType::SubroutineFunction:
-    default: TGE_ASSERT(false, "Unexpected uniform type");
-    }
-    return 0;
-}
-
-static void ConvertVariable(const string& base, const Shader::Variable* var, size_t* offset, Shader::BufferDescription* buf_desc)
-{
-    UniformValueType uniform_type;
-    size_t           elem_size,
-                     array_size = 1;
-    auto*            _type = var->getType();
-    auto             type_enum = _type->getTypeEnum();
-    string           var_name = var->getNodeName();
-    
-    switch(type_enum)
-    {
-    case Shader::ElementType::Struct:
-    case Shader::ElementType::Vector:
-    case Shader::ElementType::Matrix:
-    {
-        ConvertType(base.empty() ? var_name : (base + "." + var_name), _type, &uniform_type, &elem_size, offset, buf_desc);
-    } break;
-    case Shader::ElementType::Array:
-    {
-        auto* array_type = _type->extract<Shader::ArrayType>();
-        ConvertType(base.empty() ? var_name : (base + "." + var_name), array_type->getBasicType(), &uniform_type, &elem_size, offset, buf_desc);
-        TGE_ASSERT(array_size == 1, "Arrays of arrays are unsupported");
-        auto* size = array_type->getSize();
-        if(*size)
-        {
-            array_size = size->extract<AST::Value<int>>()->getValue();
-        }
-        else
-        {
-            array_size = 0; // infinite
-            buf_desc->setResizablePart(elem_size);
-        }
-        *offset = (*offset + 4*sizeof(float) - 1) & ~(4*sizeof(float) - 1);
-    } break;
-    case Shader::ElementType::Sampler:
-    {
-        auto* sampler_type = _type->extract<Shader::SamplerType>();
-        uniform_type = UniformValueType::Texture;
-        elem_size = sizeof(uint64);
-        // TODO
-        
-    } break;
-    default:
-        TGE_ASSERT(false, "Unsupported type"); break;
-    }
-    
-    auto alignment = GetAlignment(uniform_type);
-    *offset = (*offset + alignment - 1) & ~(alignment - 1);
-
-    buf_desc->addBufferElement(Shader::BufferElement(*offset, uniform_type, base.empty() ? var_name : (base + "." + var_name), elem_size, array_size));
-    
-    if(array_size > 1 || uniform_type == UniformValueType::Struct)
-    {
-        *offset += array_size*((elem_size + 4*sizeof(float) - 1) & ~(4*sizeof(float) - 1));
-    }
-    else
-    {
-        *offset += elem_size;
-    }
-}
-
-static void ConvertSubroutine(const string& base, const Shader::Type* _type, UniformValueType* uniform_type, size_t* elem_size, size_t* array_size)
-{
-    *array_size = 1;
-    auto type_enum = _type->getTypeEnum();
-    switch(type_enum)
-    {
-    case Shader::ElementType::Array:
-    {
-        auto* array_type = _type->extract<Shader::ArrayType>();
-        ConvertSubroutine(base, array_type->getBasicType(), uniform_type, elem_size, array_size);
-        TGE_ASSERT(*array_size == 1, "Arrays of arrays are unsupported");
-        auto* size = array_type->getSize();
-        TGE_ASSERT(*size, "Variable size arrays are not supported");
-        *array_size = size->extract<AST::Value<int>>()->getValue();
-    } break;
-    case Shader::ElementType::Subroutine:
-    {
-        *uniform_type = UniformValueType::SubroutineUniform;
-        *elem_size = UniformValueTypeSize(*uniform_type);
-    } break;
-    default:
-        TGE_ASSERT(false, "Unsupported type"); break;
-    }
-}
-
 void Generator::visit(const Shader::Declaration* decl)
 {
     if(decl == nullptr)
         return;
     auto* var_node = decl->getVariables();
     auto var_type = var_node->getNodeType();
-    TGE_ASSERT(var_type == Shader::TGE_EFFECT_VARIABLE ||
-               var_type == Shader::TGE_EFFECT_TYPE, "Expecting variable or type declaration");
-    if(var_type == Shader::TGE_EFFECT_VARIABLE)
-    {
-        auto* var = var_node->extract<Shader::Variable>();
-        auto* _type = var->getType();
-        TGE_ASSERT(_type->getTypeEnum() == Shader::ElementType::Subroutine ||
-                (_type->getTypeEnum() == Shader::ElementType::Array &&
-                _type->getArrayElementType()->getTypeEnum() == Shader::ElementType::Subroutine),
-                "Expecting subroutine type");
-        m_RawImport.stream() << "subroutine uniform ";
-        m_RawImport.visit(decl);
-        
-        UniformValueType uniform_value_type;
-        size_t elem_size, array_size;
-        ConvertSubroutine("", var->getType(), &uniform_value_type, &elem_size, &array_size);
-        TGE_ASSERT(elem_size == sizeof(uint32), "Subroutine uniform should be 32-bit");
-        m_Effect.addSubroutineUniform(Shader::BufferElement(m_Effect.getSubroutineUniformCount()*elem_size, uniform_value_type, var->getNodeName(), elem_size, array_size));
-    }
-    else if(var_type == Shader::TGE_EFFECT_TYPE)
+    TGE_ASSERT(var_type == Shader::TGE_EFFECT_TYPE, "Expecting variable or type declaration");
+    if(var_type == Shader::TGE_EFFECT_TYPE)
     {
         m_RawImport.visit(decl);
     }
@@ -580,20 +300,7 @@ void Generator::visit(const Shader::Buffer* buffer)
 {
     m_RawImport.visit(buffer);
     
-    size_t offset = 0;
-    Shader::BufferDescription buf_desc(buffer->getBufferType(), buffer->getNodeName());
-    auto* list = buffer->getBody();
-    for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
-    {
-        auto* decl = iter->extract<Shader::Declaration>();
-        auto* var = decl->getVariables()->extract<Shader::Variable>();
-        
-        size_t offset = 0;
-        auto _type = var->getType(); 
-        ConvertVariable("", var, &offset, &buf_desc);
-        
-    }
-    m_Effect.addBuffer(buf_desc);
+    ConvertBuffer(buffer, &m_Effect);
 }
 
 void Generator::visit(const AST::ListElement* lst)
@@ -752,16 +459,8 @@ void Generator::visit(const Shader::Import* _import)
 void Generator::visit(const Shader::Type* type_stmt)
 {
     TGE_ASSERT(type_stmt->getTypeEnum() == Shader::ElementType::Shader ||
-               type_stmt->getTypeEnum() == Shader::ElementType::Struct ||
-               type_stmt->getTypeEnum() == Shader::ElementType::Subroutine, "Unexpected top level type declaration");
-    if(type_stmt->getTypeEnum() == Shader::ElementType::Subroutine)
-    {
-        m_RawImport.printSubroutine(type_stmt->extract<Shader::Subroutine>());
-    }
-    else
-    {
-        type_stmt->accept(this);
-    }
+               type_stmt->getTypeEnum() == Shader::ElementType::Struct, "Unexpected top level type declaration");
+    type_stmt->accept(this);
 }
 
 void Generator::visit(const Shader::ShaderDeclaration* _shader)
@@ -795,10 +494,6 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
         if(node_type != Shader::TGE_EFFECT_DECLARATION)
         {
             j->accept(&shader_printer);
-        }
-        else if(node_type == Shader::TGE_EFFECT_TYPE && j->extract<Shader::Type>()->getTypeEnum() == Shader::ElementType::Subroutine)
-        {
-            shader_printer.printSubroutine(j->extract<Shader::Type>()->extract<Shader::Subroutine>());
         }
         else
         {
@@ -847,6 +542,8 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                 for(size_t i = 0, indentation = shader_printer.getIndentation(); i < indentation; ++i)
                     os << "\t";
                 os << "};\n";
+
+                ConvertStructBuffer(var, &m_Effect);
             }
             else
             {
@@ -898,34 +595,14 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     m_Effect.addShader(shader_desc);
 }
 
-static void PushSubroutineFunction(string name, Shader::EffectDescription* effect)
-{
-    for(size_t i = 0, iend = effect->getSubroutineFunctionCount(); i < iend; ++i)
-    {
-        if(effect->getSubroutineFunction(i) == name)
-            return;
-    }
-    effect->addSubroutineFunction(name);   
-}
-
 void Generator::visit(const Shader::FunctionDefinition* func_def)
 {
     m_RawImport.visit(func_def);
-    auto func_decl = func_def->getDeclaration();
-    if(func_decl->getSubroutineTypesBegin() != func_decl->getParametersEnd())
-    {
-        PushSubroutineFunction(func_def->getNodeName(), &m_Effect);
-    }
 }
 
 void Generator::visit(const Shader::FunctionDeclaration* func_decl)
 {
     m_RawImport.visit(func_decl);
-    m_RawImportStream << ";\n";
-    if(func_decl->getSubroutineTypesBegin() != func_decl->getParametersEnd())
-    {
-        PushSubroutineFunction(func_decl->getNodeName(), &m_Effect);
-    }
 }
 
 bool LoadEffect(const string& filename, FileLoader* loader, Shader::EffectDescription& effect)

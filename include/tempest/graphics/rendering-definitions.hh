@@ -208,8 +208,6 @@ enum class UniformValueType: uint32
     Matrix4x3,
     Texture,
     Struct,
-    SubroutineUniform,
-    SubroutineFunction
 };
 
 inline size_t UniformValueTypeSize(UniformValueType uniform_value)
@@ -242,8 +240,6 @@ inline size_t UniformValueTypeSize(UniformValueType uniform_value)
     case UniformValueType::Matrix4x2: return 4*2*sizeof(float);
     case UniformValueType::Matrix4x3: return 4*3*sizeof(float);
     case UniformValueType::Texture: return sizeof(uint64);
-    case UniformValueType::SubroutineUniform: return sizeof(uint32);
-    case UniformValueType::SubroutineFunction: return sizeof(uint32);
     case UniformValueType::Struct: return 1;
     default: TGE_ASSERT(false, "Unsupported uniform value type"); break;
     }
@@ -252,10 +248,16 @@ inline size_t UniformValueTypeSize(UniformValueType uniform_value)
 
 struct VertexAttributeDescription
 {
-    int         BufferId;
+    uint32      BufferId;
     string      Name; // For annoying validation purposes.
     DataFormat  Format;
-    int         Offset;
+    uint32      Offset;
+};
+
+struct CommandBufferDescription
+{
+    uint32 CommandCount;
+    uint32 ConstantsBufferSize;
 };
 }
 

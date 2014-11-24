@@ -54,11 +54,29 @@ public:
     GLInputLayout(const GLInputLayout&)=delete;
     GLInputLayout& operator=(const GLInputLayout&)=delete;
     
+    bool operator==(GLInputLayout& input_layout)
+    {
+        for(uint32 i = 0, iend = m_Attributes.Count; i < iend; ++i)
+        {
+            auto& attr1 = m_Attributes.Values[i];
+            auto& attr2 = input_layout.m_Attributes.Values[i];
+            if(attr1.Binding != attr2.Binding ||
+               attr1.Type != attr2.Type ||
+               attr1.Size != attr2.Size ||
+               attr1.Normalized != attr2.Normalized ||
+               attr1.Offset != attr2.Offset)
+                return false;
+        }
+        return true;
+    }
+
     const GLVertexAttributeDescription* getAttribute(size_t idx) const { return m_Attributes.Values + idx; }
     size_t getAttributeCount() const { return m_Attributes.Count; }
 
+    void bind() const;
+
 private:
-    GLInputLayout(size_t count, const VertexAttributeDescription* arr);
+    GLInputLayout(uint32 count, const VertexAttributeDescription* arr);
     ~GLInputLayout()=default;
 };
 }

@@ -148,37 +148,4 @@ void GLWindow::swapBuffers()
 {
     SwapBuffers(m_DC);
 }
-
-GLContext::~GLContext()
-{
-    if(m_HGLRC)
-    {
-        wglMakeCurrent(m_DC, nullptr);
-        wglDeleteContext(m_HGLRC);
-    }
-}
-
-bool GLContext::attach(OSWindowSystem& wnd_sys, GLWindow& window)
-{
-    static const int ctx_attr_list[] =
-    {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 0,
-        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-        0
-    };
-
-    if(!m_HGLRC)
-    {
-        m_HGLRC = w32hackCreateContextAttribs(window.getDC(), nullptr, ctx_attr_list);
-        if(!m_HGLRC)
-        {
-            Log(LogLevel::Warning, "Failed to create OpenGL 3 context");
-            return false;
-        }
-    }
-    m_DC = window.getDC();
-    wglMakeCurrent(m_DC, m_HGLRC);
-	return true;
-}
 }

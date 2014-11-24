@@ -36,15 +36,14 @@
 
 #include <cstddef>
 #include <vector>
-
-#include <iostream>
+#include <memory>
 
 namespace Tempest
 {
 class GLRenderingBackend;
 class GLBakedResourceTable;
 class GLLinkedShaderProgram;
-class GLInputLayout;
+class GLStateObject;
 class GLBuffer;
 
 struct GLVertexBufferDescription
@@ -57,44 +56,43 @@ struct GLVertexBufferDescription
 // TODO: make it cache friendlier, by pool allocating and using offsets instead
 struct GLDrawBatch
 {
-    DrawModes                 PrimitiveType       = DrawModes::TriangleList;
-    uint16                    VertexCount         = 0;
-    uint32                    BaseVertex          = 0;
-    uint64                    SortKey             = 0;
-    GLBakedResourceTable*     ResourceTable       = nullptr;
-    GLLinkedShaderProgram*    LinkedShaderProgram = nullptr;
-    GLInputLayout*            InputLayout         = nullptr;
-    GLBuffer*                 IndexBuffer         = nullptr;
+    uint64                    SortKey = 0;
+    uint32                    VertexCount = 0;
+    uint32                    BaseVertex = 0;
+    GLBakedResourceTable*     ResourceTable = nullptr;
+    GLStateObject*            PipelineState = nullptr;
+    GLBuffer*                 IndexBuffer = nullptr;
     GLVertexBufferDescription VertexBuffers[MAX_VERTEX_BUFFERS];
 };
 
 class GLCommandBuffer
 {
-    std::vector<GLDrawBatch>     m_CommandBuffer;
-    size_t                       m_CommandBufferReqSize      = 0;
-    size_t                       m_ConstantBufferReqRingSize = 0;
+    std::unique_ptr<GLDrawBatch[]> m_CommandBuffer;
+
+    uint32                         m_CommandBufferSize     = 0;
+    uint32                         m_ConstantBufferSize    = 0;
+
+    uint32                         m_CommandCount          = 0;
+    uint32                         m_ConstantBufferReqSize = 0;
+
+    GLsync                         m_GPUFence              = 0;
+
+    GLuint                         m_ConstantBuffer        = 0;
+    GLvoid*                        m_ConstantBufferPtr     = nullptr;
     
-    GLuint                       m_ConstantBufferRing        = 0;
-    GLvoid*                      m_ConstantBufferPtr         = nullptr;
-    size_t                       m_ConstantBufferRingSize    = 0;
-    
-    GLsync                       m_GPUFence                  = 0;
-    
-    GLuint                       m_GPUCommandBuffer          = 0;
-    GLvoid*                      m_GPUCommandBufferPtr       = nullptr;
-    size_t                       m_GPUCommandBufferSize      = 0;
-    size_t                       m_GPUCommandBufferStart     = 0;
+    GLuint                         m_GPUCommandBuffer      = 0;
+    GLvoid*                        m_GPUCommandBufferPtr   = nullptr;
 public:
     typedef GLDrawBatch DrawBatchType;
     
-    explicit GLCommandBuffer();
+    explicit GLCommandBuffer(const CommandBufferDescription& cmd_buf_desc);
      ~GLCommandBuffer();
     
     //! \remarks Can be used outside of the rendering thread.
     void clear();
     
     //! \remarks Can be used outside of the rendering thread.
-    void enqueueBatch(const GLDrawBatch& draw_batch);
+    bool enqueueBatch(const GLDrawBatch& draw_batch);
     
     //! Called by the user to prepare the command buffer for submission.
     void prepareCommandBuffer();

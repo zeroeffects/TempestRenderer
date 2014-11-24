@@ -59,15 +59,15 @@ enum class ElementType
     Struct,
     Shader,
     Profile,
-    Subroutine,
     CompiledShader
 };
 
 enum class BufferType
 {
-    Regular,  //!< Generally this is buffer in memory. It comes with the expected latency and bandwidth limitations.
-    Constant, /*!< On some graphics cards its content might be assigned to registers. */
-    Resource  //!< This one is mostly for non-bindless style APIs that declare stuff in weird fashion.
+    Regular,     //!< Generally this is buffer in memory. It comes with the expected latency and bandwidth limitations.
+    Constant,    /*!< On some graphics cards its content might be assigned to registers. */
+    Resource,    //!< This one is mostly for non-bindless style APIs that declare stuff in weird fashion.
+    StructBuffer //!< There is another way to specify it. However, still available to avoid enum duplication.
 };
 
 class PassShaderDescription
@@ -210,7 +210,6 @@ typedef std::vector<BufferDescription>    BufferVector;
 typedef std::vector<ShaderDescription>    ShaderVector;
 typedef std::vector<TechniqueDescription> TechniqueVector;
 typedef std::vector<string>               ImportedVector;
-typedef std::vector<string>               SubroutineFunctionVector;
 
 class EffectDescription
 {
@@ -218,8 +217,6 @@ class EffectDescription
     TechniqueVector          m_Techniques;
     ImportedVector           m_Imported;
     BufferVector             m_Buffers;
-    BufferElementVector      m_SubroutineUniformsBuffer;
-    SubroutineFunctionVector m_SubroutineFunctionsBuffer;
 public:
     EffectDescription() {}
      ~EffectDescription() {}
@@ -240,14 +237,6 @@ public:
     const BufferDescription& getBuffer(size_t idx) const { return m_Buffers[idx]; }
     size_t getBufferCount() const { return m_Buffers.size(); }
     void addBuffer(BufferDescription buffer) { m_Buffers.push_back(buffer); }
-
-    const BufferElement& getSubroutineUniform(size_t idx) const { return m_SubroutineUniformsBuffer[idx]; }
-    size_t getSubroutineUniformCount() const { return m_SubroutineUniformsBuffer.size(); }
-    void addSubroutineUniform(BufferElement subroutine) { m_SubroutineUniformsBuffer.push_back(subroutine); }
-    
-    const string& getSubroutineFunction(size_t idx) const { return m_SubroutineFunctionsBuffer[idx]; }
-    size_t getSubroutineFunctionCount() const { return m_SubroutineFunctionsBuffer.size(); }
-    void addSubroutineFunction(string subroutine_type) { m_SubroutineFunctionsBuffer.push_back(subroutine_type); }
 };
 }
 }

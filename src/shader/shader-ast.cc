@@ -100,30 +100,6 @@ FunctionDeclaration::~FunctionDeclaration()
 {
 }
 
-bool FunctionDeclaration::setSubroutineTypes(NodeT<List> list_node)
-{
-    if(!m_SubroutineTypes)
-    {
-        m_SubroutineTypes = std::move(list_node);
-        return true;
-    }
-    for(List::iterator iter1 = list_node->current(), iter1_end = list_node->end(), iter2, iter2_end; iter1 != iter1_end; ++iter1)
-    {
-        for(iter2 = m_SubroutineTypes->current(), iter2_end = m_SubroutineTypes->end(); iter2 != iter2_end; ++iter2)
-        {
-            if(*iter1 == *iter2)
-            {
-                break;
-            }
-        }
-        if(iter2 == iter2_end)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
 NodeT<FunctionCall> FunctionDeclaration::createFunctionCall(Location loc, NodeT<List> arg_list)
 {
     List::iterator i, j;
@@ -183,12 +159,6 @@ const Type* Typedef::getType() const
 bool Typedef::isBlockStatement() const
 {
     return false;
-}
-
-AST::NodeT<SubroutineCall> Subroutine::createSubroutineCall(Location loc, AST::Node subr, AST::NodeT<List> arg_list) const
-{
-    auto func_call = m_SubroutineDeclaration->createFunctionCall(loc, std::move(arg_list));
-    return func_call ? CreateNodeTyped<SubroutineCall>(loc, std::move(subr), std::move(func_call)) : AST::NodeT<SubroutineCall>();
 }
 
 ConstructorCall::ConstructorCall(const Type* _type, NodeT<List> arg_list)
@@ -1497,20 +1467,6 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
 {
     auto& os = printer->stream();
     auto* ret_type = func_decl->getReturnType();
-    auto subr_iter = func_decl->getSubroutineTypesBegin();
-    auto subr_end = func_decl->getSubroutineTypesEnd();
-    if(subr_iter != subr_end)
-    {
-        os << "subroutine(";
-        for(;;)
-        {
-            os << subr_iter->getNodeName();
-            if(++subr_iter == subr_end)
-                break;
-            os << ", ";
-        }
-        os << ") ";
-    }
     if(ret_type)
         visitor->visit(ret_type);
     else
@@ -1555,20 +1511,6 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
     auto* args = func_call->getArguments();
     if(args)
         static_cast<AST::VisitorInterface*>(visitor)->visit(args);
-    os << ")";
-}
-
-void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const SubroutineCall* subr_call)
-{
-    auto& os = printer->stream();
-    subr_call->getSubroutine()->accept(visitor);
-    os << "(";
-    TGE_ASSERT(subr_call->getFunctionCall(), "Valid function call should be specified");
-    auto* args = subr_call->getFunctionCall()->getArguments();
-    if(args)
-    {
-        static_cast<AST::VisitorInterface*>(visitor)->visit(args);
-    }
     os << ")";
 }
 
@@ -1723,12 +1665,6 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
         {
             auto* _struct = _type->extract<StructType>();
             _struct->printList(visitor, printer, "struct");
-        } break;
-        case ElementType::Subroutine:
-        {
-            auto* subroutine = _type->extract<Subroutine>();
-            printer->stream() << "subroutine ";
-            PrintNode(visitor, printer, subroutine->getDeclaration());
         } break;
         }
     } break;
@@ -2010,11 +1946,6 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct)
 {
     printer->stream() << _struct->getNodeName();
-}
-
-void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Subroutine* subroutine)
-{
-    printer->stream() << subroutine->getNodeName();
 }
 
 void PrintNode(AST::PrinterInfrastructure* printer, const CompiledShader* compiled_shader)

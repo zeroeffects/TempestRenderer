@@ -168,10 +168,6 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
     
     size_t buf_count = effect.getBufferCount();
     size_t res_table_count = buf_count;
-    size_t subr_count = effect.getSubroutineUniformCount();
-    size_t subr_func_count = effect.getSubroutineFunctionCount();
-    if(subr_count)
-        ++res_table_count;
     std::unique_ptr<ResourceTableDescription*[]> res_tables(new ResourceTableDescription*[res_table_count]);
     
     for(size_t buffer_idx = 0; buffer_idx < buf_count; ++buffer_idx)
@@ -190,38 +186,13 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
             auto& uval = res_table->Uniforms.Values[el_idx];
             uval.Name = elem_desc.getElementName();
             uval.Type = elem_desc.getElementType();
-            uval.ElementSize = elem_desc.getElementSize();
-            uval.ElementCount = elem_desc.getElementCount();
-            uval.Offset = elem_desc.getBufferOffset();
+            uval.ElementSize = static_cast<Tempest::uint16>(elem_desc.getElementSize());
+            uval.ElementCount = static_cast<Tempest::uint16>(elem_desc.getElementCount());
+            uval.Offset = static_cast<Tempest::uint32>(elem_desc.getBufferOffset());
             auto cur_end = static_cast<uint32>(uval.Offset + uval.ElementCount*uval.ElementSize);
             res_table->BufferSize = std::max(res_table->BufferSize, cur_end);
         }
-        res_table->BufferSize -= buffer.getResiablePart();
-    }
-    auto& subr_res_table = res_tables[buf_count];
-    subr_res_table = CreatePackedData<ResourceTableDescription>(subr_func_count + subr_count, 0, "$Subroutines", 0);
-    size_t offset = 0;
-    for(size_t el_idx = 0; el_idx < subr_func_count; ++el_idx)
-    {
-        auto& subr_uniform = effect.getSubroutineFunction(el_idx);
-        auto& uval = subr_res_table->Uniforms.Values[el_idx];
-        uval.Name = subr_uniform;
-        uval.Type = UniformValueType::SubroutineFunction;
-        uval.ElementCount = 1;
-        uval.Offset = el_idx;
-    }
-    subr_res_table->BufferSize = 0;
-    for(size_t el_idx = 0, subr_idx = subr_count; el_idx < subr_count; ++el_idx, ++subr_idx)
-    {
-        auto& subr_func = effect.getSubroutineUniform(el_idx);
-        auto& uval = subr_res_table->Uniforms.Values[subr_idx];
-        uval.Name = subr_func.getElementName();
-        uval.Type = subr_func.getElementType();
-        uval.ElementSize = subr_func.getElementSize();
-        uval.ElementCount = subr_func.getElementCount();
-        uval.Offset = offset;
-        auto cur_end = static_cast<uint32>(uval.Offset + uval.ElementCount*uval.ElementSize);
-        subr_res_table->BufferSize = std::max(subr_res_table->BufferSize, cur_end);
+        res_table->BufferSize -= static_cast<Tempest::uint32>(buffer.getResiablePart());
     }
     
     glLinkProgram(prog.get());

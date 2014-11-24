@@ -113,7 +113,6 @@
 %token                  T_NOPERSPECTIVE_QUALIFIER   "noperspective qualifier"
 %token <Identifier>     T_IDENTIFIER                "identifier"
 %token                  T_BUFFER_QUALIFIER          "buffer qualifier"
-%token                  T_SUBROUTINE_QUALIFIER      "subroutine qualifier"
 %token                  T_CONSTANT_QUALIFIER        "constant qualifier"
 %token                  T_UNIFORM_QUALIFIER         "uniform qualifier"
 %token                  T_RESOURCE_QUALIFIER        "resource qualifier"
@@ -121,7 +120,7 @@
 
 %type <List>                        translation_unit shader_body technique_body pass_body function_variables_list statement_list switch_statement_list
 %type <List>                        layout_id_list layout_header definitions_block definitions_list function_variables_non_empty_list
-%type <List>                        function_arg_list buffer_list subroutine_list subroutine_declaration struct_body
+%type <List>                        function_arg_list buffer_list struct_body
 %type <void>                        external_declaration statement iteration_statement for_init_statement block_statement layout_id else_statement
 %type <void>                        selection_statement switch_statement case_statement default_statement expression_statement jump_statement
 %type <void>                        definition_pair definition_value effect_file
@@ -131,8 +130,8 @@
 %type <Technique>                   technique
 %type <Pass>                        pass
 %type <VariableRef>                 variable output_variable interpolation_variable invariant_variable const_variable variable_with_layout
-%type <VariableRef>                 function_variable gvariable buffer_variable subroutine
-%type <void>                        function subroutine_type
+%type <VariableRef>                 function_variable gvariable buffer_variable
+%type <void>                        function
 %type <IntermFuncNode>              function_declaration function_definition function_statement
 %type <DeclarationInfo>             function_header
 %type <FuncDeclarationInfo>         declared_function_header
@@ -193,8 +192,6 @@ external_declaration
     | technique                                             { $$ = $1; }
     | function                                              { $$ = $1; } // Some shared stuff between the shaders
     | buffer                                                { $$ = $1; }
-    | subroutine_type                                       { $$ = $1; }
-    | subroutine                                            { $$ = $1; }
     | struct_declaration                                    { $$ = $1; }
     ;
 
@@ -286,27 +283,10 @@ shader_type
     | "fragment qualifier" "shader"                         { driver.beginShader(ShaderType::FragmentShader); $$ = CreateNode<Value<ShaderType>>(ToLocation(@$), ShaderType::FragmentShader); }
     ;
 
-subroutine
-    : "uniform qualifier" "subroutine qualifier" variable ';'
-                                                            {
-                                                                auto var = $3;
-                                                                auto* _type = var->getType();
-                                                                if(_type->getTypeEnum() != ElementType::Subroutine && _type->getArrayElementType()->getTypeEnum() != ElementType::Subroutine)
-                                                                {
-                                                                    std::stringstream ss;
-                                                                    ss << "Unexpected subroutine type " << _type->getNodeName();
-                                                                    driver.error(ToLocation(@$), ss.str().c_str());
-                                                                    var = AST::Node();
-                                                                }
-                                                                $$ = CreateNode<Declaration>(ToLocation(@$), std::move(var));
-                                                            }
-    ;
-
 shader_body
     :   /* empty */                                         { $$ = NodeT<List>(); }
     | gvariable shader_body                                 { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, CreateNode<Declaration>(ToLocation(@$), $1), $2); }
     | function shader_body                                  { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
-    | subroutine_type shader_body                           { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
     | invariant_declaration ';'  shader_body                { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $3); }
     | struct_declaration shader_body                        { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
     ;
@@ -345,17 +325,6 @@ pass_body
 
 function
     : function_statement                                    { $$ = std::move($1->getFirst()); }
-    | subroutine_declaration function_statement             {
-                                                                auto func = $2;
-                                                                if(!func->getSecond()->setSubroutineTypes($1))
-                                                                {
-                                                                    std::stringstream ss;
-                                                                    Printer func_printer(ss, 0);
-                                                                    ss << "Invalid subroutine function list: " << func->getFirst().getNodeName() << "\n";
-                                                                    driver.error(ToLocation(@$), ss.str());
-                                                                }
-                                                                $$ = std::move(func->getFirst());
-                                                            }
     ;
     
 function_statement
@@ -363,35 +332,6 @@ function_statement
     | function_definition                                   { $$ = $1; }
     ;
     
-subroutine_declaration
-    :  "subroutine qualifier" '(' subroutine_list ')'       { $$ = $3; }
-    ;
-
-subroutine_list
-    : "type"                                                {
-                                                                auto subroutine_type = $1;
-                                                                if(subroutine_type->getTypeEnum() != ElementType::Subroutine)
-                                                                {
-                                                                    std::stringstream ss;
-                                                                    ss << "Expecting subroutine type, but got " << subroutine_type->getNodeName() << " instead";
-                                                                    driver.error(ToLocation(@$), ss.str().c_str());
-                                                                    subroutine_type = AST::Node();
-                                                                }
-                                                                $$ = CreateNodeTyped<ListElement>(ToLocation(@$), TGE_AST_COMMA_SEPARATED_LIST, std::move(subroutine_type), NodeT<List>());
-                                                            }
-    | "type" ',' subroutine_list                            {
-                                                                auto subroutine_type = $1;
-                                                                if(subroutine_type->getTypeEnum() != ElementType::Subroutine)
-                                                                {
-                                                                    std::stringstream ss;
-                                                                    ss << "Expecting subroutine type, but got " << subroutine_type->getNodeName() << " instead";
-                                                                    driver.error(ToLocation(@$), ss.str().c_str());
-                                                                    subroutine_type = AST::Node();
-                                                                }
-                                                                $$ = CreateNodeTyped<ListElement>(ToLocation(@$), TGE_AST_COMMA_SEPARATED_LIST, std::move(subroutine_type), $3);
-                                                            }
-    ;
-
 struct_declaration
     : "struct qualifier" "identifier" '{'                   { driver.beginBlock(); }
         struct_body
@@ -421,25 +361,6 @@ struct_body
                                                             }
     ;
 
-subroutine_type
-    : "subroutine qualifier" function_header function_variables_list ')' ';'
-                                                            {
-                                                                driver.endBlock();
-                                                                auto func_decl_info = $2;
-                                                                auto func_var_list = $3;
-                                                                AST::Node result;
-                                                                if(func_decl_info && func_decl_info->getSecond())
-                                                                {
-                                                                    string func_name = func_decl_info->getSecond()->getValue();
-                                                                    auto func_decl = CreateNodeTyped<FunctionDeclaration>(ToLocation(@2), func_decl_info->getFirst(),
-                                                                                                                          func_name, std::move(func_var_list));
-                                                                    auto subr_type = driver.createStackType<Subroutine>(ToLocation(@$), std::move(func_decl));
-                                                                    result = CreateNode<Declaration>(ToLocation(@$), std::move(subr_type));
-                                                                }
-                                                                $$ = std::move(result);
-                                                            }
-    ;
-    
 function_declaration
     : function_header function_variables_list ')' ';'       {
                                                                 driver.endBlock();
@@ -1109,62 +1030,6 @@ function_call
                                                                         for(size_t i = 0, iend = function_set->getFunctionCount(); i != iend; ++i)
                                                                             ss << "\t", func_printer.visit(function_set->getFunction(i)), ss << '\n';
                                                                         driver.error(ToLocation(@$), ss.str());
-                                                                    }
-                                                                }
-                                                                $$ = std::move(result);
-                                                            }
-    | variable_expression '(' function_arg_list ')'         {
-                                                                NodeT<Expression> result;
-                                                                auto var = $1;
-                                                                auto arg_list = $3;
-                                                                if(var)
-                                                                {
-                                                                    auto* _type = var->getFirst();
-                                                                    if(_type->getTypeEnum() != ElementType::Subroutine)
-                                                                    {
-                                                                        driver.error(ToLocation(@1), "Expecting valid subroutine variable");
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        auto* subroutine = _type->extract<Subroutine>();
-                                                                        auto return_type = subroutine->getDeclaration()->getReturnType();
-                                                                        if(subroutine->getDeclaration()->sameParameters(arg_list.get()))
-                                                                        {
-                                                                            auto subroutine_call = subroutine->createSubroutineCall(ToLocation(@$), std::move(var->getSecond()), std::move(arg_list));
-                                                                            result = CreateNodeTyped<Expression>(ToLocation(@$), return_type, std::move(subroutine_call));
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            std::stringstream ss;
-                                                                            Printer func_printer(ss, 0);
-                                                                            ss << "Invalid subroutine call to undeclared function: ";
-                                                                            var->getSecond().accept(&func_printer);
-                                                                            ss << "(";
-                                                                            for(List::iterator i = arg_list->current(), iend = arg_list->end(); i != iend; ++i)
-                                                                            {
-                                                                                if(i != arg_list->current())
-                                                                                    ss << ", ";
-                                                                                auto ptr = i->extract<Expression>();
-                                                                                if(ptr && i && ptr->getFirst())
-                                                                                    ss << ptr->getFirst()->getNodeName();
-                                                                                else
-                                                                                    ss << "<unknown>";
-                                                                            }
-                                                                            ss << ")\n"
-                                                                                "Candidates are:\n"
-                                                                                "\t";
-                                                                            auto* func_decl = subroutine->getDeclaration();
-                                                                            if(func_decl)
-                                                                            {
-                                                                                func_printer.visit(func_decl);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                ss << "<unknown>";
-                                                                            }
-                                                                            ss << '\n';
-                                                                            driver.error(ToLocation(@$), ss.str());
-                                                                        }
                                                                     }
                                                                 }
                                                                 $$ = std::move(result);

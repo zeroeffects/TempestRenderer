@@ -14,8 +14,12 @@ TGE_TEST("Testing the rendering context")
     wdesc.Title = "Test window";
     auto sys_obj = Tempest::CreateSystemAndWindowSimple<TEMPEST_RENDERING_SYSTEM>(wdesc);
     TGE_ASSERT(sys_obj, "GL initialization failed");
-    
-    auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend);
+
+    Tempest::CommandBufferDescription cmd_buffer_desc;
+    cmd_buffer_desc.CommandCount = 16;
+    cmd_buffer_desc.ConstantsBufferSize = 1024;
+
+    auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend, cmd_buffer_desc);
     
     std::vector<Tempest::Vector2> arr{ Tempest::Vector2(0.0f, 0.0f),
                                        Tempest::Vector2(0.0f, 1.0f),
@@ -29,7 +33,7 @@ TGE_TEST("Testing the rendering context")
     
     auto shader = Tempest::CreateShader(&sys_obj->ShaderCompiler, CURRENT_SOURCE_DIR "/test.tfx");
     TGE_ASSERT(shader, "Expecting successful compilation");
-    auto res_table = shader->createResourceTable("GlobalsBuffer", 1);
+    auto res_table = shader->createResourceTable("Globals", 1);
     TGE_ASSERT(res_table, "Expecting valid resource table");
     Tempest::Matrix4 mat;
     mat.identity();
@@ -43,20 +47,17 @@ TGE_TEST("Testing the rendering context")
     {
         { 0, "VertexData", Tempest::DataFormat::RG32F, 0 }
     };
+
+    Tempest::DataFormat rt_fmt = Tempest::DataFormat::RGBA8UNorm;
     
-    auto input_layout = Tempest::CreateInputLayout(&sys_obj->Backend, shader.get(), layout_arr);
-    
-    auto* shader_ptr = shader.get();
-    auto linked_shader_prog = shader_ptr->getUniqueLinkage(nullptr);
+    auto pipeline_state = Tempest::CreateStateObject(&sys_obj->Backend, layout_arr, &rt_fmt, 1, shader.get(), Tempest::DrawModes::TriangleStrip);
     
     typedef decltype(sys_obj->Backend) BackendType;
     BackendType::CommandBufferType::DrawBatchType batch;
-    batch.PrimitiveType = Tempest::DrawModes::TriangleStrip;
     batch.VertexCount = static_cast<Tempest::uint32>(idx_arr.size());
     batch.ResourceTable = baked_table.get();
-    batch.LinkedShaderProgram = linked_shader_prog;
     batch.IndexBuffer = index_buf.get();
-    batch.InputLayout = input_layout.get();
+    batch.PipelineState = pipeline_state.get();
     batch.VertexBuffers[0].VertexBuffer = vertex_buf.get();
     batch.VertexBuffers[0].Stride = sizeof(Tempest::Vector2);
     

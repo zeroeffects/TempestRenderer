@@ -32,6 +32,7 @@
 #include "tempest/graphics/opengl-backend/gl-buffer.hh"
 #include "tempest/graphics/opengl-backend/gl-state-object.hh"
 #include "tempest/graphics/opengl-backend/gl-input-layout.hh"
+#include "tempest/graphics/opengl-backend/gl-window.hh"
 #include "tempest/graphics/opengl-backend/gl-texture.hh"
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
 #include "tempest/graphics/state-object.hh"
@@ -48,14 +49,14 @@
 
 namespace Tempest
 {
-template<class T>
-bool GLRenderingBackend::CompareIndirect<T>::operator()(const std::unique_ptr<T>& lhs, const std::unique_ptr<T>& rhs)
+template<class T, class TDeleter>
+bool GLRenderingBackend::CompareIndirect<T, TDeleter>::operator()(const std::unique_ptr<T, TDeleter>& lhs, const std::unique_ptr<T, TDeleter>& rhs)
 {
     return *lhs == *rhs;
 }
 
-template<class T>
-size_t GLRenderingBackend::HashIndirect<T>::operator()(const std::unique_ptr<T>& ptr)
+template<class T, class TDeleter>
+size_t GLRenderingBackend::HashIndirect<T, TDeleter>::operator()(const std::unique_ptr<T, TDeleter>& ptr)
 {
     return XXH32(ptr.get(), sizeof(T), 0xEF1C1337);
 }
@@ -123,10 +124,90 @@ GLRenderingBackend::GLRenderingBackend()
 
 GLRenderingBackend::~GLRenderingBackend()
 {
+#ifdef _WIN32
+    if(m_HGLRC)
+    {
+        wglMakeCurrent(m_DC, nullptr);
+        wglDeleteContext(m_HGLRC);
+    }
+#else
+    glXMakeCurrent(m_Display->nativeHandle(), 0, 0);
+    glXDestroyContext(m_Display->nativeHandle(), m_GLXContext);
+#endif
 }
 
-bool GLRenderingBackend::init(GLContext& gl_ctx)
+bool GLRenderingBackend::attach(OSWindowSystem&, GLWindow& gl_wnd)
 {
+    static const int ctx_attr_list[] =
+    {
+        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+        WGL_CONTEXT_MINOR_VERSION_ARB, 0,
+        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        0
+    };
+
+#ifdef _WIN32
+    if(!m_HGLRC)
+    {
+        m_HGLRC = w32hackCreateContextAttribs(gl_wnd.getDC(), nullptr, ctx_attr_list);
+        if(!m_HGLRC)
+        {
+            Log(LogLevel::Warning, "Failed to create OpenGL 3 context");
+            return false;
+        }
+    }
+    m_DC = gl_wnd.getDC();
+    wglMakeCurrent(m_DC, m_HGLRC);
+#else
+    auto fbconf = wnd.getFBConfig();
+
+    m_Display = &wnd_sys;
+    auto display = m_Display->nativeHandle();
+
+    if(!m_FBConfig)
+    {
+        m_FBConfig = fbconf;
+        if(glXCreateContextAttribsARB)
+        {
+            int ctx_attr_list[] =
+            {
+                GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+                GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+                None
+            };
+
+            m_GLXContext = glXCreateContextAttribsARB(display, *fbconf, 0, True, ctx_attr_list);
+            if(!m_GLXContext)
+            {
+                Log(LogLevel::Error, "the application has failed to initialize an OpenGL 3.0 compatible GLX rendering context");
+                return false;
+            }
+        }
+        else
+        {
+            m_GLXContext = glXCreateNewContext(display, *fbconf, GLX_RGBA_TYPE, 0, True);
+            XSync(display, False);
+            if(!m_GLXContext)
+            {
+                Log(LogLevel::Error, "the application has failed to initialize an OpenGL GLX rendering context");
+                return false;
+            }
+        }
+    }
+    else if(m_FBConfig != fbconf)
+    {
+        Log(LogLevel::Error, "For performance reasons context recreation is not supported.");
+        return false;
+    }
+
+    glXMakeCurrent(display, wnd.getWindowId(), m_GLXContext);
+#endif
+    return true;
+}
+
+void GLRenderingBackend::init()
+{
+    // Requires the library to be loaded!
 #ifndef NDEBUG
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(&DebugLoggingCallback, nullptr);
@@ -145,9 +226,8 @@ bool GLRenderingBackend::init(GLContext& gl_ctx)
     {
         Log(LogLevel::Error, "OpenGL: error: ", ConvertGLErrorToString(opengl_err));
         TGE_ASSERT(opengl_err == GL_NO_ERROR, "An error has occurred while using OpenGL");
-        return false;
+        return;
     }
-    return true;
 }
 
 GLRenderTarget* GLRenderingBackend::createRenderTarget(const TextureDescription& desc, uint32 flags)
@@ -167,9 +247,9 @@ void GLRenderingBackend::setFramebuffer(GLFramebuffer* rt_batch)
     TGE_ASSERT(false, "Stub");
 }
     
-GLCommandBuffer* GLRenderingBackend::createCommandBuffer()
+GLCommandBuffer* GLRenderingBackend::createCommandBuffer(const CommandBufferDescription& cmd_buf_desc)
 {
-    return new GLCommandBuffer;
+    return new GLCommandBuffer(cmd_buf_desc);
 }
     
 void GLRenderingBackend::submitCommandBuffer(GLCommandBuffer* cmd_buffer)
@@ -202,13 +282,22 @@ void GLRenderingBackend::destroyRenderResource(GLTexture* texture)
     delete texture;
 }
     
-GLStateObject* GLRenderingBackend::createStateObject(const RasterizerStates* rasterizer_states, const BlendStates* blend_states, const DepthStencilStates* depth_stencil_states)
+GLStateObject* GLRenderingBackend::createStateObject(const VertexAttributeDescription* va_arr,
+                                                     size_t va_count,
+                                                     DataFormat*,
+                                                     size_t,
+                                                     GLShaderProgram* shader_program,
+                                                     DrawModes primitive_type,
+                                                     const RasterizerStates* rasterizer_states,
+                                                     const BlendStates* blend_states,
+                                                     const DepthStencilStates* depth_stencil_states)
 {
     // We kind of need a complete translation before doing the comparisons; otherwise we are going to make translation when
     // comparing it with each element.
     auto* gl_rast_states = &m_DefaultRasterizerStates;
     auto* gl_blend_states = &m_DefaultBlendState;
     auto* gl_depth_stencil_states = &m_DefaultDepthStencilStates;
+    GLInputLayout* layout = nullptr;
     if(rasterizer_states)
     {
         gl_rast_states = new GLRasterizerStates;
@@ -227,8 +316,13 @@ GLStateObject* GLRenderingBackend::createStateObject(const RasterizerStates* ras
         TranslateDepthStencilStates(depth_stencil_states, gl_depth_stencil_states);
         gl_depth_stencil_states = m_DepthStencilStates.emplace(gl_depth_stencil_states).first->get();
     }
+    if(va_count)
+    {
+        layout = CreatePackedData<GLInputLayout>(static_cast<uint32>(va_count), va_arr);
+        layout = m_InputLayoutMap.emplace(layout).first->get();
+    }
 
-    return m_StateObjects.emplace(new GLStateObject(gl_rast_states, gl_blend_states, gl_depth_stencil_states)).first->get();
+    return m_StateObjects.emplace(new GLStateObject(layout, shader_program, primitive_type, gl_rast_states, gl_blend_states, gl_depth_stencil_states)).first->get();
 }
     
 void GLRenderingBackend::setStateObject(const GLStateObject* state_obj)
@@ -258,19 +352,5 @@ void GLRenderingBackend::clearColorBuffer(uint32 idx, const Vector4& color)
 void GLRenderingBackend::clearDepthStencilBuffer(float depth, uint8 stencil)
 {
     glClearBufferfi(GL_DEPTH_STENCIL, 0, depth, stencil);
-}
-
-void GLRenderingBackend::bindInputLayout(GLInputLayout* layout)
-{
-    if(!layout)
-        return;
-    for(GLuint i = 0, iend = static_cast<GLuint>(layout->getAttributeCount()); i < iend; ++i)
-    {
-        auto* vert_attr = layout->getAttribute(i);
-        glVertexAttribFormat(i, vert_attr->Size, vert_attr->Type, vert_attr->Normalized, vert_attr->Offset);
-        glVertexAttribBinding(i, vert_attr->Binding);
-        glEnableVertexAttribArrayARB(i);
-    }
-    CheckOpenGL();
 }
 }

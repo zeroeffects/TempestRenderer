@@ -56,9 +56,9 @@ namespace Tempest
 {
 enum class BufferingType
 {
-    Single,
-    Double,
-    Triple
+    Single = 1,
+    Double = 2,
+    Triple = 3
 };
 
 struct WindowDescription

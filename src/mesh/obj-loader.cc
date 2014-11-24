@@ -170,8 +170,10 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
         { sizeof(Tempest::Vector4), "Normal", Tempest::DataFormat::RGB32F, 0 }
     };
     
-    auto input_layout_tex = CreateInputLayout(backend, progs[0], layout_tex);
-    auto input_layout_wo_tex = CreateInputLayout(backend, progs[1], layout_wo_tex);
+    auto rt_fmt = Tempest::DataFormat::RGBA8;
+
+    auto state_object_tex = CreateStateObject(backend, layout_tex, &rt_fmt, 1, progs[0]);
+    auto state_object_wo_tex = CreateStateObject(backend, layout_wo_tex, &rt_fmt, 1, progs[1]);
 
     auto& pos_ind = obj_loader_driver.getPositionIndices();
     auto& tc_ind = obj_loader_driver.getTexCoordIndices();
@@ -198,18 +200,20 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
         InterleaveInterm(obj_loader_driver, groups[i], pos_size, tc_size, norm_size, &res_inds, &res_data);
         
         auto& batch = (*batches)[i];
-        batch.PrimitiveType = DrawModes::TriangleList;
         batch.VertexCount   = static_cast<uint16>(res_inds.size() - prev_size);
         batch.BaseVertex    = 0;
         batch.SortKey       = 0; // This could be regenerated on the fly
         
         auto* shader_prog = progs[tc_size != 0 ? 0 : 1];
-        
-        auto subr_res_table = CreateResourceTable(shader_prog, "$Subroutines");
+
         auto& material = obj_loader_driver.getMaterials().at(groups[i].MaterialIndex);
+        /*
+        auto subr_res_table = CreateResourceTable(shader_prog, "$Subroutines");
         switch(material.IllumModel)
         {
         default: TGE_ASSERT(false, "Unsupported illumination model");
+            // TODO: Nope no longer supported because it is hard to do cross-platform!
+            
         case ObjMtlLoader::IlluminationModel::Diffuse:
             subr_res_table->setSubroutine("Illum", "DiffuseDirectLight"); break;
         case ObjMtlLoader::IlluminationModel::DiffuseAndAmbient:
@@ -219,17 +223,15 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
         }
         
         auto subr_baked_table = ExtractBakedResourceTable(subr_res_table.get());
-        
+        */
         if(tc_size != 0)
         {
-            batch.LinkedShaderProgram = progs[0]->getUniqueLinkage(subr_baked_table.release());
-            batch.InputLayout   = input_layout_tex.get();
+            batch.PipelineState           = state_object_tex.get();
             batch.VertexBuffers[0].Stride = sizeof(Vector4) + sizeof(Vector2) + sizeof(Vector3);
         }
         else
         {
-            batch.LinkedShaderProgram    = progs[1]->getUniqueLinkage(subr_baked_table.release());
-            batch.InputLayout            = input_layout_wo_tex.get();
+            batch.PipelineState           = state_object_wo_tex.get();
             batch.VertexBuffers[0].Stride = sizeof(Vector4) + sizeof(Vector3);
         }
         
