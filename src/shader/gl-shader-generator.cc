@@ -158,7 +158,7 @@ class Generator: public Shader::VisitorInterface
     std::stringstream          m_RawImportStream;
     ShaderPrinter              m_RawImport;
 
-    size_t                     m_BindingCounter;
+    size_t                     m_BindingCounter = 0;
     bool                       m_Valid;
     Shader::EffectDescription  m_Effect;
     FileLoader*                m_FileLoader;
@@ -289,10 +289,37 @@ void Generator::visit(const Shader::Declaration* decl)
         return;
     auto* var_node = decl->getVariables();
     auto var_type = var_node->getNodeType();
-    TGE_ASSERT(var_type == Shader::TGE_EFFECT_TYPE, "Expecting variable or type declaration");
+    TGE_ASSERT(var_type == Shader::TGE_EFFECT_VARIABLE ||
+               var_type == Shader::TGE_EFFECT_TYPE, "Expecting variable or type declaration");
     if(var_type == Shader::TGE_EFFECT_TYPE)
     {
         m_RawImport.visit(decl);
+    }
+    else if(var_type == Shader::TGE_EFFECT_VARIABLE)
+    {
+        auto* var = var_node->extract<Shader::Variable>();
+        if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
+        {
+            auto& os = m_RawImportStream;
+            for(size_t i = 0, indentation = m_RawImport.getIndentation(); i < indentation; ++i)
+                os << "\t";
+            os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer " << var->getNodeName() << "_StructBuffer "
+                << "{\n";
+            for(size_t i = 0, indentation = m_RawImport.getIndentation() + 1; i < indentation; ++i)
+                os << "\t";
+            os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName() << "[];\n";
+            for(size_t i = 0, indentation = m_RawImport.getIndentation(); i < indentation; ++i)
+                os << "\t";
+            os << "}";
+
+            ConvertStructBuffer(var, &m_Effect);
+        }
+        else
+        {
+            Log(LogLevel::Error, "Unexpected variable declaration ", var->getNodeName(), ".");
+            m_Valid = false;
+            return;
+        }
     }
 }
 
@@ -538,10 +565,11 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                     << "{\n";
                 for(size_t i = 0, indentation = shader_printer.getIndentation() + 1; i < indentation; ++i)
                     os << "\t";
-                os << var->getType()->getNodeName() << " " << var->getNodeName() << "[]";
+                shader_printer.visit(var);
+                os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName() << "[];\n";
                 for(size_t i = 0, indentation = shader_printer.getIndentation(); i < indentation; ++i)
                     os << "\t";
-                os << "};\n";
+                os << "}";
 
                 ConvertStructBuffer(var, &m_Effect);
             }

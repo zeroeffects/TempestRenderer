@@ -80,31 +80,34 @@ static GLenum TranslateDrawMode(DrawModes mode)
 }
 
 GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
-    :   m_CommandBuffer(new GLDrawBatch[desc.CommandCount])
+    :   m_CommandBuffer(new GLDrawBatch[desc.CommandCount]),
+        m_ConstantBufferSize(desc.ConstantsBufferSize)
 {
     GLuint buffers[2];
     glGenBuffers(2, buffers);
     m_GPUCommandBuffer = buffers[0];
     m_ConstantBuffer = buffers[1];
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_GPUCommandBuffer);
-    GLuint cmd_buf_size = m_CommandBufferSize*sizeof(DrawElementsIndirectCommand);
+    GLuint cmd_buf_size = desc.CommandCount*sizeof(DrawElementsIndirectCommand);
 #ifndef DISABLE_NV_OPTIMIZATION
     if(glMultiDrawElementsIndirectBindlessNV)
     {
-        cmd_buf_size += m_CommandBufferSize*(sizeof(GLuint) + MAX_VERTEX_BUFFERS*sizeof(BindlessPtrNV));
+        cmd_buf_size += desc.CommandCount*(sizeof(GLuint) + MAX_VERTEX_BUFFERS*sizeof(BindlessPtrNV));
     }
 #endif
+    m_CommandBufferSize = cmd_buf_size;
     glBufferStorage(GL_DRAW_INDIRECT_BUFFER, cmd_buf_size, 0,
                     GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
     m_GPUCommandBufferPtr = glMapBufferRange(GL_DRAW_INDIRECT_BUFFER, 0, cmd_buf_size,
                                              GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
-
+    CheckOpenGL();
     GLuint const_buf_size = desc.ConstantsBufferSize;
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ConstantBuffer);
     glBufferStorage(GL_SHADER_STORAGE_BUFFER, const_buf_size, 0,
                     GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-    m_GPUCommandBufferPtr = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, const_buf_size,
-                                             GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+    m_ConstantBufferPtr = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, const_buf_size,
+                                           GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+    CheckOpenGL();
 }
 
 GLCommandBuffer::~GLCommandBuffer()
@@ -144,7 +147,7 @@ bool GLCommandBuffer::enqueueBatch(const GLDrawBatch& draw_batch)
 
 void GLCommandBuffer::prepareCommandBuffer()
 {
-    std::sort(m_CommandBuffer.get(), m_CommandBuffer.get() + m_CommandBufferSize,
+    std::sort(m_CommandBuffer.get(), m_CommandBuffer.get() + m_CommandCount,
               [](const GLDrawBatch& lhs, const GLDrawBatch& rhs)
               {
                   return lhs.PipelineState == rhs.PipelineState ?

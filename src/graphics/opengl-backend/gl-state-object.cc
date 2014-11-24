@@ -67,7 +67,7 @@ void TranslateRasterizerStates(const RasterizerStates* raster_states, GLRasteriz
 {
     gl_raster_states->PolygonMode = TranslateFillMode(raster_states->FillMode);
     gl_raster_states->CullFace = TranslateCullMode(raster_states->CullMode);
-    gl_raster_states->PolygonMode = TranslateFrontFaceMode(raster_states->FrontFaceMode);    
+    gl_raster_states->FrontFace = TranslateFrontFaceMode(raster_states->FrontFaceMode);    
     gl_raster_states->OffsetFactor = raster_states->SlopeScaledDepthBias;
     gl_raster_states->OffsetUnits = static_cast<GLfloat>(raster_states->DepthBias);
     gl_raster_states->MiscModes = raster_states->MiscModes;
@@ -275,6 +275,94 @@ void SetupState(uint32 mode_diff, uint32 misc_states, uint32 state, GLenum gl_st
 
 void GLStateObject::setup(const GLStateObject* prev_state) const
 {
+    if(prev_state == nullptr)
+    {
+        m_ShaderProgram->bind();
+        m_InputLayout->bind();
+        auto* cur_rast_state = m_RasterStates;
+        glPolygonMode(GL_FRONT_AND_BACK, cur_rast_state->PolygonMode);
+        glCullFace(cur_rast_state->CullFace);
+        glFrontFace(cur_rast_state->FrontFace);
+        glPolygonOffset(cur_rast_state->OffsetFactor, cur_rast_state->OffsetUnits);
+        uint32 mode_diff = ~0;
+        SetupState(mode_diff, cur_rast_state->MiscModes, TEMPEST_DEPTH_CLIP_ENABLE, GL_DEPTH_CLAMP);
+        SetupState(mode_diff, cur_rast_state->MiscModes, TEMPEST_SCISSOR_ENABLE, GL_SCISSOR_TEST);
+        SetupState(mode_diff, cur_rast_state->MiscModes, TEMPEST_MULTISAMPLE_ENABLE, GL_MULTISAMPLE);
+        SetupState(mode_diff, cur_rast_state->MiscModes, TEMPEST_ANTIALIASED_LINE_ENABLE, GL_LINE_SMOOTH);
+
+        auto* cur_blend_state = m_BlendStates;
+        SetupState(mode_diff, cur_blend_state->MiscModes, TEMPEST_ALPHA_TO_COVERAGE_ENABLE, GL_SAMPLE_ALPHA_TO_COVERAGE);
+        if(cur_blend_state->MiscModes & TEMPEST_INDEPENDENT_BLEND_ENABLE)
+        {
+            for(GLuint i = 0; i < TGE_FIXED_ARRAY_SIZE(GLBlendStates().SeparateBlendStates); ++i)
+            {
+                auto& cur_rt_blend_states = cur_blend_state->SeparateBlendStates[i];
+                if(cur_rt_blend_states.BlendEnable == GL_TRUE)
+                {
+                    glEnablei(i, GL_BLEND);
+                    glBlendFunci(i, cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor);
+                    glBlendEquationi(i, cur_rt_blend_states.BlendEquation);
+                    glBlendFunci(i, cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
+                    glBlendEquationi(i, cur_rt_blend_states.BlendAlphaEquation);
+                }
+                else
+                {
+                    glDisablei(i, GL_BLEND);
+                }
+                glColorMaski(i, cur_rt_blend_states.ColorMask & (1 << 0),
+                             cur_rt_blend_states.ColorMask & (1 << 1),
+                             cur_rt_blend_states.ColorMask & (1 << 2),
+                             cur_rt_blend_states.ColorMask & (1 << 3));
+            }
+        }
+        else
+        {
+            auto& cur_rt_blend_states = cur_blend_state->SeparateBlendStates[0];
+            if(cur_rt_blend_states.BlendEnable == GL_TRUE)
+            {
+                glEnable(GL_BLEND);
+                glBlendFunc(cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor);
+                glBlendEquation(cur_rt_blend_states.BlendEquation);
+                glBlendFunc(cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
+                glBlendEquation(cur_rt_blend_states.BlendAlphaEquation);
+            }
+            else
+            {
+                glDisable(GL_BLEND);
+            }
+            glColorMask(cur_rt_blend_states.ColorMask & (1 << 0),
+                        cur_rt_blend_states.ColorMask & (1 << 1),
+                        cur_rt_blend_states.ColorMask & (1 << 2),
+                        cur_rt_blend_states.ColorMask & (1 << 3));
+        }
+
+        auto* cur_ds_states = m_DepthStencilStates;
+        auto* enable_depth_func = cur_ds_states->DepthTestEnable ? glEnable : glDisable;
+        enable_depth_func(GL_DEPTH_TEST);
+        glDepthMask(cur_ds_states->DepthWriteEnable);
+        if(cur_ds_states->DepthTestEnable == GL_TRUE)
+        {
+            glDepthFunc(cur_ds_states->DepthFunction);
+        }
+        auto* enable_stencil_func = cur_ds_states->StencilEnable ? glEnable : glDisable;
+        enable_stencil_func(GL_STENCIL_TEST);
+        if(cur_ds_states->StencilEnable == GL_TRUE)
+        {
+            auto setup_face = [](uint8 mask, uint8 ref, const GLDepthStencilOperationStates& cur_ds_states)
+            {
+                glStencilFunc(cur_ds_states.StencilFunction, ref, mask);
+                glStencilOp(cur_ds_states.StencilFailOperation,
+                            cur_ds_states.StencilDepthFailOperation,
+                            cur_ds_states.StencilPassOperation);
+            };
+            glStencilMask(cur_ds_states->StencilWriteMask);
+            setup_face(cur_ds_states->StencilReadMask, cur_ds_states->StencilRef, cur_ds_states->FrontFace);
+            setup_face(cur_ds_states->StencilReadMask, cur_ds_states->StencilRef, cur_ds_states->BackFace);
+        }
+
+        return;
+    }
+
 	if(m_ShaderProgram != prev_state->m_ShaderProgram)
 	{
 		m_ShaderProgram->bind();
