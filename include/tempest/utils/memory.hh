@@ -60,6 +60,7 @@
 #   define TGE_ALLOCA _alloca
 #else
 #   include <alloca.h>
+#   define TGE_ALLOCA alloca
 #endif
 
 namespace Tempest

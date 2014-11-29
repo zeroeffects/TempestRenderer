@@ -54,24 +54,6 @@ typedef Window OSWindow;
 
 namespace Tempest
 {
-enum class BufferingType
-{
-    Single = 1,
-    Double = 2,
-    Triple = 3
-};
-
-struct WindowDescription
-{
-    size_t          Width = 100,
-                    Height = 100;
-    string          Title = "Generic window";
-    DataFormat      ColorBufferFormat = DataFormat::RGBA8UNorm;
-    DataFormat      DepthBufferFormat = DataFormat::D24S8;
-    size_t          Samples = 1;
-    BufferingType   Buffering = BufferingType::Double;
-};
-
 class OSWindowSystem
 {
 public:
@@ -91,5 +73,26 @@ typedef HWND OSWindow;
 #else
 #   error "Unsupported platform"
 #endif
+
+namespace Tempest
+{
+enum class BufferingType
+{
+    Single = 1,
+    Double = 2,
+    Triple = 3
+};
+
+struct WindowDescription
+{
+    size_t          Width = 100,
+                    Height = 100;
+    string          Title = "Generic window";
+    DataFormat      ColorBufferFormat = DataFormat::RGBA8UNorm;
+    DataFormat      DepthBufferFormat = DataFormat::D24S8;
+    size_t          Samples = 1;
+    BufferingType   Buffering = BufferingType::Double;
+};
+}
 
 #endif // _OSWINDOW_SYSTEM_HH

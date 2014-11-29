@@ -47,7 +47,7 @@ static GLenum TranslateCullMode(CullModeType cull_mode)
     switch(cull_mode)
     {
     default: TGE_ASSERT(false, "Unknown cull mode");
-    case CullModeType::None: return GL_FRONT_AND_BACK;
+    case CullModeType::FrontAndBack: return GL_FRONT_AND_BACK;
     case CullModeType::Front: return GL_FRONT;
     case CullModeType::Back: return GL_BACK;
     }

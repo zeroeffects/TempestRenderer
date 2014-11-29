@@ -34,7 +34,7 @@ enum class FillModeType: uint8
 
 enum class CullModeType: uint8
 {
-    None,
+    FrontAndBack,
     Front,
     Back
 };

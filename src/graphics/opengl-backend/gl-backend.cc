@@ -50,13 +50,13 @@
 namespace Tempest
 {
 template<class T, class TDeleter>
-bool GLRenderingBackend::CompareIndirect<T, TDeleter>::operator()(const std::unique_ptr<T, TDeleter>& lhs, const std::unique_ptr<T, TDeleter>& rhs)
+bool GLRenderingBackend::CompareIndirect<T, TDeleter>::operator()(const std::unique_ptr<T, TDeleter>& lhs, const std::unique_ptr<T, TDeleter>& rhs) const
 {
     return *lhs == *rhs;
 }
 
 template<class T, class TDeleter>
-size_t GLRenderingBackend::HashIndirect<T, TDeleter>::operator()(const std::unique_ptr<T, TDeleter>& ptr)
+size_t GLRenderingBackend::HashIndirect<T, TDeleter>::operator()(const std::unique_ptr<T, TDeleter>& ptr) const
 {
     return XXH32(ptr.get(), sizeof(T), 0xEF1C1337);
 }
@@ -136,8 +136,10 @@ GLRenderingBackend::~GLRenderingBackend()
 #endif
 }
 
-bool GLRenderingBackend::attach(OSWindowSystem&, GLWindow& gl_wnd)
+bool GLRenderingBackend::attach(OSWindowSystem& wnd_sys, GLWindow& gl_wnd)
 {
+#ifdef _WIN32
+    wnd_sys;
     static const int ctx_attr_list[] =
     {
         WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
@@ -146,7 +148,6 @@ bool GLRenderingBackend::attach(OSWindowSystem&, GLWindow& gl_wnd)
         0
     };
 
-#ifdef _WIN32
     if(!m_HGLRC)
     {
         m_HGLRC = w32hackCreateContextAttribs(gl_wnd.getDC(), nullptr, ctx_attr_list);
@@ -159,7 +160,7 @@ bool GLRenderingBackend::attach(OSWindowSystem&, GLWindow& gl_wnd)
     m_DC = gl_wnd.getDC();
     wglMakeCurrent(m_DC, m_HGLRC);
 #else
-    auto fbconf = wnd.getFBConfig();
+    auto fbconf = gl_wnd.getFBConfig();
 
     m_Display = &wnd_sys;
     auto display = m_Display->nativeHandle();
@@ -200,7 +201,7 @@ bool GLRenderingBackend::attach(OSWindowSystem&, GLWindow& gl_wnd)
         return false;
     }
 
-    glXMakeCurrent(display, wnd.getWindowId(), m_GLXContext);
+    glXMakeCurrent(display, gl_wnd.getWindowId(), m_GLXContext);
 #endif
     return true;
 }

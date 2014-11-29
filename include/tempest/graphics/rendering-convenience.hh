@@ -45,6 +45,7 @@ struct RasterizerStates;
 struct BlendStates;
 struct DepthStencilStates;
 struct CommandBufferDescription;
+struct WindowDescription;
 
 #define CONVERT_TEXTURE_FORMAT(T, fmt) template<> struct ConvertTextureFormat<T> { static const DataFormat format = fmt; }
 

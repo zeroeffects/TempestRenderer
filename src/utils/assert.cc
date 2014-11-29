@@ -154,7 +154,7 @@ string Backtrace(size_t start_frame, size_t end_frame)
 {
     string result = "Backtrace:\n"
                     "==========\n";
-    void** array = TGE_ALLOCA(end_frame);
+    void** array = reinterpret_cast<void**>(TGE_ALLOCA(end_frame*sizeof(void*)));
     size_t size;
     int status;
     

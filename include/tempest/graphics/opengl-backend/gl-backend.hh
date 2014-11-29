@@ -32,6 +32,8 @@
 #include <unordered_set>
 #include <memory>
 
+#include <GL/glx.h>
+
 namespace Tempest
 {
 /*! \brief The interface of the render device wrapper.
@@ -56,6 +58,8 @@ struct GLBlendStates;
 struct GLRasterizerStates;
 struct GLDepthStencilStates;
 
+typedef std::shared_ptr<GLXFBConfig> GLXFBConfigPtr;
+
 class GLRenderingBackend
 {
     template<class T>
@@ -67,13 +71,13 @@ class GLRenderingBackend
     template<class T, class TDeleter>
     struct CompareIndirect
     {
-        bool operator()(const std::unique_ptr<T, TDeleter>& lhs, const std::unique_ptr<T, TDeleter>& rhs);
+        bool operator()(const std::unique_ptr<T, TDeleter>& lhs, const std::unique_ptr<T, TDeleter>& rhs) const;
     };
 
     template<class T, class TDeleter>
     struct HashIndirect
     {
-        size_t operator()(const std::unique_ptr<T, TDeleter>& state_obj);
+        size_t operator()(const std::unique_ptr<T, TDeleter>& state_obj) const;
     };
 
     template<class T, class TDeleter = std::default_delete<T>>
