@@ -47,11 +47,13 @@ class ShaderPrinter: public Shader::VisitorInterface
     Shader::ShaderType         m_ShaderType = Shader::ShaderType::GenericShader;
     bool                       m_DrawIDInUse = false;
     
+    uint32                     m_Settings;
     size_t                     m_BindingCounter;
     
 public:
-    ShaderPrinter(std::ostream& os, size_t binding_counter, uint32 flags)
+    ShaderPrinter(std::ostream& os, size_t binding_counter, uint32 settings_flags, uint32 flags)
         :   m_Printer(os, flags),
+            m_Settings(settings_flags),
             m_BindingCounter(binding_counter) {}
     virtual ~ShaderPrinter()=default;
 
@@ -145,7 +147,14 @@ void ShaderPrinter::visit(const Shader::Variable* var)
 {
     if(var->getNodeName() == "tge_DrawID")
     {
-        m_Printer.stream() << "gl_DrawIDARB";
+        if(m_Settings & TEMPEST_DISABLE_MULTI_DRAW)
+        {
+            m_Printer.stream() << "gl_InstanceID";
+        }
+        else
+        {
+            m_Printer.stream() << "gl_DrawIDARB";
+        }
     }
     else
     {
@@ -162,8 +171,9 @@ class Generator: public Shader::VisitorInterface
     bool                       m_Valid;
     Shader::EffectDescription  m_Effect;
     FileLoader*                m_FileLoader;
+    uint32                     m_Settings;
 public:
-    Generator(FileLoader* include_loader);
+    Generator(FileLoader* include_loader, uint32);
     virtual ~Generator();
     
     virtual void visit(const Location& loc) final { m_RawImport.visit(loc); }
@@ -224,10 +234,11 @@ public:
     Shader::EffectDescription getEffect() const { return m_Effect; }
 };
 
-Generator::Generator(FileLoader* include_loader)
-    :   m_RawImport(m_RawImportStream, m_BindingCounter, AST::TGE_AST_PRINT_LINE_LOCATION),
+Generator::Generator(FileLoader* include_loader, uint32 settings)
+    :   m_RawImport(m_RawImportStream, m_BindingCounter, m_Settings, AST::TGE_AST_PRINT_LINE_LOCATION),
         m_Valid(true),
-        m_FileLoader(include_loader) {}
+        m_FileLoader(include_loader),
+        m_Settings(settings) {}
 
 Generator::~Generator() {}
 
@@ -300,19 +311,29 @@ void Generator::visit(const Shader::Declaration* decl)
         auto* var = var_node->extract<Shader::Variable>();
         if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
         {
+            auto size = ConvertStructBuffer(var, &m_Effect);
+
+            size_t elems = (1 << 16) / size;
+
             auto& os = m_RawImportStream;
             for(size_t i = 0, indentation = m_RawImport.getIndentation(); i < indentation; ++i)
                 os << "\t";
-            os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer " << var->getNodeName() << "_StructBuffer "
-                << "{\n";
+            if(m_Settings & TEMPEST_DISABLE_SSBO)
+                os << "layout(std140, binding = " << m_BindingCounter++ << ") uniform ";
+            else
+                os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer ";
+            os << var->getNodeName() << "_StructBuffer "
+               << "{\n";
             for(size_t i = 0, indentation = m_RawImport.getIndentation() + 1; i < indentation; ++i)
                 os << "\t";
-            os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName() << "[];\n";
+            os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName();
+            if(m_Settings & TEMPEST_DISABLE_SSBO)
+                os << "[" << elems << "];\n";
+            else
+                os << "[];\n";
             for(size_t i = 0, indentation = m_RawImport.getIndentation(); i < indentation; ++i)
                 os << "\t";
             os << "}";
-
-            ConvertStructBuffer(var, &m_Effect);
         }
         else
         {
@@ -496,7 +517,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     Shader::ShaderDescription shader_desc(_shader->getType(), _shader->getNodeName());
     std::stringstream ss;
     ss << m_RawImportStream.str();
-    ShaderPrinter shader_printer(ss, m_BindingCounter, AST::TGE_AST_PRINT_LINE_LOCATION);
+    ShaderPrinter shader_printer(ss, m_BindingCounter, m_Settings, AST::TGE_AST_PRINT_LINE_LOCATION);
     shader_printer.setShaderType(shader_type);
     
     switch(_shader->getType())
@@ -558,20 +579,30 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
             
             if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
             {
+                auto size = ConvertStructBuffer(var, &m_Effect);
+
+                size_t elems = (1 << 16) / size;
+
                 auto& os = shader_printer.stream();
                 for(size_t i = 0, indentation = shader_printer.getIndentation(); i < indentation; ++i)
                     os << "\t";
-                os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer " << var->getNodeName() << "_StructBuffer "
+                if(m_Settings & TEMPEST_DISABLE_SSBO)
+                    os << "layout(std140, binding = " << m_BindingCounter++ << ") uniform ";
+                else
+                    os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer ";
+                os  << var->getNodeName() << "_StructBuffer "
                     << "{\n";
                 for(size_t i = 0, indentation = shader_printer.getIndentation() + 1; i < indentation; ++i)
                     os << "\t";
                 shader_printer.visit(var);
-                os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName() << "[];\n";
+                os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName();
+                if(m_Settings & TEMPEST_DISABLE_SSBO)
+                    os << "[" << elems << "];\n";
+                else
+                    os << "[];\n";
                 for(size_t i = 0, indentation = shader_printer.getIndentation(); i < indentation; ++i)
                     os << "\t";
                 os << "}";
-
-                ConvertStructBuffer(var, &m_Effect);
             }
             else
             {
@@ -633,7 +664,7 @@ void Generator::visit(const Shader::FunctionDeclaration* func_decl)
     m_RawImport.visit(func_decl);
 }
 
-bool LoadEffect(const string& filename, FileLoader* loader, Shader::EffectDescription& effect)
+bool LoadEffect(const string& filename, FileLoader* loader, uint32 flags, Shader::EffectDescription& effect)
 {
     Shader::Driver  effect_driver;
     auto            parse_ret = effect_driver.parseFile(filename);
@@ -650,7 +681,7 @@ bool LoadEffect(const string& filename, FileLoader* loader, Shader::EffectDescri
     if(!root_node)
         return false;
 
-    GLFX::Generator _generator(loader);
+    GLFX::Generator _generator(loader, flags);
     _generator.visit(root_node);
     effect = _generator.getEffect();
     return _generator.isValid();

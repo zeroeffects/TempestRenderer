@@ -29,39 +29,39 @@
     #include <windows.h>
 #endif
 
-#include <GL/gl.h>
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 
 #include "tempest/utils/logging.hh"
 #include "tempest/graphics/rendering-definitions.hh"
 
 namespace Tempest
 {
-string ConvertGLErrorToString(GLenum err);
+string ConvertGLErrorToString(GLErrorCode err);
 
-inline GLenum TranslateComparisonFunction(ComparisonFunction compare_func)
+inline GLComparisonFunction TranslateComparisonFunction(ComparisonFunction compare_func)
 {
     switch(compare_func)
     {
     default: TGE_ASSERT(false, "Unknown comparison function");
-    case ComparisonFunction::Never: return GL_NEVER;
-    case ComparisonFunction::Less: return GL_LESS;
-    case ComparisonFunction::Equal: return GL_EQUAL;
-    case ComparisonFunction::LessEqual: return GL_LEQUAL;
-    case ComparisonFunction::Greater: return GL_GREATER;
-    case ComparisonFunction::NotEqual: return GL_NOTEQUAL;
-    case ComparisonFunction::GreaterEqual: return GL_GEQUAL;
-    case ComparisonFunction::AlwaysPass: return GL_ALWAYS;
+    case ComparisonFunction::Never: return GLComparisonFunction::GL_NEVER;
+    case ComparisonFunction::Less: return GLComparisonFunction::GL_LESS;
+    case ComparisonFunction::Equal: return GLComparisonFunction::GL_EQUAL;
+    case ComparisonFunction::LessEqual: return GLComparisonFunction::GL_LEQUAL;
+    case ComparisonFunction::Greater: return GLComparisonFunction::GL_GREATER;
+    case ComparisonFunction::NotEqual: return GLComparisonFunction::GL_NOTEQUAL;
+    case ComparisonFunction::GreaterEqual: return GLComparisonFunction::GL_GEQUAL;
+    case ComparisonFunction::AlwaysPass: return GLComparisonFunction::GL_ALWAYS;
     }
 }
 
 #ifndef NDEBUG
 inline void CheckOpenGL()
 {
-    int opengl_err = glGetError();
-    if(opengl_err != GL_NO_ERROR)
+    auto opengl_err = glGetError();
+    if(opengl_err != GLErrorCode::GL_NO_ERROR)
     {
         Log(LogLevel::Error, "OpenGL: error: ", ConvertGLErrorToString(opengl_err));
-        TGE_ASSERT(opengl_err == GL_NO_ERROR, "An error has occurred while using OpenGL");
+        TGE_ASSERT(opengl_err == GLErrorCode::GL_NO_ERROR, "An error has occurred while using OpenGL");
     }
 }
 #else

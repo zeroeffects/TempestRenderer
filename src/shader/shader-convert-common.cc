@@ -29,7 +29,7 @@ namespace Tempest
 {
 namespace Shader
 {
-static void ConvertVariable(const string& base, const Shader::Variable* var, size_t* offset, Shader::BufferDescription* buf_desc);
+static size_t ConvertVariable(const string& base, const Shader::Variable* var, size_t* offset, Shader::BufferDescription* buf_desc);
 
 static void ConvertType(const string& base, const Shader::Type* _type, UniformValueType* uniform_type, size_t* elem_size, size_t* offset, Shader::BufferDescription* buf_desc)
 {
@@ -197,7 +197,7 @@ static size_t GetAlignment(UniformValueType _type)
     return 0;
 }
 
-static void ConvertVariable(const string& base, const Shader::Variable* var, size_t* offset, Shader::BufferDescription* buf_desc)
+static size_t ConvertVariable(const string& base, const Shader::Variable* var, size_t* offset, Shader::BufferDescription* buf_desc)
 {
     UniformValueType uniform_type;
     size_t           elem_size,
@@ -255,6 +255,7 @@ static void ConvertVariable(const string& base, const Shader::Variable* var, siz
     {
         *offset += elem_size;
     }
+    return elem_size;
 }
 
 void ConvertBuffer(const Buffer* buffer, Shader::EffectDescription* fx_desc)
@@ -273,13 +274,14 @@ void ConvertBuffer(const Buffer* buffer, Shader::EffectDescription* fx_desc)
     fx_desc->addBuffer(buf_desc);
 }
 
-void ConvertStructBuffer(const Variable* var, Shader::EffectDescription* fx_desc)
+size_t ConvertStructBuffer(const Variable* var, Shader::EffectDescription* fx_desc)
 {
     TGE_ASSERT(var->getStorage() == Shader::StorageQualifier::StructBuffer, "Input variable should be of StructBuffer type");
     size_t offset = 0;
     Shader::BufferDescription buf_desc(BufferType::StructBuffer, var->getNodeName());
-    ConvertVariable("", var, &offset, &buf_desc);
+    size_t elem_size = ConvertVariable("", var, &offset, &buf_desc);
     fx_desc->addBuffer(buf_desc);
+    return elem_size;
 }
 }
 }

@@ -31,8 +31,7 @@
     #include <windows.h>
 #endif
 
-#include <GL/gl.h>
-#include "GL/glext.h"
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 
 #include <cstddef>
 #include <vector>

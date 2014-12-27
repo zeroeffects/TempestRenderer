@@ -50,7 +50,7 @@ std::vector<ControllerDescription> ControllerLibrary::GetControllerDescriptions(
         return ctls;
 
     ControllerDescription desc;
-    for(DWORD i = 0; i < 4; ++i)
+    for(DWORD i = 0; i < XUSER_MAX_COUNT; ++i)
     {
         XINPUT_CAPABILITIES caps;
         if(_XInputGetCapabilities(i, 0, &caps) != ERROR_SUCCESS)
@@ -122,8 +122,7 @@ static void SetButtonState(ControllerState* state, size_t button_mask, uint16 bu
 
 bool Controller::getState(ControllerState* state)
 {
-    XINPUT_STATE xstate;
-    ZeroMemory(&xstate, sizeof(XINPUT_STATE));
+    XINPUT_STATE xstate = {};
     if(_XInputGetState(m_Index, &xstate) != ERROR_SUCCESS)
     {
         return false;

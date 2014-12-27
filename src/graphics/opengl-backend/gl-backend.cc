@@ -35,10 +35,9 @@
 #include "tempest/graphics/opengl-backend/gl-window.hh"
 #include "tempest/graphics/opengl-backend/gl-texture.hh"
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
+#include "tempest/graphics/opengl-backend/gl-config.hh"
 #include "tempest/graphics/state-object.hh"
 #include "tempest/utils/logging.hh"
-
-#include <GL/gl.h>
 
 #include <cassert>
 #include <sstream>
@@ -65,55 +64,60 @@ size_t GLRenderingBackend::HashIndirect<T, TDeleter>::operator()(const std::uniq
 
 #ifndef NDEBUG
     
-const char* TranslateDebugSource(GLenum source)
+const char* TranslateDebugSource(GLDebugSourceType source)
 {
     switch(source)
     {
-    case GL_DEBUG_SOURCE_API: return "OpenGL API";
-    case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "Window system";
-    case GL_DEBUG_SOURCE_SHADER_COMPILER: return "Shader compiler";
-    case GL_DEBUG_SOURCE_THIRD_PARTY: return "Third-party application";
-    case GL_DEBUG_SOURCE_APPLICATION: return "Application";
-    case GL_DEBUG_SOURCE_OTHER: break;
+    case GLDebugSourceType::GL_DEBUG_SOURCE_API: return "OpenGL API";
+    case GLDebugSourceType::GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "Window system";
+    case GLDebugSourceType::GL_DEBUG_SOURCE_SHADER_COMPILER: return "Shader compiler";
+    case GLDebugSourceType::GL_DEBUG_SOURCE_THIRD_PARTY: return "Third-party application";
+    case GLDebugSourceType::GL_DEBUG_SOURCE_APPLICATION: return "Application";
+    case GLDebugSourceType::GL_DEBUG_SOURCE_OTHER: break;
     default: break;
     }
     return "Unknown source";
 }
 
-const char* TranslateDebugType(GLenum type)
+const char* TranslateDebugType(GLDebugType type)
 {
     switch(type)
     {
-    case GL_DEBUG_TYPE_ERROR: return "Error";
-    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "Deprecated";
-    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "Undefined behavior";
-    case GL_DEBUG_TYPE_PORTABILITY: return "Portability issue";
-    case GL_DEBUG_TYPE_PERFORMANCE: return "Performance issue";
-    case GL_DEBUG_TYPE_MARKER: return "Marker";
-    case GL_DEBUG_TYPE_PUSH_GROUP: return "Group push";
-    case GL_DEBUG_TYPE_POP_GROUP: return "Group pop";
-    case GL_DEBUG_TYPE_OTHER: break;
+    case GLDebugType::GL_DEBUG_TYPE_ERROR: return "Error";
+    case GLDebugType::GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "Deprecated";
+    case GLDebugType::GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "Undefined behavior";
+    case GLDebugType::GL_DEBUG_TYPE_PORTABILITY: return "Portability issue";
+    case GLDebugType::GL_DEBUG_TYPE_PERFORMANCE: return "Performance issue";
+    case GLDebugType::GL_DEBUG_TYPE_MARKER: return "Marker";
+    case GLDebugType::GL_DEBUG_TYPE_PUSH_GROUP: return "Group push";
+    case GLDebugType::GL_DEBUG_TYPE_POP_GROUP: return "Group pop";
+    case GLDebugType::GL_DEBUG_TYPE_OTHER: break;
     default: break;
     }
     return "Unknown type";
 }
 
-LogLevel TranslateDebugSeverity(GLenum severity)
+LogLevel TranslateDebugSeverity(GLSeverityType severity)
 {
     switch(severity)
     {
-    case GL_DEBUG_SEVERITY_HIGH: return LogLevel::Fatal;
-    case GL_DEBUG_SEVERITY_MEDIUM: return LogLevel::Error;
-    case GL_DEBUG_SEVERITY_LOW: return LogLevel::Warning;
-    case GL_DEBUG_SEVERITY_NOTIFICATION: break;
+    case GLSeverityType::GL_DEBUG_SEVERITY_HIGH: return LogLevel::Fatal;
+    case GLSeverityType::GL_DEBUG_SEVERITY_MEDIUM: return LogLevel::Error;
+    case GLSeverityType::GL_DEBUG_SEVERITY_LOW: return LogLevel::Warning;
+    case GLSeverityType::GL_DEBUG_SEVERITY_NOTIFICATION: break;
     default: break;
     }
     return LogLevel::Info;
 }
 
-void DebugLoggingCallback(GLenum source, GLenum type, GLenum id, GLenum severity, GLsizei length, const GLchar* message, const void*)
+static const LogLevel MinSeverity = LogLevel::Error;
+
+void DebugLoggingCallback(GLDebugSourceType source, GLDebugType type, GLuint id, GLSeverityType severity, GLsizei length, const GLchar* message, const void*)
 {
-    Log(TranslateDebugSeverity(severity), "[Source: ", TranslateDebugSource(source), "; Type: ", TranslateDebugType(type), "] ", message);
+    auto log_level = TranslateDebugSeverity(severity);
+    if(log_level < MinSeverity)
+        return;
+    Log(log_level, "[Source: ", TranslateDebugSource(source), "; Type: ", TranslateDebugType(type), "] ", message);
 }
 
 #endif
@@ -127,8 +131,8 @@ GLRenderingBackend::~GLRenderingBackend()
 #ifdef _WIN32
     if(m_HGLRC)
     {
-        wglMakeCurrent(m_DC, nullptr);
-        wglDeleteContext(m_HGLRC);
+        Tempest::wglMakeCurrent(m_DC, nullptr);
+        Tempest::wglDeleteContext(m_HGLRC);
     }
 #else
     glXMakeCurrent(m_Display->nativeHandle(), 0, 0);
@@ -158,7 +162,7 @@ bool GLRenderingBackend::attach(OSWindowSystem& wnd_sys, GLWindow& gl_wnd)
         }
     }
     m_DC = gl_wnd.getDC();
-    wglMakeCurrent(m_DC, m_HGLRC);
+    Tempest::wglMakeCurrent(m_DC, m_HGLRC);
 #else
     auto fbconf = gl_wnd.getFBConfig();
 
@@ -210,23 +214,30 @@ void GLRenderingBackend::init()
 {
     // Requires the library to be loaded!
 #ifndef NDEBUG
-    glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(&DebugLoggingCallback, nullptr);
+    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_430))
+    {
+        glEnable(GLCapabilityMode::GL_DEBUG_OUTPUT);
+        glDebugMessageCallback(&DebugLoggingCallback, nullptr);
+    }
 #endif
-    glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-    glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
-
+#if !defined(DISABLE_MDI_BINDLESS) && !defined(DISABLE_MDI)
+    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
+    {
+        glEnableClientState(GLClientState::GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+        glEnableClientState(GLClientState::GL_ELEMENT_ARRAY_UNIFIED_NV);
+    }
+#endif
     RasterizerStates default_rast_state;
     BlendStates default_blend_state;
     DepthStencilStates default_depth_stencil_state;
     TranslateRasterizerStates(&default_rast_state, &m_DefaultRasterizerStates);
     TranslateBlendStates(&default_blend_state, &m_DefaultBlendState);
     TranslateDepthStencilStates(&default_depth_stencil_state, &m_DefaultDepthStencilStates);
-    int opengl_err = glGetError();
-    if(opengl_err != GL_NO_ERROR)
+    auto opengl_err = glGetError();
+    if(opengl_err != GLErrorCode::GL_NO_ERROR)
     {
         Log(LogLevel::Error, "OpenGL: error: ", ConvertGLErrorToString(opengl_err));
-        TGE_ASSERT(opengl_err == GL_NO_ERROR, "An error has occurred while using OpenGL");
+        TGE_ASSERT(opengl_err == GLErrorCode::GL_NO_ERROR, "An error has occurred while using OpenGL");
         return;
     }
 }
@@ -326,14 +337,6 @@ GLStateObject* GLRenderingBackend::createStateObject(const VertexAttributeDescri
     return m_StateObjects.emplace(new GLStateObject(layout, shader_program, primitive_type, gl_rast_states, gl_blend_states, gl_depth_stencil_states)).first->get();
 }
     
-void GLRenderingBackend::setStateObject(const GLStateObject* state_obj)
-{
-    if(state_obj == m_CurrentStateObject)
-        return;
-    state_obj->setup(m_CurrentStateObject);
-    m_CurrentStateObject = state_obj;
-}
-    
 void GLRenderingBackend::setScissorRect(uint32 x, uint32 y, uint32 width, uint32 height)
 {
     glScissor(x, y, width, height);
@@ -346,12 +349,12 @@ void GLRenderingBackend::setViewportRect(uint32 x, uint32 y, uint32 w, uint32 h)
     
 void GLRenderingBackend::clearColorBuffer(uint32 idx, const Vector4& color)
 {
-    glClearBufferfv(GL_COLOR, idx, color.elem);
+    glClearBufferfv(GLBufferContentType::GL_COLOR, idx, color.elem);
     CheckOpenGL();
 }
     
 void GLRenderingBackend::clearDepthStencilBuffer(float depth, uint8 stencil)
 {
-    glClearBufferfi(GL_DEPTH_STENCIL, 0, depth, stencil);
+    glClearBufferfi(GLBufferContentType::GL_DEPTH_STENCIL, 0, depth, stencil);
 }
 }

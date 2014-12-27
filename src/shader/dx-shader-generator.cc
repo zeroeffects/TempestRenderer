@@ -1037,7 +1037,7 @@ void Generator::visit(const Shader::FunctionDeclaration* func_decl)
     m_RawImportStream << ";\n";
 }
 
-bool LoadEffect(const string& filename, FileLoader* loader, Shader::EffectDescription& effect)
+bool LoadEffect(const string& filename, FileLoader* loader, uint32 flags, Shader::EffectDescription& effect)
 {
     Shader::Driver  effect_driver;
     auto            parse_ret = effect_driver.parseFile(filename);

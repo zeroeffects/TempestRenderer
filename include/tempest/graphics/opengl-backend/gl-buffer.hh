@@ -29,8 +29,7 @@
     #include <windows.h>
 #endif
 
-#include <GL/gl.h>
-#include "GL/glext.h"
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 #include <cstddef>
 
 #include "tempest/graphics/rendering-definitions.hh"
@@ -41,12 +40,12 @@ class GLBuffer
 {
     size_t          m_Size;
     GLuint          m_Buffer;
-    GLuint64        m_GPUAddress;
+    GLuint64        m_GPUAddress = 0;
 public:
     explicit GLBuffer(size_t size, VBType vb_type, size_t usage, const void* data);
      ~GLBuffer();
     
-    void bindVertexBuffer(GLuint bind_slot, GLintptr offset, GLintptr stride);
+     void bindVertexBuffer(GLuint bind_slot, GLintptr offset, GLsizei stride);
     void bindIndexBuffer();
     
     GLuint64 getGPUAddress() const { return m_GPUAddress; }

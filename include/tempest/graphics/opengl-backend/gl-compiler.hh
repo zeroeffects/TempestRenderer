@@ -26,6 +26,7 @@
 #define _GL_SHADER_COMPILER_HH_
 
 #include "tempest/utils/types.hh"
+#include "tempest/graphics/rendering-definitions.hh"
 
 namespace Tempest
 {
@@ -36,9 +37,15 @@ class GLRenderingBackend;
 
 class GLShaderCompiler
 {
+    uint32 m_Settings;
 public:
     typedef GLShaderProgram ShaderProgramType;
     
+    GLShaderCompiler(uint32 settings = 0);
+    ~GLShaderCompiler() = default;
+
+    void setSettings(uint32 settings) { m_Settings = settings; }
+
     GLShaderProgram* compileShaderProgram(const string& filename, FileLoader* file_loader,
                                           const string& technique_name = string(), const string& pass_name = string());
     void destroyRenderResource(GLShaderProgram* shader_program);

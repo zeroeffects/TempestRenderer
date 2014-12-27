@@ -188,15 +188,6 @@ public:
      */
     virtual StateObject* createStateObject(const RasterizerStates* rasterizer_states, const BlendStates* blend_states, const DepthStencilStates* depth_stencil_states)=0;
     
-    /*! \brief Bind the state object to the pipeline.
-     * 
-     *  It binds all associated states to the pipeline. Some APIs are really chatty when it comes to states. However, making them in a single batch makes the binding
-     *  a little bit faster.
-     * 
-     *  \param state_obj    a pointer to the state object.
-     */
-    virtual void setStateObject(const StateObject* state_obj)=0;
-    
     /*! \brief Set up scissor test rectangle.
      *  
      *  \param x      the left corner of the rectangle.

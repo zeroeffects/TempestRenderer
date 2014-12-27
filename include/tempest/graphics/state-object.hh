@@ -139,8 +139,8 @@ struct StencilOperationStates
 
 struct DepthStencilStates
 {
-    bool                    DepthTestEnable  = true;
-    bool                    DepthWriteEnable = true;
+    bool                    DepthTestEnable  = false;
+    bool                    DepthWriteEnable = false;
     ComparisonFunction      DepthFunction    = ComparisonFunction::Less;
     bool                    StencilEnable    = false;
     uint8                   StencilReadMask  = 0xFF;

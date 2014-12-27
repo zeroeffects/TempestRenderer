@@ -26,8 +26,6 @@
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/utils/logging.hh"
 
-#include "GL/wglext.h"
-
 namespace Tempest
 {
 struct DepthStencilBufferDescription
@@ -125,7 +123,7 @@ bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescri
 
     m_DC = GetDC(m_Window);
 
-    if(!w32hackChoosePixelFormatARB(m_DC, pi_attr_list, NULL, 1, &pixel_format, &num_format))
+    if(!w32hackChoosePixelFormat(m_DC, pi_attr_list, NULL, 1, &pixel_format, &num_format))
     {
         Log(LogLevel::Error, "Failed to get pixel format");
         return false;
@@ -146,6 +144,9 @@ void GLWindow::show()
 
 void GLWindow::swapBuffers()
 {
+    MSG msg;
     SwapBuffers(m_DC);
+    while(PeekMessage(&msg, m_Window, 0, 0, PM_REMOVE))
+        DispatchMessage(&msg);
 }
 }

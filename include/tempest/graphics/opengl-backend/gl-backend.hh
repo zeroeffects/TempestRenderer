@@ -32,7 +32,9 @@
 #include <unordered_set>
 #include <memory>
 
-#include <GL/glx.h>
+#ifdef LINUX
+    #include <GL/glx.h>
+#endif
 
 namespace Tempest
 {
@@ -58,7 +60,9 @@ struct GLBlendStates;
 struct GLRasterizerStates;
 struct GLDepthStencilStates;
 
+#ifdef LINUX
 typedef std::shared_ptr<GLXFBConfig> GLXFBConfigPtr;
+#endif
 
 class GLRenderingBackend
 {
@@ -268,15 +272,6 @@ public:
     */
     void destroyRenderResource(GLStateObject* state_obj) {}
 
-    /*! \brief Bind the state object to the pipeline.
-     * 
-     *  It binds all associated states to the pipeline. Some APIs are really chatty when it comes to states. However, making them in a single batch makes the binding
-     *  a little bit faster.
-     * 
-     *  \param state_obj    a pointer to the state object.
-     */
-    void setStateObject(const GLStateObject* state_obj);
-    
     /*! \brief Set up scissor test rectangle.
      *  
      *  \param x      the left corner of the rectangle.

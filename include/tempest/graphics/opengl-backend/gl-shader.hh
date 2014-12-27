@@ -29,7 +29,7 @@
     #include <windows.h>
 #endif
 
-#include <GL/gl.h>
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 
 #include <vector>
 #include <algorithm>

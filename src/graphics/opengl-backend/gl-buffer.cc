@@ -30,48 +30,44 @@
 
 namespace Tempest
 {
-GLenum TranslateUsage(size_t usage)
+GLUsageMode TranslateUsage(size_t usage)
 {
     switch(usage & RESOURCE_USAGE_MASK)
     {
     default: TGE_ASSERT(false, "Unknown usage");
-    case RESOURCE_STATIC_DRAW: return GL_STATIC_DRAW;
-    case RESOURCE_STATIC_READ: return GL_STATIC_READ;
-    case RESOURCE_STATIC_COPY: return GL_STATIC_COPY;
-    case RESOURCE_STREAM_DRAW: return GL_STREAM_DRAW;
-    case RESOURCE_STREAM_READ: return GL_STREAM_READ;
-    case RESOURCE_STREAM_COPY: return GL_STREAM_COPY;
-    case RESOURCE_DYNAMIC_DRAW: return GL_DYNAMIC_DRAW;
-    case RESOURCE_DYNAMIC_READ: return GL_DYNAMIC_READ;
-    case RESOURCE_DYNAMIC_COPY: return GL_DYNAMIC_COPY;
+    case RESOURCE_STATIC_DRAW: return GLUsageMode::GL_STATIC_DRAW;
+    case RESOURCE_STATIC_READ: return GLUsageMode::GL_STATIC_READ;
+    case RESOURCE_STATIC_COPY: return GLUsageMode::GL_STATIC_COPY;
+    case RESOURCE_STREAM_DRAW: return GLUsageMode::GL_STREAM_DRAW;
+    case RESOURCE_STREAM_READ: return GLUsageMode::GL_STREAM_READ;
+    case RESOURCE_STREAM_COPY: return GLUsageMode::GL_STREAM_COPY;
+    case RESOURCE_DYNAMIC_DRAW: return GLUsageMode::GL_DYNAMIC_DRAW;
+    case RESOURCE_DYNAMIC_READ: return GLUsageMode::GL_DYNAMIC_READ;
+    case RESOURCE_DYNAMIC_COPY: return GLUsageMode::GL_DYNAMIC_COPY;
     }
 }
 
-static GLenum TranslateVBType(VBType vb_type)
+static GLBufferTarget TranslateVBType(VBType vb_type)
 {
     switch(vb_type)
     {
     default: TGE_ASSERT(false, "Unknown video buffer bind type"); // fall-through
-    case VBType::VertexBuffer: return GL_ARRAY_BUFFER;
-    case VBType::IndexBuffer: return GL_ELEMENT_ARRAY_BUFFER;
+    case VBType::VertexBuffer: return GLBufferTarget::GL_ARRAY_BUFFER;
+    case VBType::IndexBuffer: return GLBufferTarget::GL_ELEMENT_ARRAY_BUFFER;
     }
 }
 
 GLBuffer::GLBuffer(size_t size, VBType vb_type, size_t usage, const void* data)
     :   m_Size(size)
 {
-    GLenum gl_vbt = TranslateVBType(vb_type);
+    auto gl_vbt = TranslateVBType(vb_type);
     glGenBuffers(1, &m_Buffer);
     glBindBuffer(gl_vbt, m_Buffer);
     glBufferData(gl_vbt, size, data, TranslateUsage(usage));
-    if(glGetBufferParameterui64vNV)
+    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
     {
-        glGetBufferParameterui64vNV(gl_vbt, GL_BUFFER_GPU_ADDRESS_NV, &m_GPUAddress);
-        glMakeBufferResidentNV(gl_vbt, GL_READ_ONLY);
-    }
-    else
-    {
-        m_GPUAddress = 0;
+        glGetBufferParameterui64vNV(gl_vbt, GLBufferParameterNV::GL_BUFFER_GPU_ADDRESS_NV, &m_GPUAddress);
+        glMakeBufferResidentNV(gl_vbt, GLAccessMode::GL_READ_ONLY);
     }
     CheckOpenGL();
 }
@@ -81,13 +77,14 @@ GLBuffer::~GLBuffer()
     glDeleteBuffers(1, &m_Buffer);
 }
 
-void GLBuffer::bindVertexBuffer(GLuint bind_slot, GLintptr offset, GLintptr stride)
+void GLBuffer::bindVertexBuffer(GLuint bind_slot, GLintptr offset, GLsizei stride)
 {
-    glBindVertexBuffer(bind_slot, m_Buffer, offset, stride);
+    glBindBuffer(GLBufferTarget::GL_ARRAY_BUFFER, m_Buffer);
+    //glBindVertexBuffer(bind_slot, m_Buffer, offset, stride);
 }
 
 void GLBuffer::bindIndexBuffer()
 {
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Buffer);
+    glBindBuffer(GLBufferTarget::GL_ELEMENT_ARRAY_BUFFER, m_Buffer);
 }
 }

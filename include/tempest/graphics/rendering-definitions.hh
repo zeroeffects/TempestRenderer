@@ -246,6 +246,12 @@ inline size_t UniformValueTypeSize(UniformValueType uniform_value)
     return 0;
 }
 
+enum
+{
+    TEMPEST_DISABLE_SSBO       = 1 << 0,
+    TEMPEST_DISABLE_MULTI_DRAW = 1 << 1
+};
+
 struct VertexAttributeDescription
 {
     uint32      BufferId;

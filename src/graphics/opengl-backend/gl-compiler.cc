@@ -25,6 +25,7 @@
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/graphics/opengl-backend/gl-compiler.hh"
 #include "tempest/graphics/opengl-backend/gl-shader.hh"
+#include "tempest/graphics/opengl-backend/gl-config.hh"
 #include "tempest/shader/gl-shader-generator.hh"
 #include "tempest/utils/assert.hh"
 #include "tempest/utils/logging.hh"
@@ -33,17 +34,28 @@
 
 namespace Tempest
 {
-GLenum TranslateShaderType(Shader::ShaderType type)
+GLShaderType TranslateShaderType(Shader::ShaderType type)
 {
     switch(type)
     {
     default: TGE_ASSERT(false, "Unknown shader type"); // fall-through
-    case Shader::ShaderType::VertexShader: return GL_VERTEX_SHADER;
-    case Shader::ShaderType::TessellationControlShader: return GL_TESS_CONTROL_SHADER;
-    case Shader::ShaderType::TessellationEvaluationShader: return GL_TESS_EVALUATION_SHADER;
-    case Shader::ShaderType::GeometryShader: return GL_GEOMETRY_SHADER;
-    case Shader::ShaderType::FragmentShader: return GL_FRAGMENT_SHADER;
-    case Shader::ShaderType::ComputeShader: return GL_COMPUTE_SHADER;
+    case Shader::ShaderType::VertexShader: return GLShaderType::GL_VERTEX_SHADER;
+    case Shader::ShaderType::TessellationControlShader: return GLShaderType::GL_TESS_CONTROL_SHADER;
+    case Shader::ShaderType::TessellationEvaluationShader: return GLShaderType::GL_TESS_EVALUATION_SHADER;
+    case Shader::ShaderType::GeometryShader: return GLShaderType::GL_GEOMETRY_SHADER;
+    case Shader::ShaderType::FragmentShader: return GLShaderType::GL_FRAGMENT_SHADER;
+    case Shader::ShaderType::ComputeShader: return GLShaderType::GL_COMPUTE_SHADER;
+    }
+}
+
+GLShaderCompiler::GLShaderCompiler(uint32 settings)
+    :   m_Settings(settings)
+{
+#ifndef DISABLE_MDI
+    if(!IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
+#endif
+    {
+        m_Settings |= TEMPEST_DISABLE_MULTI_DRAW|TEMPEST_DISABLE_SSBO;
     }
 }
 
@@ -51,7 +63,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
                                                         const string& technique_name, const string& pass_name)
 {
     Shader::EffectDescription effect;
-    auto status = GLFX::LoadEffect(filename, file_loader, effect);
+    auto status = GLFX::LoadEffect(filename, file_loader, m_Settings, effect);
     if(!status)
         return nullptr;
     
@@ -131,13 +143,13 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         const char* cstr = source.c_str();
         glShaderSource(shader_id, 1, &cstr, nullptr);
         glCompileShader(shader_id);
-        glGetShaderiv(shader_id, GL_COMPILE_STATUS, &status);
+        glGetShaderiv(shader_id, GLShaderParameter::GL_COMPILE_STATUS, &status);
         if(status == GL_FALSE)
         {
             GLint len;
             std::string error;
 
-            glGetShaderiv(shader_id, GL_INFO_LOG_LENGTH, &len);
+            glGetShaderiv(shader_id, GLShaderParameter::GL_INFO_LOG_LENGTH, &len);
             error.resize(len);
             glGetShaderInfoLog(shader_id, len, nullptr, &error.front());
             std::replace(error.begin(), error.end(), '\0', ' ');
@@ -176,11 +188,11 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         auto& res_table = res_tables[buffer_idx];
         
         auto type = buffer.getBufferType();
-        auto elem_count = buffer.getElementCount();
+        uint32 elem_count = buffer.getElementCount();
         
         res_table = CreatePackedData<ResourceTableDescription>(elem_count, buffer.getResiablePart(), buffer.getBufferName(), buffer_idx);
         res_table->BufferSize = 0;
-        for(size_t el_idx = 0; el_idx < elem_count; ++el_idx)
+        for(uint32 el_idx = 0; el_idx < elem_count; ++el_idx)
         {
             auto& elem_desc = buffer.getElement(el_idx);
             auto& uval = res_table->Uniforms.Values[el_idx];
@@ -198,11 +210,11 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
     glLinkProgram(prog.get());
     
     GLint prog_status;
-    glGetProgramiv(prog.get(), GL_LINK_STATUS, &prog_status);
+    glGetProgramiv(prog.get(), GLProgramParameter::GL_LINK_STATUS, &prog_status);
     if(prog_status == GL_FALSE)
     {
         GLint len;
-        glGetProgramiv(prog.get(), GL_INFO_LOG_LENGTH, &len);
+        glGetProgramiv(prog.get(), GLProgramParameter::GL_INFO_LOG_LENGTH, &len);
         string error;
         error.resize(len);
         glGetProgramInfoLog(prog.get(), len, nullptr, &error.front());

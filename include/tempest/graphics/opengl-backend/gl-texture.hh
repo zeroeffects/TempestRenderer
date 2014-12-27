@@ -32,8 +32,7 @@
     #include <windows.h>
 #endif
 
-#include <GL/gl.h>
-#include "GL/glext.h"
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 
 namespace Tempest
 {
@@ -42,7 +41,7 @@ struct Vector4;
 class GLTexture
 {
     TextureDescription  m_Description;
-    GLuint              m_Target;
+    GLTextureTarget     m_Target;
     uint32              m_Flags;
     GLuint              m_Texture;
     mutable GLuint64    m_GPUHandle;

@@ -1,7 +1,7 @@
 /*   The MIT License
 *
 *   Tempest Engine
-*   Copyright (c) 2013 Zdravko Velinov
+*   Copyright (c) 2014 Zdravko Velinov
 *
 *   Permission is hereby granted, free of charge, to any person obtaining a copy
 *   of this software and associated documentation files (the "Software"), to deal
@@ -22,25 +22,5 @@
 *   THE SOFTWARE.
 */
 
-#ifndef _SHADER_CONVERT_COMMON_HH_
-#define _SHADER_CONVERT_COMMON_HH_
-
-#include "tempest/utils/types.hh"
-#include "tempest/graphics/rendering-definitions.hh"
-
-namespace Tempest
-{
-namespace Shader
-{
-class Type;
-class Buffer;
-class Variable;
-class BufferDescription;
-class EffectDescription;
-
-size_t ConvertStructBuffer(const Variable* var, Shader::EffectDescription* fx_desc);
-void ConvertBuffer(const Buffer* buffer, Shader::EffectDescription* fx_desc);
-}
-}
-
-#endif // _SHADER_CONVERT_COMMON_HH_
+//#define DISABLE_MDI_BINDLESS
+//#define DISABLE_MDI

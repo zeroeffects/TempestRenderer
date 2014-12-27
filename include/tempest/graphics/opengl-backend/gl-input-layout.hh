@@ -29,7 +29,7 @@
     #include <windows.h>
 #endif
 
-#include <GL/gl.h>
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 #include <stdlib.h>
 
 #include "tempest/utils/patterns.hh"
@@ -39,13 +39,19 @@ namespace Tempest
 struct GLVertexAttributeDescription
 {
     int       Binding;
-    GLenum    Type;
+    GLType    Type;
     int       Size;
     GLboolean Normalized;
     int       Offset;
 };
 
 struct VertexAttributeDescription;
+
+struct GLBufferTableEntry
+{
+    GLsizei   Stride;
+    GLsizei   Offset;
+};
 
 class GLInputLayout
 {
@@ -73,7 +79,7 @@ public:
     const GLVertexAttributeDescription* getAttribute(size_t idx) const { return m_Attributes.Values + idx; }
     size_t getAttributeCount() const { return m_Attributes.Count; }
 
-    void bind() const;
+    void bind(GLBufferTableEntry* buffer_table) const;
 
 private:
     GLInputLayout(uint32 count, const VertexAttributeDescription* arr);

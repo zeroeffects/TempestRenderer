@@ -96,6 +96,7 @@ SET(TEMPEST_GRAPHICS_SRC
 SET(TEMPEST_GRAPHICS_INC
     ${TEMPEST_NDA_GRAPHICS_INC}
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-all.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-config.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-backend.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-buffer.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-command-buffer.hh

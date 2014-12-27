@@ -28,7 +28,7 @@
 #include "tempest/utils/types.hh"
 #include "tempest/graphics/rendering-definitions.hh"
 
-#include <GL/gl.h>
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 
 namespace Tempest
 {
@@ -40,9 +40,9 @@ struct DepthStencilStates;
 
 struct GLRasterizerStates
 {
-    GLenum              PolygonMode;
-    GLenum              CullFace;
-    GLenum              FrontFace;
+    GLFillMode          PolygonMode;
+    GLFaceMode          CullFace;
+    GLOrderMode         FrontFace;
     GLfloat             OffsetFactor;
     GLfloat             OffsetUnits;
     uint32              MiscModes;
@@ -54,11 +54,11 @@ bool operator==(const GLRasterizerStates& lhs, const GLRasterizerStates& rhs);
 struct GLBlendSeparateStates
 {
     bool                  BlendEnable;
-    GLenum                SrcFactor,
+    GLBlendFactorMode     SrcFactor,
                           DstFactor,
-                          BlendEquation,
                           SrcFactorAlpha,
-                          DstFactorAlpha,
+                          DstFactorAlpha;
+    GLBlendEquationMode   BlendEquation,
                           BlendAlphaEquation;
     uint8                 ColorMask;
 };
@@ -74,17 +74,17 @@ bool operator==(const GLBlendStates& lhs, const GLBlendStates& rhs);
 
 struct GLDepthStencilOperationStates
 {
-    GLenum                StencilFailOperation,
+    GLStencilOpMode       StencilFailOperation,
                           StencilDepthFailOperation,
-                          StencilPassOperation,
-                          StencilFunction;
+                          StencilPassOperation;
+    GLComparisonFunction  StencilFunction;
 };
 
 struct GLDepthStencilStates
 {
     GLboolean             DepthTestEnable;
     GLboolean             DepthWriteEnable;
-    GLenum                DepthFunction;
+    GLComparisonFunction  DepthFunction;
     GLboolean             StencilEnable;
     GLuint                StencilReadMask;
     GLuint                StencilWriteMask;
@@ -92,6 +92,8 @@ struct GLDepthStencilStates
     GLDepthStencilOperationStates FrontFace,
                                   BackFace;
 };
+
+struct GLBufferTableEntry;
 
 void TranslateDepthStencilStates(const DepthStencilStates* depth_stencil_states, GLDepthStencilStates* gl_depth_stencil_states);
 bool operator==(const GLDepthStencilStates& lhs, const GLDepthStencilStates& rhs);
@@ -118,7 +120,7 @@ public:
     DrawModes getPrimitiveType() { return m_PrimitiveType; }
 
     // prev_state is purely for optimization purposes.
-    void setup(const GLStateObject* prev_state) const;
+    void setup(const GLStateObject* prev_state, GLBufferTableEntry* buffer_table) const;
 };
 }
 
