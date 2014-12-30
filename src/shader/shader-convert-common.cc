@@ -29,9 +29,9 @@ namespace Tempest
 {
 namespace Shader
 {
-static size_t ConvertVariable(const string& base, const Shader::Variable* var, size_t* offset, Shader::BufferDescription* buf_desc);
+static uint32 ConvertVariable(const string& base, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc);
 
-static void ConvertType(const string& base, const Shader::Type* _type, UniformValueType* uniform_type, size_t* elem_size, size_t* offset, Shader::BufferDescription* buf_desc)
+static void ConvertType(const string& base, const Shader::Type* _type, UniformValueType* uniform_type, uint32* elem_size, uint32* offset, Shader::BufferDescription* buf_desc)
 {
     switch(_type->getTypeEnum())
     {
@@ -126,7 +126,7 @@ static void ConvertType(const string& base, const Shader::Type* _type, UniformVa
     case Shader::ElementType::Struct:
     {
         *offset = (*offset + 4 * sizeof(float)-1) & ~(4 * sizeof(float)-1);
-        size_t struct_offset = 0; // members are in relative offset units
+        uint32 struct_offset = 0; // members are in relative offset units
         auto* struct_type = _type->extract<Shader::StructType>();
         auto* struct_body = struct_type->getBody();
         for(auto elem_iter = struct_body->current(), elem_iter_end = struct_body->end(); elem_iter != elem_iter_end; ++elem_iter)
@@ -161,7 +161,7 @@ static void ConvertType(const string& base, const Shader::Type* _type, UniformVa
     TGE_ASSERT(*elem_size > 0, "Element size should be greater than one. Otherwise, it is pointless to define it");
 }
 
-static size_t GetAlignment(UniformValueType _type)
+static uint32 GetAlignment(UniformValueType _type)
 {
     switch(_type)
     {
@@ -197,11 +197,11 @@ static size_t GetAlignment(UniformValueType _type)
     return 0;
 }
 
-static size_t ConvertVariable(const string& base, const Shader::Variable* var, size_t* offset, Shader::BufferDescription* buf_desc)
+static uint32 ConvertVariable(const string& base, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc)
 {
     UniformValueType uniform_type;
-    size_t           elem_size,
-        array_size = 1;
+    uint32           elem_size,
+                     array_size = 1;
     auto*            _type = var->getType();
     auto             type_enum = _type->getTypeEnum();
     string           var_name = var->getNodeName();
@@ -260,7 +260,7 @@ static size_t ConvertVariable(const string& base, const Shader::Variable* var, s
 
 void ConvertBuffer(const Buffer* buffer, Shader::EffectDescription* fx_desc)
 {
-    size_t offset = 0;
+    uint32 offset = 0;
     Shader::BufferDescription buf_desc(buffer->getBufferType(), buffer->getNodeName());
     auto* list = buffer->getBody();
     for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
@@ -271,15 +271,17 @@ void ConvertBuffer(const Buffer* buffer, Shader::EffectDescription* fx_desc)
         auto _type = var->getType();
         ConvertVariable("", var, &offset, &buf_desc);
     }
+    if(buf_desc.getResiablePart() == std::numeric_limits<uint32>::max())
+        buf_desc.setResizablePart(0);
     fx_desc->addBuffer(buf_desc);
 }
 
-size_t ConvertStructBuffer(const Variable* var, Shader::EffectDescription* fx_desc)
+uint32 ConvertStructBuffer(const Variable* var, Shader::EffectDescription* fx_desc)
 {
     TGE_ASSERT(var->getStorage() == Shader::StorageQualifier::StructBuffer, "Input variable should be of StructBuffer type");
-    size_t offset = 0;
+    uint32 offset = 0;
     Shader::BufferDescription buf_desc(BufferType::StructBuffer, var->getNodeName());
-    size_t elem_size = ConvertVariable("", var, &offset, &buf_desc);
+    uint32 elem_size = ConvertVariable("", var, &offset, &buf_desc);
     fx_desc->addBuffer(buf_desc);
     return elem_size;
 }

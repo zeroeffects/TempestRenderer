@@ -148,6 +148,19 @@ public:
         setResource(getResourceIndex(name), val);
     }
     
+    DataDescription* getResourceDescription(ResourceIndex index)
+    {
+        TGE_ASSERT(index.ResourceTableIndex < m_ResourceTable->Uniforms.Count || m_ResourceTable->Uniforms.Count == std::numeric_limits<size_t>::max(), "Unknown index");
+        if(index.ResourceTableIndex >= m_ResourceTable->Uniforms.Count)
+            return nullptr;
+        return m_ResourceTable->Uniforms.Values + index.ResourceTableIndex;
+    }
+
+    DataDescription* getResourceDescription(const string& name)
+    {
+        return getResourceDescription(getResourceIndex(name));
+    }
+
     /*! \brief It gives you the table without the rest of the data.
      * 
      *  \remarks It is allocated in the usual fashion, so no special deallocation procedure is required. Just call delete.

@@ -59,6 +59,7 @@ class GLWindow;
 struct GLBlendStates;
 struct GLRasterizerStates;
 struct GLDepthStencilStates;
+class GLBakedResourceTable;
 
 #ifdef LINUX
 typedef std::shared_ptr<GLXFBConfig> GLXFBConfigPtr;
@@ -102,6 +103,11 @@ class GLRenderingBackend
     GLBlendStates           m_DefaultBlendState;
     GLRasterizerStates      m_DefaultRasterizerStates;
     GLDepthStencilStates    m_DefaultDepthStencilStates;
+
+#ifndef DISABLE_TEXTURE_BINDLESS
+    GLuint                  m_TexturesTable = 0;
+    uint32                  m_ActiveTextures = 0;
+#endif
 
 #ifdef LINUX
     // Because there is not a cannonical description what it should contain we pessimize the code.
@@ -213,6 +219,23 @@ public:
      */
     GLBuffer* createBuffer(size_t size, VBType vb_type, uint32 flags = RESOURCE_STATIC_DRAW, const void* data = nullptr);
     
+    /*! \brief Set textures in a single call.
+     *
+     *  The layout and the methods of setup might depend on the OpenGL capabilities. It might be done via bindless
+     *  textures or old style bind points.
+     *
+     *  \param resource_table   packed texture handles.
+     */
+    void setTextures(const GLBakedResourceTable* resource_table);
+
+    /*! \brief Set the number of active textures.
+     *
+     *  The active number of textures may be controlled, if relevant.
+     *
+     *  \param num_textures     the number of requested active textures.
+     */
+    void setActiveTextures(uint32 num_textures);
+
     /*! \brief Destroy a buffer object.
      * 
      *  Deallocates the buffer object. It might not get executed immediately because of stalling prevention.

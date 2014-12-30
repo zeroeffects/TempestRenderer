@@ -35,9 +35,8 @@ namespace Tempest
 {
 namespace Shader
 {
-enum class ShaderType
+enum class ShaderType: uint32
 {
-    GenericShader,
     VertexShader,
     TessellationControlShader,
     TessellationEvaluationShader,
@@ -46,8 +45,11 @@ enum class ShaderType
     ComputeShader,
     // , FetchShader <-- It is something that exists. However, have some doubts that it is going to persist.
     //                   Probably going to be replaced by direct vertex pulling.
-    ShaderTypeCount
+    ShaderTypeCount,
+    GenericShader = ShaderTypeCount
 };
+
+const char* ConvertShaderTypeToText(ShaderType _type);
 
 enum class ElementType
 {
@@ -56,10 +58,7 @@ enum class ElementType
     Matrix,
     Array,
     Sampler,
-    Struct,
-    Shader,
-    Profile,
-    CompiledShader
+    Struct
 };
 
 enum class BufferType
@@ -68,36 +67,6 @@ enum class BufferType
     Constant,    /*!< On some graphics cards its content might be assigned to registers. */
     Resource,    //!< This one is mostly for non-bindless style APIs that declare stuff in weird fashion.
     StructBuffer //!< There is another way to specify it. However, still available to avoid enum duplication.
-};
-
-class PassShaderDescription
-{
-    size_t                  m_ShaderIndex;
-    string                  m_AdditionalOpts;
-public:
-    PassShaderDescription(size_t shader_index, string additional_opts);
-     ~PassShaderDescription();
-
-    size_t getShaderIndex() const { return m_ShaderIndex; }
-    string getAdditionalOptions() const { return m_AdditionalOpts; }
-};
-
-typedef std::vector<PassShaderDescription> PassShaderVector;
-
-class PassDescription
-{
-    string                  m_Name;
-    PassShaderVector        m_StageShaders;
-public:
-    PassDescription(string name)
-        :   m_Name(name) {}
-
-    void addShader(PassShaderDescription shader) { m_StageShaders.push_back(shader); }
-
-    string getName() const { return m_Name; }
-    
-    const PassShaderDescription& getAttachedShaderName(size_t idx) const { return m_StageShaders[idx]; }
-    size_t getAttachedShaderCount() const { return m_StageShaders.size(); }
 };
 
 class InputParameter
@@ -116,43 +85,26 @@ public:
     string getSemantic() const { return m_Semantic; }
 };
 
-typedef std::vector<PassDescription>      PassVector;
-
-class TechniqueDescription
-{
-    string                  m_Name;
-    PassVector              m_Passes;
-public:
-    TechniqueDescription(string name)
-        :   m_Name(name) {}
-
-    string getName() const { return m_Name; }
-
-    size_t getPassCount() const { return m_Passes.size(); }
-    const PassDescription& getPass(size_t idx) const { return m_Passes[idx]; }
-    void addPass(PassDescription pass) { m_Passes.push_back(pass); }
-};
-
 class BufferElement
 {
     UniformValueType        m_Type;
     string                  m_Name;
-    size_t                  m_BufferOffset;
-    size_t                  m_ELementSize;
-    size_t                  m_ElementCount;
+    uint32                  m_BufferOffset;
+    uint32                  m_ELementSize;
+    uint32                  m_ElementCount;
 public:
-    BufferElement(size_t offset, UniformValueType _type, string name, size_t elem_size, size_t elem_count)
+    BufferElement(uint32 offset, UniformValueType _type, string name, uint32 elem_size, uint32 elem_count)
         :   m_BufferOffset(offset),
             m_Type(_type),
             m_Name(name),
             m_ELementSize(elem_size),
             m_ElementCount(elem_count) {}
     
-    size_t getBufferOffset() const { return m_BufferOffset; }
+    uint32 getBufferOffset() const { return m_BufferOffset; }
     string getElementName() const { return m_Name; }
     UniformValueType getElementType() const { return m_Type; }
-    size_t getElementSize() const { return m_ELementSize; }
-    size_t getElementCount() const { return m_ElementCount; }
+    uint32 getElementSize() const { return m_ELementSize; }
+    uint32 getElementCount() const { return m_ElementCount; }
 };
 
 typedef std::vector<BufferElement>        BufferElementVector;
@@ -161,24 +113,24 @@ class BufferDescription
 {
     BufferType             m_BufferType;
     string                 m_Name;
-    size_t                 m_ResizablePart;
+    uint32                 m_ResizablePart;
     BufferElementVector    m_Elements;
 public:
     BufferDescription(BufferType buffer_type, string name)
         :   m_BufferType(buffer_type),
             m_Name(name),
-            m_ResizablePart(std::numeric_limits<size_t>::max()) {}
+            m_ResizablePart(std::numeric_limits<uint32>::max()) {}
     
     void addBufferElement(BufferElement elem) { m_Elements.push_back(elem); }
     
-    void setResizablePart(size_t size) { TGE_ASSERT(m_ResizablePart == std::numeric_limits<size_t>::max(),
+    void setResizablePart(uint32 size) { TGE_ASSERT(m_ResizablePart == std::numeric_limits<uint32>::max(),
                                                     "More than one resizable part is not supported because it creates ambiguity.");
                                         m_ResizablePart = size; }
-    size_t getResiablePart() const { return m_ResizablePart; }
+    uint32 getResiablePart() const { return m_ResizablePart; }
     
     string getBufferName() const { return m_Name; }
-    const BufferElement& getElement(size_t idx) const { return m_Elements[idx]; }
-    size_t getElementCount() const { return m_Elements.size(); }
+    const BufferElement& getElement(uint32 idx) const { return m_Elements[idx]; }
+    uint32 getElementCount() const { return static_cast<uint32>(m_Elements.size()); }
     BufferType getBufferType() const { return m_BufferType; }
 };
 
@@ -186,56 +138,60 @@ typedef std::vector<InputParameter>       InputParameterVector;
 
 class ShaderDescription
 {
-    ShaderType              m_ShaderType;
-    string                  m_Name;
+    string                  m_AdditionalOpts;
     string                  m_Content;
     InputParameterVector    m_InputSignature;
 public:
-    ShaderDescription(ShaderType shader_type, string name)
-        :   m_ShaderType(shader_type),
-            m_Name(name) {}
+    ShaderDescription() = default;
 
     void addInputParameter(InputParameter param) { m_InputSignature.push_back(param); }
     void appendContent(string content) { m_Content += content; }
 
-    ShaderType getShaderType() const { return m_ShaderType; }
-    string getName() const { return m_Name; }
     string getContent() const { return m_Content; }
+    void setAdditionalOptions(string opts) { m_AdditionalOpts = opts; }
+    string getAdditionalOptions() const { return m_AdditionalOpts; }
 
-    size_t getInputParameterCount() const { return m_InputSignature.size(); }
-    const InputParameter& getInputParameter(size_t idx) const { return m_InputSignature[idx]; }
+    uint32 getInputParameterCount() const { return static_cast<uint32>(m_InputSignature.size()); }
+    const InputParameter& getInputParameter(uint32 idx) const { return m_InputSignature[idx]; }
 };
 
 typedef std::vector<BufferDescription>    BufferVector;
-typedef std::vector<ShaderDescription>    ShaderVector;
-typedef std::vector<TechniqueDescription> TechniqueVector;
 typedef std::vector<string>               ImportedVector;
 
 class EffectDescription
 {
-    ShaderVector             m_Shaders;
-    TechniqueVector          m_Techniques;
+    ShaderDescription*       m_Shaders[ShaderType::ShaderTypeCount];
     ImportedVector           m_Imported;
     BufferVector             m_Buffers;
 public:
-    EffectDescription() {}
-     ~EffectDescription() {}
+    EffectDescription() { memset(m_Shaders, 0, sizeof(m_Shaders)); }
+     ~EffectDescription()
+     {
+         for(auto* shader : m_Shaders)
+             delete shader;
+     }
 
-    void clear();
+    EffectDescription(const EffectDescription& effect) = delete;
+    EffectDescription& operator=(const EffectDescription& effect) = delete;
 
-    void addShader(ShaderDescription shader) { m_Shaders.push_back(shader); }
-    void addTechnique(TechniqueDescription technique) { m_Techniques.push_back(technique); }
+    void clear() { memset(m_Shaders, 0, sizeof(m_Shaders)); }
+
     void addImportedFile(string name) { m_Imported.push_back(name); }
 
-    const ShaderDescription& getShader(size_t idx) const { return m_Shaders[idx]; }
-    size_t getShaderCount() const { return m_Shaders.size(); }
-    const TechniqueDescription& getTechnique(size_t idx) const { return m_Techniques[idx]; }
-    size_t getTechniqueCount() const { return m_Techniques.size(); }
-    string getImportedFile(size_t idx) const { return m_Imported[idx]; }
-    size_t getImportedFileCount() const { return m_Imported.size(); }
+    bool trySetShader(ShaderType _type, ShaderDescription* shader_desc)
+    {
+        auto& shader = m_Shaders[static_cast<size_t>(_type)];
+        if(shader)
+            return false;
+        shader = shader_desc;
+        return true;
+    }
+    const ShaderDescription* getShader(ShaderType _type) const { return m_Shaders[static_cast<size_t>(_type)]; }
+    string getImportedFile(uint32 idx) const { return m_Imported[idx]; }
+    uint32 getImportedFileCount() const { return static_cast<uint32>(m_Imported.size()); }
     
-    const BufferDescription& getBuffer(size_t idx) const { return m_Buffers[idx]; }
-    size_t getBufferCount() const { return m_Buffers.size(); }
+    const BufferDescription& getBuffer(uint32 idx) const { return m_Buffers[idx]; }
+    uint32 getBufferCount() const { return static_cast<uint32>(m_Buffers.size()); }
     void addBuffer(BufferDescription buffer) { m_Buffers.push_back(buffer); }
 };
 }

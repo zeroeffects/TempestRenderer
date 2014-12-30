@@ -5,7 +5,7 @@ struct GlobalsDesc
 
 structbuffer GlobalsDesc Globals;
 
-vertex shader VS
+vertex shader
 {
     in vec2 VertexData;
 
@@ -15,21 +15,12 @@ vertex shader VS
     }
 }
 
-fragment shader FS
+fragment shader
 {
     out vec4 FragmentColor;
 
     void main()
     {
         FragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
-    }
-}
-
-technique General
-{
-    pass P0
-    {
-        SetVertexShader(CompileShader(glsl_4_4_0, VS()));
-        SetFragmentShader(CompileShader(glsl_4_4_0, FS()));
     }
 }

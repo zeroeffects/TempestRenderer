@@ -76,8 +76,6 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 "true"                                  *yylval = CreateNode<Value<bool>>(ToLocation(*yylloc), true); return Parser::token::T_BOOLEAN;
 "false"                                 *yylval = CreateNode<Value<bool>>(ToLocation(*yylloc), false); return Parser::token::T_BOOLEAN;
 "void"                                  *yylval = AST::Node(); return Parser::token::T_TYPE_VOID;
-"pass"                                  *yylval = AST::Node(); return Parser::token::T_PASS;
-"technique"                             *yylval = AST::Node(); return Parser::token::T_TECHNIQUE;
 "shader"                                *yylval = AST::Node(); return Parser::token::T_SHADER;
 "vertex"                                *yylval = AST::Node(); return Parser::token::T_VERTEX_QUALIFIER;
 "fragment"                              *yylval = AST::Node(); return Parser::token::T_FRAGMENT_QUALIFIER;

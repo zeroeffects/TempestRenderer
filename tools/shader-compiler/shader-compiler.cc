@@ -87,11 +87,12 @@ bool BuildTextShaderSimple(const string& input_file, std::ostream& output_file, 
         return false;
     }
 
-    for(size_t i = 0, iend = effect.getShaderCount(); i < iend; ++i)
+    for(Tempest::Shader::ShaderType i = Tempest::Shader::ShaderType::VertexShader, iend = Tempest::Shader::ShaderType::ShaderTypeCount;
+        i < iend; ++reinterpret_cast<uint32&>(i))
     {
-        auto& shader = effect.getShader(i);
-        output_file << "// " << shader.getName() << "\n"
-                    << shader.getContent() << std::endl;
+        auto* shader = effect.getShader(i);
+        output_file << "// " << Tempest::Shader::ConvertShaderTypeToText(i) << "\n"
+                    << shader->getContent() << std::endl;
     }
     return true;
 }

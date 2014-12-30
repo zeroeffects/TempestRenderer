@@ -1332,84 +1332,6 @@ bool CaseStatement::isBlockStatement() const
     return false;
 }
 
-Technique::Technique(string name, NodeT<List> body)
-    :   NamedList<Technique>(name, std::move(body)) {}
-
-Technique::~Technique() {}
-
-ShaderDeclaration::ShaderDeclaration(ShaderType _type, string name, NodeT<List> body)
-    :   NamedList(name, std::move(body)),
-        m_Type(_type) {}
-
-ShaderDeclaration::~ShaderDeclaration() {}
-
-ShaderType ShaderDeclaration::getType() const
-{
-    return m_Type;
-}
-
-bool ShaderDeclaration::hasBase(const Type* _type) const
-{
-    return _type->getNodeName() == "shader";
-}
-
-bool ShaderDeclaration::hasImplicitConversionTo(const Type* _type) const
-{
-    return (_type->getTypeEnum() == ElementType::Shader && _type->getNodeName() == "shader");
-}
-
-bool ShaderDeclaration::hasValidConstructor(const List* var_list) const
-{
-    return !var_list;
-}
-
-const Type* ShaderDeclaration::binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
-const Type* ShaderDeclaration::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
-const Type* ShaderDeclaration::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
-const Type* ShaderDeclaration::getArrayElementType() const { return nullptr; }
-
-CompiledShader::CompiledShader() {}
-
-CompiledShader::~CompiledShader() {}
-
-bool CompiledShader::hasValidConstructor(const List* var_list) const { return false; }
-bool CompiledShader::hasImplicitConversionTo(const Type* _type) const { return false; }
-const Type* CompiledShader::binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
-const Type* CompiledShader::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
-const Type* CompiledShader::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
-const Type* CompiledShader::getArrayElementType() const { return nullptr; }
-
-Profile::Profile() {}
-
-Profile::~Profile() {}
-
-bool Profile::hasValidConstructor(const List* var_list) const
-{
-	auto* expr = var_list->current_front()->extract<Expression>();
-	if(!var_list || expr->getSecond().getNodeType() != TGE_AST_INTEGER)
-        return false;
-
-    for(List::const_iterator i = var_list->current(), iend = var_list->end(); i != iend; ++i)
-	{
-		auto* expr = i->extract<Expression>();
-        if(expr->getSecond().getNodeType() != TGE_AST_IDENTIFIER)
-            return false;
-	}
-    return true;
-}
-
-bool Profile::hasImplicitConversionTo(const Type* _type) const { return false; }
-
-const Type* Profile::binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
-const Type* Profile::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
-const Type* Profile::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
-const Type* Profile::getArrayElementType() const { return nullptr; }
-
-Pass::Pass(string name, NodeT<List> body)
-    :   NamedList<Pass>(name, std::move(body)) {}
-
-Pass::~Pass() {}
-
 Import::Import(string name, NodeT<List> body)
     :   NamedList<Import>(name, std::move(body)) {}
 
@@ -1923,34 +1845,36 @@ void PrintNode(VisitorInterface* visitor, const Type* type_stmt)
     type_stmt->accept(visitor);
 }
 
-void PrintNode(AST::PrinterInfrastructure* printer, const Profile* profile)
-{
-     printer->stream() << "profile";
-}
-
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const ShaderDeclaration* shader)
 {
-    string shader_type;
+    std::ostream& os = printer->stream();
     switch(shader->getType())
     {
     case ShaderType::VertexShader:
-        shader_type = "vertex"; break;
+        os << "vertex shader\n"; break;
     case ShaderType::FragmentShader:
-        shader_type = "fragment"; break;
+        os << "fragment shader\n"; break;
     default:
         break;
     }
-    shader->printList(visitor, printer, shader_type + " shader");
+
+    for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
+        os << "\t";
+    os << "{\n";
+    auto* _body = shader->getBody();
+    if(_body)
+    {
+        auto indent = printer->createScopedIndentation();
+        static_cast<AST::VisitorInterface*>(visitor)->visit(_body);
+    }
+    for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
+        os << "\t";
+    os << "}\n";
 }
 
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct)
 {
     printer->stream() << _struct->getNodeName();
-}
-
-void PrintNode(AST::PrinterInfrastructure* printer, const CompiledShader* compiled_shader)
-{
-    printer->stream() << "compiled shader";
 }
 
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const IfStatement* if_stmt)

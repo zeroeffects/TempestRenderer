@@ -52,9 +52,7 @@ enum NodeType
     TGE_EFFECT_TYPE,
     TGE_EFFECT_TYPEDEF,
     TGE_EFFECT_CONSTRUCTOR_CALL,
-    TGE_EFFECT_TECHNIQUE,
     TGE_EFFECT_IMPORT,
-    TGE_EFFECT_PASS,
     TGE_EFFECT_UNARY_OPERATOR,
     TGE_EFFECT_BINARY_OPERATOR,
     TGE_EFFECT_TERNARY_IF,
@@ -68,7 +66,8 @@ enum NodeType
     TGE_EFFECT_JUMP_STATEMENT,
     TGE_EFFECT_RETURN_STATEMENT,
     TGE_EFFECT_EXPRESSION,
-    TGE_EFFECT_BUFFER
+    TGE_EFFECT_BUFFER,
+    TGE_EFFECT_SHADER_DECLARATION
 };
 
 enum BinaryOperatorType
@@ -131,10 +130,7 @@ class MemberVariable;
 class Typedef;
 class ConstructorCall;
 class Import;
-class Profile;
-class Technique;
 class ShaderDeclaration;
-class Pass;
 class UnaryOperator;
 class BinaryOperator;
 class TernaryIf;
@@ -149,6 +145,7 @@ class JumpStatement;
 class ReturnStatement;
 class VisitorInterface;
 class Buffer;
+class ShaderDeclaration;
 typedef Value<string> Identifier;
 typedef Intermediate<const Type*, NodeT<Identifier>> DeclarationInfo;
 typedef Intermediate<const Type*, FunctionSet*> FuncDeclarationInfo;
@@ -163,6 +160,7 @@ typedef AST::Reference<Type> TypeRef;
 
 namespace AST
 {
+TGE_AST_NODE_INFO(Shader::ShaderDeclaration, Shader::TGE_EFFECT_SHADER_DECLARATION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::FunctionDeclaration, Shader::TGE_EFFECT_FUNCTION_DECLARATION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::FunctionDefinition, Shader::TGE_EFFECT_FUNCTION_DEFINITION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::FunctionSet, Shader::TGE_EFFECT_FUNCTION_SET, Shader::VisitorInterface)
@@ -175,8 +173,6 @@ TGE_AST_NODE_INFO(Shader::Type, Shader::TGE_EFFECT_TYPE, Shader::VisitorInterfac
 TGE_AST_NODE_INFO(Shader::Typedef, Shader::TGE_EFFECT_TYPEDEF, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::ConstructorCall, Shader::TGE_EFFECT_CONSTRUCTOR_CALL, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::Import, Shader::TGE_EFFECT_IMPORT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Shader::Technique, Shader::TGE_EFFECT_TECHNIQUE, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Shader::Pass, Shader::TGE_EFFECT_PASS, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::UnaryOperator, Shader::TGE_EFFECT_UNARY_OPERATOR, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::BinaryOperator, Shader::TGE_EFFECT_BINARY_OPERATOR, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::TernaryIf, Shader::TGE_EFFECT_TERNARY_IF, Shader::VisitorInterface)
@@ -216,8 +212,6 @@ class StructType;
 class ArrayType;
 class SamplerType;
 class ShaderDeclaration;
-class Profile;
-class CompiledShader;
 
 TGE_EFFECT_TYPE_INFO(ScalarType, ElementType::Scalar, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(VectorType, ElementType::Vector, VisitorInterface)
@@ -225,9 +219,6 @@ TGE_EFFECT_TYPE_INFO(MatrixType, ElementType::Matrix, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(StructType, ElementType::Struct, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(ArrayType, ElementType::Array, VisitorInterface)
 TGE_EFFECT_TYPE_INFO(SamplerType, ElementType::Sampler, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(ShaderDeclaration, ElementType::Shader, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(Profile, ElementType::Profile, VisitorInterface)
-TGE_EFFECT_TYPE_INFO(CompiledShader, ElementType::CompiledShader, VisitorInterface)
 
 // The reasoning behind passing this_type is that we can't guarantee that it
 // is going to be preserved because it is used as a facade to hide the polymorphism
@@ -1008,35 +999,6 @@ public:
     bool isBlockStatement() const { return false; }
 };
 
-class Profile
-{
-public:
-    Profile();
-    ~Profile();
-
-    bool hasValidConstructor(const List& var_list) const;
-    
-    string getNodeName() const { return "profile"; }
-    
-    bool hasBase(const Type* _type) const { return false; }
-    
-    bool hasImplicitConversionTo(const Type* _type) const;
-    
-    const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const;
-    const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const;
-
-    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
-    const Type* getArrayElementType() const;
-    bool hasValidConstructor(const List* var_list) const;
-};
-
-class Technique: public AST::NamedList<Technique>
-{
-public:
-    Technique(string name, NodeT<List> body);
-     ~Technique();
-};
-
 class Import: public AST::NamedList<Import>
 {
 public:
@@ -1055,52 +1017,22 @@ public:
     BufferType getBufferType() const { return m_BufferType; }
 };
 
-class ShaderDeclaration : public AST::NamedList<ShaderDeclaration>
+class ShaderDeclaration
 {
-    ShaderType          m_Type;
+    ShaderType  m_Type;
+    NodeT<List> m_Body;
 public:
-	ShaderDeclaration(ShaderType _type, string name, NodeT<List> body);
-	~ShaderDeclaration();
+    ShaderDeclaration::ShaderDeclaration(ShaderType _type, NodeT<List> body)
+        :   m_Type(_type),
+            m_Body(std::move(body)) {}
+    ~ShaderDeclaration()=default;
 
-    ShaderType getType() const;
-    
-    bool hasBase(const Type* _type) const;
-    
-    bool hasImplicitConversionTo(const Type* _type) const;
-    
-    const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const;
-    const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const;
+    ShaderType getType() const { return m_Type; }
+    bool isBlockStatement() const { return false; }
+    virtual string getNodeName() const { return "shader"; }
 
-    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
-    const Type* getArrayElementType() const;
-    bool hasValidConstructor(const List* var_list) const;
-};
-
-class CompiledShader
-{
-public:
-    CompiledShader();
-     ~CompiledShader();
-    
-    string getNodeName() const { return "compiled shader"; }
-     
-    bool hasBase(const Type* _type) const { return false; }
-    
-    bool hasImplicitConversionTo(const Type* _type) const;
-    
-    const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const;
-    const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const;
-
-    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
-    const Type* getArrayElementType() const;
-    bool hasValidConstructor(const List* var_list) const;
-};
-
-class Pass: public AST::NamedList<Pass>
-{
-public:
-    Pass(string name, NodeT<List> body);
-    ~Pass();
+    List* getBody() { return m_Body.get(); }
+    const List* getBody() const { return m_Body.get(); }
 };
 
 class VisitorInterface: public AST::VisitorInterface
@@ -1136,13 +1068,9 @@ public:
     virtual void visit(const JumpStatement*)=0;
     virtual void visit(const ReturnStatement*)=0;
     virtual void visit(const Expression*)=0;
-    virtual void visit(const Profile*)=0;
-    virtual void visit(const Technique*)=0;
     virtual void visit(const Import*)=0;
 	virtual void visit(const ShaderDeclaration*) = 0;
     virtual void visit(const StructType*)=0;
-    virtual void visit(const CompiledShader*)=0;
-    virtual void visit(const Pass*)=0;
     virtual void visit(const IfStatement*)=0;
     virtual void visit(const Buffer*)=0;
     // Some types that should not appear in AST
@@ -1179,10 +1107,8 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const CaseStatement* case_stmt);
 void PrintNode(AST::PrinterInfrastructure* printer, const JumpStatement* jump_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const ReturnStatement* return_stmt);
-void PrintNode(AST::PrinterInfrastructure* printer, const Profile* profile_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const ShaderDeclaration* shader_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct);
-void PrintNode(AST::PrinterInfrastructure* printer, const CompiledShader* compiled_stmt);
 void PrintNode(VisitorInterface* visitor, const Type* type_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const IfStatement* if_stmt);
 
@@ -1237,13 +1163,9 @@ public:
     virtual void visit(const CaseStatement* case_stmt) override { PrintNode(this, &m_Printer, case_stmt); }
     virtual void visit(const JumpStatement* jump_stmt) override { PrintNode(&m_Printer, jump_stmt); }
     virtual void visit(const ReturnStatement* return_stmt) override { PrintNode(this, &m_Printer, return_stmt); }
-    virtual void visit(const Profile* _profile) override { PrintNode(&m_Printer, _profile); }
-    virtual void visit(const Technique* _technique) override { _technique->printList(this, &m_Printer, "technique"); }
     virtual void visit(const Import* _import) override { _import->printList(this, &m_Printer, "import"); }
 	virtual void visit(const ShaderDeclaration* _shader) override { PrintNode(this, &m_Printer, _shader); }
     virtual void visit(const StructType* _struct) override { PrintNode(this, &m_Printer, _struct); }
-    virtual void visit(const CompiledShader* compiled_shader) override { PrintNode(&m_Printer, compiled_shader); }
-    virtual void visit(const Pass* _pass) override { _pass->printList(this, &m_Printer, "pass"); }
     virtual void visit(const IfStatement* if_stmt) override { PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Type* type_stmt) override { PrintNode(this, type_stmt); }
     virtual void visit(const Buffer* buffer) override { buffer->printList(this, &m_Printer, "buffer"); }

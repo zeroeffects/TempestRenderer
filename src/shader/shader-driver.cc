@@ -280,28 +280,6 @@ enum BuiltInFragmentShader
     TGE_EFFECT_BUILTINS_FS
 };
 
-enum BuiltInTechnique
-{
-    TGE_EFFECT_BUILTIN_COMPILED_SHADER_TYPE,
-    TGE_EFFECT_BUILTIN_SHADER_TYPE,
-    TGE_EFFECT_BUILTIN_PROFILE_TYPE,
-
-    TGE_EFFECT_BUILTIN_SET_VERTEX_SHADER,
-    TGE_EFFECT_BUILTIN_SET_FRAGMENT_SHADER,
-    TGE_EFFECT_BUILTIN_COMPILE_SHADER,
-
-    TGE_EFFECT_BUILTIN_GLSL_1_4_0,
-    TGE_EFFECT_BUILTIN_GLSL_1_5_0,
-    TGE_EFFECT_BUILTIN_GLSL_3_3_0,
-    TGE_EFFECT_BUILTIN_GLSL_4_0_0,
-    TGE_EFFECT_BUILTIN_GLSL_4_1_0,
-    TGE_EFFECT_BUILTIN_GLSL_4_2_0,
-    TGE_EFFECT_BUILTIN_GLSL_4_3_0,
-    TGE_EFFECT_BUILTIN_GLSL_4_4_0,
-
-    TGE_EFFECT_BUILTINS_TECHNIQUE
-};
-
 struct GenType;
 struct GenIType;
 struct GenUType;
@@ -385,9 +363,7 @@ struct samplerCubeArrayShadow;
 struct isamplerCubeArray;
 struct usamplerCubeArray;
 
-struct ProfileType;
 struct ShaderBlockType;
-struct CompiledShaderType;
 
 template<class T, size_t idx>
 struct GeneratorType
@@ -475,9 +451,7 @@ GENERATE_GTYPE(samplerCubeArrayShadow, TGE_EFFECT_BUILTIN_SAMPLERCUBEARRAYSHADOW
 GENERATE_GTYPE(isamplerCubeArray, TGE_EFFECT_BUILTIN_ISAMPLERCUBEARRAY)
 GENERATE_GTYPE(usamplerCubeArray, TGE_EFFECT_BUILTIN_USAMPLERCUBEARRAY)
 
-GENERATE_GTYPE(ProfileType, TGE_EFFECT_BUILTIN_PROFILE_TYPE)
 GENERATE_GTYPE(ShaderBlockType, TGE_EFFECT_BUILTIN_SHADER_TYPE)
-GENERATE_GTYPE(CompiledShaderType, TGE_EFFECT_BUILTIN_COMPILED_SHADER_TYPE)
 
 GENERATE_GTYPE3(GSampler1D, TGE_EFFECT_BUILTIN_SAMPLER1D, TGE_EFFECT_BUILTIN_ISAMPLER1D, TGE_EFFECT_BUILTIN_USAMPLER1D)
 GENERATE_GTYPE3(GSampler2D, TGE_EFFECT_BUILTIN_SAMPLER2D, TGE_EFFECT_BUILTIN_ISAMPLER2D, TGE_EFFECT_BUILTIN_USAMPLER2D)
@@ -540,7 +514,7 @@ template<class T> struct _Arr;
  * \tparam T    the type of the array.
  * \tparam size the size of the array.
  */
-template<class T, size_t size>
+template<class T, unsigned size>
 struct _Arr<T[size]>
 {
     //! The array base type.
@@ -1427,27 +1401,6 @@ Driver::Driver()
     BuiltInFunction<vec3 (vec3, vec2)>::addTo(m_ObjectPool, m_ShaderBuiltIns, func_set);
     BuiltInFunction<vec4 (vec4, vec2)>::addTo(m_ObjectPool, m_ShaderBuiltIns, func_set);
     TGE_ASSERT(std::find_if(m_FSBuiltIns.begin(), m_FSBuiltIns.end(), [this](size_t idx){ return !this->m_ObjectPool[idx]; }) == m_FSBuiltIns.end(), "Unfilled fragment shader built-ins");
-
-// Technique Built-ins
-    m_TechniqueBuiltIns.resize(TGE_EFFECT_BUILTINS_TECHNIQUE);
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_COMPILED_SHADER_TYPE] = createBuiltInType<CompiledShader>();
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_SHADER_TYPE] = createBuiltInType<ShaderDeclaration>(ShaderType::GenericShader, "shader", NodeT<List>());
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_PROFILE_TYPE] = createBuiltInType<Profile>();
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_SET_VERTEX_SHADER] = createFunctionSet(&func_set, "SetVertexShader");
-    BuiltInFunction<void (CompiledShaderType)>::addTo(m_ObjectPool, m_TechniqueBuiltIns, func_set);
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_SET_FRAGMENT_SHADER] = createFunctionSet(&func_set, "SetFragmentShader");
-    BuiltInFunction<void (CompiledShaderType)>::addTo(m_ObjectPool, m_TechniqueBuiltIns, func_set);
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_COMPILE_SHADER] = createFunctionSet(&func_set, "CompileShader");
-    BuiltInFunction<CompiledShaderType (ProfileType, ShaderBlockType)>::addTo(m_ObjectPool, m_TechniqueBuiltIns, func_set);
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_1_4_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_1_4_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_1_5_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_1_5_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_3_3_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_3_3_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_0_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_0_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_1_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_1_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_2_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_2_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_3_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_3_0");
-    m_TechniqueBuiltIns[TGE_EFFECT_BUILTIN_GLSL_4_4_0] = createBuiltInNode<Variable>(StorageQualifier::Const, extractType(m_TechniqueBuiltIns, TGE_EFFECT_BUILTIN_PROFILE_TYPE), "glsl_4_4_0");
-    TGE_ASSERT(std::find_if(m_TechniqueBuiltIns.begin(), m_TechniqueBuiltIns.end(), [this](size_t idx){ return !this->m_ObjectPool[idx]; }) == m_TechniqueBuiltIns.end(), "Unfilled technique built-ins");
 }
 
 Driver::~Driver()
@@ -1517,21 +1470,6 @@ void Driver::endShader()
 {
     endBlock();
     TGE_ASSERT(m_StackPointers.empty(), "Expected empty shader stack");
-}
-
-void Driver::beginTechnique()
-{
-    TGE_ASSERT(m_StackPointers.empty(), "Expected empty technique stach");
-    size_t stack_pointer = m_Stack.size();
-    m_StackPointers.push_back(stack_pointer);
-    m_Stack.resize(stack_pointer + m_TechniqueBuiltIns.size());
-    std::copy(m_TechniqueBuiltIns.begin(), m_TechniqueBuiltIns.end(), m_Stack.begin() + stack_pointer);
-}
-
-void Driver::endTechnique()
-{
-    endBlock();
-    TGE_ASSERT(m_StackPointers.empty(), "Expected empty technique stack");
 }
 
 void Driver::beginBlock()

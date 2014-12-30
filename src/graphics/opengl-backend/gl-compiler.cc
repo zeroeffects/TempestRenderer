@@ -57,86 +57,33 @@ GLShaderCompiler::GLShaderCompiler(uint32 settings)
     {
         m_Settings |= TEMPEST_DISABLE_MULTI_DRAW|TEMPEST_DISABLE_SSBO;
     }
+#ifndef DISABLE_TEXTURE_BINDLESS
+    if(!IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+#endif
+    {
+        m_Settings |= TEMPEST_DISABLE_TEXTURE_BINDLESS;
+    }
 }
 
 GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, FileLoader* file_loader,
-                                                        const string& technique_name, const string& pass_name)
+                                                        const string* options, uint32 options_count)
 {
     Shader::EffectDescription effect;
     auto status = GLFX::LoadEffect(filename, file_loader, m_Settings, effect);
     if(!status)
         return nullptr;
     
-    const Shader::TechniqueDescription* technique;
-    const Shader::PassDescription* pass;
-    
-    if(technique_name.empty()) 
-    {
-        if(effect.getTechniqueCount() == 0)
-        {
-            Log(LogLevel::Error, "Expecting at least one valid technique within file");
-            return nullptr;
-        }
-        
-        technique = &effect.getTechnique(0);
-    }
-    else
-    {
-        size_t i, iend;
-        for(i = 0, iend = effect.getTechniqueCount(); i < iend; ++i)
-        {
-            technique = &effect.getTechnique(i);
-            if(technique->getName() == technique_name)
-                break;
-        }
-        if(i == iend)
-        {
-            Log(LogLevel::Error, "Unknown technique \"", technique_name, "\" within file");
-            return nullptr;
-        }
-    }
-    
-    if(pass_name.empty())
-    {
-        if(technique->getPassCount() == 0)
-        {
-            Log(LogLevel::Error, "Expecting at least one valid pass within file");
-            return nullptr;
-        }
-        
-        pass = &technique->getPass(0);
-    }
-    else
-    {
-        size_t i, iend;
-        for(i = 0, iend = technique->getPassCount(); i < iend; ++i)
-        {
-            pass = &technique->getPass(i);
-            if(pass->getName() == pass_name)
-                break;
-        }
-        if(i == iend)
-        {
-            Log(LogLevel::Error, "Unknown pass \"", pass_name, "\" as part of technique \"", technique_name, "\" within file");
-            return nullptr;
-        }
-    }
-    
     auto prog = CreateScoped<GLuint>(glCreateProgram(), [](GLuint prog) { if(prog) glDeleteProgram(prog); });
     
-    for(size_t i = 0, iend = pass->getAttachedShaderCount(); i < iend; ++i)
+    for(Shader::ShaderType i = Shader::ShaderType::VertexShader, iend = Shader::ShaderType::ShaderTypeCount;
+        i != iend; ++reinterpret_cast<uint32&>(i))
     {
-        auto& shader_desc = pass->getAttachedShaderName(i);
-        const Shader::ShaderDescription* shader = nullptr;
-        for(size_t shader_idx = 0, end_shader_idx = effect.getShaderCount(); shader_idx < end_shader_idx; ++shader_idx)
-        {
-            shader = &effect.getShader(shader_idx);
-            if(shader->getName() == effect.getShader(shader_desc.getShaderIndex()).getName())
-                break;
-        }
-        auto source = shader_desc.getAdditionalOptions() + shader->getContent();
+        auto* shader_desc = effect.getShader(i);
+        if(shader_desc == nullptr)
+            continue;
+        auto source = shader_desc->getAdditionalOptions() + shader_desc->getContent();
         
-        auto _type = shader->getShaderType();
+        auto _type = static_cast<Shader::ShaderType>(i);
         GLuint shader_id = glCreateShader(TranslateShaderType(_type));
         
         GLint status;
@@ -178,11 +125,11 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         glAttachShader(prog.get(), shader_id);
     }
     
-    size_t buf_count = effect.getBufferCount();
-    size_t res_table_count = buf_count;
+    uint32 buf_count = effect.getBufferCount();
+    uint32 res_table_count = buf_count;
     std::unique_ptr<ResourceTableDescription*[]> res_tables(new ResourceTableDescription*[res_table_count]);
     
-    for(size_t buffer_idx = 0; buffer_idx < buf_count; ++buffer_idx)
+    for(uint32 buffer_idx = 0; buffer_idx < buf_count; ++buffer_idx)
     {
         auto& buffer = effect.getBuffer(buffer_idx);
         auto& res_table = res_tables[buffer_idx];
@@ -232,7 +179,7 @@ void GLShaderCompiler::destroyRenderResource(GLShaderProgram* shader_program)
 }
 
 FileDescription* GLShaderCompiler::compileBinaryBlob(const string& filename, FileLoader* file_loader,
-                                                     const string& technique_name, const string& pass_name)
+                                                     const string* options, uint32 options_count)
 {
     TGE_ASSERT(false, "Stub");
     return nullptr;

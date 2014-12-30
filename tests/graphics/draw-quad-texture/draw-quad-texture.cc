@@ -49,15 +49,20 @@ TGE_TEST("Testing the rendering context")
     // We are building a resource table per draw call. Bindless textures enable us to set them
     // directly without additional processing, which is cool. You can actually do the same thing without
     // bindless textures. Just keep a table of all texture slots and set them with a single function.
-    auto res_table = shader->createResourceTable("GlobalsBuffer", 1);
-    TGE_ASSERT(res_table, "Expecting valid resource table");
+    auto var_table = shader->createResourceTable("Globals", 1);
+    TGE_ASSERT(var_table, "Expecting valid resource table");
+    Tempest::uint32 tex_id = 0;
     Tempest::Matrix4 mat;
     mat.identity();
     mat.translate(Tempest::Vector2(-0.5f, -0.5f));
-    res_table->setResource("Globals.Transform", mat);
-    res_table->setResource("Globals.Texture", *tex);
-    auto baked_table = Tempest::ExtractBakedResourceTable(res_table);
-    
+    var_table->setResource("Globals.Transform", mat);
+    auto baked_table = Tempest::ExtractBakedResourceTable(var_table);
+
+    // Basically, that's what your texture manager is going to setup. In most cases array of texture
+    auto res_table = shader->createResourceTable("Resources", 0);
+    res_table->setResource("Texture", *tex);
+    auto baked_res_table = Tempest::ExtractBakedResourceTable(res_table);
+
     TGE_ASSERT(shader, "Could not create shader file");
     
     // Vertex format. Nothing special about it.
@@ -92,9 +97,13 @@ TGE_TEST("Testing the rendering context")
     
     sys_obj->Window.show();
     
+    sys_obj->Backend.setActiveTextures(16);
+
     // And that's the render loop. We have prebaked everything, so we are not doing anything special.
     for(;;)
     {
+        sys_obj->Backend.setTextures(baked_res_table.get());
+
         sys_obj->Backend.submitCommandBuffer(command_buf.get());
         
         sys_obj->Window.swapBuffers();

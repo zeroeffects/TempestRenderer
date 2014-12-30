@@ -40,8 +40,7 @@ class Driver: public AST::Driver
     typedef std::vector<size_t> StackPointers;
 
     AST::StackType          m_ShaderBuiltIns,
-                            m_FSBuiltIns,
-                            m_TechniqueBuiltIns;
+                            m_FSBuiltIns;
     StackPointers           m_StackPointers;
 public:
     Driver();
@@ -62,9 +61,6 @@ public:
 
     void beginShader(ShaderType shader_type);
     void endShader();
-
-    void beginTechnique();
-    void endTechnique();
 
     bool parseFile(const string& filename);
     bool parseString(const char* content, size_t size, const string& filename="");

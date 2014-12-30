@@ -180,11 +180,26 @@ public:
 };
 
 template<class TCompiler>
-UniqueResource<TCompiler, typename TCompiler::ShaderProgramType> CreateShader(TCompiler* compiler, const string& filename,
-                                                                              const string& technique_name = string(), const string& pass_name = string())
+UniqueResource<TCompiler, typename TCompiler::ShaderProgramType> CreateShader(TCompiler* compiler, const string& filename)
 {
     BasicFileLoader loader;
-    return CreateUniqueResource(compiler, compiler->compileShaderProgram(filename, &loader, technique_name, pass_name));
+    return CreateUniqueResource(compiler, compiler->compileShaderProgram(filename, &loader, nullptr, 0));
+}
+
+template<class TCompiler, size_t TArraySize>
+UniqueResource<TCompiler, typename TCompiler::ShaderProgramType> CreateShader(TCompiler* compiler, const string& filename,
+                                                                              const Tempest::string _array[TArraySize])
+{
+    BasicFileLoader loader;
+    return CreateUniqueResource(compiler, compiler->compileShaderProgram(filename, &loader, _array, TArraySize));
+}
+
+template<class TCompiler, template<class T, class TAlloc> class TContainer, class TOptAlloc>
+UniqueResource<TCompiler, typename TCompiler::ShaderProgramType> CreateShader(TCompiler* compiler, const string& filename,
+                                                                              const TContainer<Tempest::string, TOptAlloc>& opts)
+{
+    BasicFileLoader loader;
+    return CreateUniqueResource(compiler, compiler->compileShaderProgram(filename, &loader, &opt.front(), opt.size()));
 }
 
 template<class TShader>

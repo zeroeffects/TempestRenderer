@@ -33,6 +33,7 @@
                                                         PFN##name##PROC name = nullptr;
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 #undef DECLARE_GL_FUNCTION
+#undef DECLARE_GL_FUNCTION_OPTIONAL
 #undef DECLARE_SYS_FUNCTION
 #undef DECLARE_SYS_GL_FUNCTION
 
@@ -172,6 +173,7 @@ bool GLLibrary::initDeviceContextLibrary()
     #include "tempest/graphics/opengl-backend/gl-library.hh"
     #undef TEMPEST_EXTRACT_FUNCTIONS
     #undef DECLARE_GL_FUNCTION
+    #undef DECLARE_GL_FUNCTION_OPTIONAL
     #undef DECLARE_SYS_FUNCTION
     #undef DECLARE_SYS_GL_FUNCTION
     return true;
@@ -187,6 +189,7 @@ bool GLLibrary::initGraphicsLibrary()
     #include "tempest/graphics/opengl-backend/gl-library.hh"
     #undef TEMPEST_EXTRACT_FUNCTIONS
     #undef DECLARE_GL_FUNCTION
+    #undef DECLARE_GL_FUNCTION_OPTIONAL
     #undef DECLARE_SYS_FUNCTION
     #undef DECLARE_SYS_GL_FUNCTION
     

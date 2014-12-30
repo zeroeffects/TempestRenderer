@@ -32,6 +32,7 @@
 #include "tempest/graphics/opengl-backend/gl-buffer.hh"
 #include "tempest/graphics/opengl-backend/gl-state-object.hh"
 #include "tempest/graphics/opengl-backend/gl-input-layout.hh"
+#include "tempest/graphics/opengl-backend/gl-shader.hh"
 #include "tempest/graphics/opengl-backend/gl-window.hh"
 #include "tempest/graphics/opengl-backend/gl-texture.hh"
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
@@ -128,6 +129,11 @@ GLRenderingBackend::GLRenderingBackend()
 
 GLRenderingBackend::~GLRenderingBackend()
 {
+    if(m_TexturesTable)
+    {
+        glDeleteBuffers(1, &m_TexturesTable);
+    }
+
 #ifdef _WIN32
     if(m_HGLRC)
     {
@@ -273,7 +279,42 @@ void GLRenderingBackend::destroyRenderResource(GLCommandBuffer* buffer)
 {
     delete buffer;
 }
-    
+
+void GLRenderingBackend::setActiveTextures(uint32 num_textures)
+{
+    if(m_ActiveTextures == num_textures)
+        return;
+    m_ActiveTextures = num_textures;
+
+#ifndef DISABLE_TEXTURE_BINDLESS
+    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+    {
+        if(m_TexturesTable)
+        {
+            glDeleteBuffers(1, &m_TexturesTable);
+        }
+
+        glGenBuffers(1, &m_TexturesTable);
+        glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_TexturesTable);
+        glBufferData(GLBufferTarget::GL_UNIFORM_BUFFER, num_textures*sizeof(GLuint64), nullptr, GLUsageMode::GL_DYNAMIC_DRAW);
+    }
+#endif
+}
+
+void GLRenderingBackend::setTextures(const GLBakedResourceTable* resource_table)
+{
+#ifndef DISABLE_TEXTURE_BINDLESS
+    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+    {
+        TGE_ASSERT(resource_table->getSize() / sizeof(GLuint64) <= m_ActiveTextures, "Texture descriptor overflow");
+        auto* res_buf = reinterpret_cast<char*>(glMapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, GLAccessMode::GL_WRITE_ONLY));
+        memcpy(res_buf, resource_table->get(), resource_table->getSize());
+        glUnmapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER);
+        glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, 0, m_TexturesTable, 0, m_ActiveTextures*sizeof(GLuint64));
+    }
+#endif
+}
+
 GLBuffer* GLRenderingBackend::createBuffer(size_t size, VBType vb_type, uint32 flags, const void* data)
 {
     return new GLBuffer(size, vb_type, flags, data);

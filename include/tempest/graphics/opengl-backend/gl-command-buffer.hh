@@ -39,8 +39,8 @@
 
 namespace Tempest
 {
-class GLRenderingBackend;
 class GLBakedResourceTable;
+class GLRenderingBackend;
 class GLLinkedShaderProgram;
 class GLStateObject;
 class GLBuffer;

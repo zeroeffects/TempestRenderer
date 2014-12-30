@@ -29,6 +29,7 @@
 #include "tempest/parser/file-loader.hh"
 #include "tempest/utils/patterns.hh"
 
+#include <algorithm>
 #include <unordered_map>
 
 namespace Tempest
@@ -37,7 +38,7 @@ namespace GLFX
 {
 class ShaderPrinter;
 
-void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, size_t* binding_counter);
+bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, size_t* ssbo_binding_counter, size_t* ubo_binding_counter);
 
 class ShaderPrinter: public Shader::VisitorInterface
 {
@@ -47,18 +48,23 @@ class ShaderPrinter: public Shader::VisitorInterface
     Shader::ShaderType         m_ShaderType = Shader::ShaderType::GenericShader;
     bool                       m_DrawIDInUse = false;
     
+    bool                       m_Valid = true;
     uint32                     m_Settings;
-    size_t                     m_BindingCounter;
+    size_t                     m_SSBOBindingCounter;
+    size_t                     m_UBOBindingCounter;
     
 public:
-    ShaderPrinter(std::ostream& os, size_t binding_counter, uint32 settings_flags, uint32 flags)
+    ShaderPrinter(std::ostream& os, size_t ssbo_binding_counter, size_t ubo_binding_counter, uint32 settings_flags, uint32 flags)
         :   m_Printer(os, flags),
             m_Settings(settings_flags),
-            m_BindingCounter(binding_counter) {}
+            m_SSBOBindingCounter(ssbo_binding_counter),
+            m_UBOBindingCounter(ubo_binding_counter) {}
     virtual ~ShaderPrinter()=default;
 
     std::ostream& stream() { return m_Printer.stream(); }
     size_t getIndentation() const { return m_Printer.getIndentation(); }
+
+    bool isValid() const { return m_Valid; }
 
     void setShaderType(Shader::ShaderType shader_type) { m_ShaderType = shader_type; }
     bool isDrawIDInUse() const { return m_DrawIDInUse; }
@@ -98,15 +104,11 @@ public:
     virtual void visit(const Shader::CaseStatement* case_stmt) final { Shader::PrintNode(this, &m_Printer, case_stmt); }
     virtual void visit(const Shader::JumpStatement* jump_stmt) final { Shader::PrintNode(&m_Printer, jump_stmt); }
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { Shader::PrintNode(this, &m_Printer, return_stmt); }
-    virtual void visit(const Shader::Profile* _profile) final { Shader::PrintNode(&m_Printer, _profile); }
-    virtual void visit(const Shader::Technique* _technique) final { _technique->printList(this, &m_Printer, "technique"); }
     virtual void visit(const Shader::Import* _import) final { _import->printList(this, &m_Printer, "import"); }
     virtual void visit(const Shader::ShaderDeclaration* _shader) final { Shader::PrintNode(this, &m_Printer, _shader); }
-    virtual void visit(const Shader::CompiledShader* compiled_shader) final { Shader::PrintNode(&m_Printer, compiled_shader); }
-    virtual void visit(const Shader::Pass* _pass) final { _pass->printList(this, &m_Printer, "pass"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
-    virtual void visit(const Shader::Buffer* buffer) final { PrintBuffer(this, &m_Printer, buffer, &m_BindingCounter); }
+    virtual void visit(const Shader::Buffer* buffer) final { m_Valid &= PrintBuffer(this, &m_Printer, buffer, &m_SSBOBindingCounter, &m_UBOBindingCounter); }
     // Some types that should not appear in AST
     virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
@@ -123,21 +125,7 @@ void ShaderPrinter::visit(const Shader::Declaration* decl)
     if(vars->getNodeType() == Shader::TGE_EFFECT_VARIABLE)
     {
         auto* var = vars->extract<Shader::Variable>();
-        if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
-        {
-            auto& os = m_Printer.stream();
-            for(size_t i = 0, indentation = m_Printer.getIndentation(); i < indentation; ++i)
-                os << "\t";
-            os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer " << var->getNodeName() << "_StructBuffer "
-                << "{\n";
-            for(size_t i = 0, indentation = m_Printer.getIndentation(); i < indentation + 1; ++i)
-                os << "\t";
-            os << var->getType()->getNodeName() << " " << var->getNodeName() << "[]";
-            for(size_t i = 0, indentation = m_Printer.getIndentation(); i < indentation; ++i)
-                os << "\t";
-            os << "};\n";
-            return;
-        }
+        TGE_ASSERT(var->getStorage() != Shader::StorageQualifier::StructBuffer, "Shouldn't happen");
     }
     
     Shader::PrintNode(this, &m_Printer, decl);
@@ -167,13 +155,16 @@ class Generator: public Shader::VisitorInterface
     std::stringstream          m_RawImportStream;
     ShaderPrinter              m_RawImport;
 
-    size_t                     m_BindingCounter = 0;
+    string                     m_Version;
+
+    size_t                     m_SSBOBindingCounter = 0;
+    size_t                     m_UBOBindingCounter = 0;
     bool                       m_Valid;
-    Shader::EffectDescription  m_Effect;
+    Shader::EffectDescription& m_Effect;
     FileLoader*                m_FileLoader;
     uint32                     m_Settings;
 public:
-    Generator(FileLoader* include_loader, uint32);
+    Generator(Shader::EffectDescription& effect, FileLoader* include_loader, uint32);
     virtual ~Generator();
     
     virtual void visit(const Location& loc) final { m_RawImport.visit(loc); }
@@ -209,14 +200,10 @@ public:
     virtual void visit(const Shader::CaseStatement* case_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::JumpStatement* jump_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const Shader::Profile* _profile) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const Shader::Technique* _technique) final;
     virtual void visit(const Shader::Import* _import) final;
     virtual void visit(const Shader::ShaderDeclaration* _shader) final;
     virtual void visit(const Shader::FunctionDefinition* func_def) final;
     virtual void visit(const Shader::FunctionDeclaration* func_decl) final;
-    virtual void visit(const Shader::CompiledShader* compiled_shader) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const Shader::Pass* _pass) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Type* type_stmt) final;
     virtual void visit(const Shader::Buffer* buffer) final;
@@ -229,45 +216,46 @@ public:
     virtual void visit(const Shader::VarDeclList*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
     virtual void visit(const Shader::Value<Shader::ShaderType>*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
 
-    bool isValid() const { return m_Valid; }
-    
-    Shader::EffectDescription getEffect() const { return m_Effect; }
+    bool isValid() const { return m_Valid & m_RawImport.isValid(); }
 };
 
-Generator::Generator(FileLoader* include_loader, uint32 settings)
-    :   m_RawImport(m_RawImportStream, m_BindingCounter, m_Settings, AST::TGE_AST_PRINT_LINE_LOCATION),
+Generator::Generator(Shader::EffectDescription& effect, FileLoader* include_loader, uint32 settings)
+    :   m_RawImport(m_RawImportStream, m_SSBOBindingCounter, m_UBOBindingCounter, m_Settings, AST::TGE_AST_PRINT_LINE_LOCATION),
+        m_Effect(effect),
         m_Valid(true),
         m_FileLoader(include_loader),
-        m_Settings(settings) {}
+        m_Settings(settings)
+{
+    uint32 min_version = 400;
+    if((m_Settings & TEMPEST_DISABLE_SSBO) == 0)
+    {
+        min_version = std::max(min_version, 430U);
+        ++m_SSBOBindingCounter;
+    }
+    else
+    {
+        ++m_UBOBindingCounter;
+    }
+    if((m_Settings & TEMPEST_DISABLE_MULTI_DRAW) == 0)
+    {
+        m_Version += "#extension GL_ARB_shader_draw_parameters : require\n";
+    }
+    if((m_Settings & TEMPEST_DISABLE_TEXTURE_BINDLESS) == 0)
+    {
+        m_Version += "#extension GL_ARB_bindless_texture : require\n";
+        ++m_UBOBindingCounter; // The first one is reserved
+    } // TODO: Bindless and disabled SSBO
+    std::stringstream ss;
+    ss << "#version " << min_version << "\n";
+
+    m_Version = ss.str() + m_Version + "\n";
+}
 
 Generator::~Generator() {}
 
-string TranslateGLSLVersion(const string& profile_name)
+bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, size_t* ssbo_binding_counter, size_t* ubo_binding_counter)
 {
-    // I prefer this over an lazy hack that copies numbers because it is much safer.
-    if(profile_name == "glsl_1_4_0")
-        return "#version 140\n\n";
-    else if(profile_name == "glsl_1_5_0")
-        return "#version 150\n\n";
-    else if(profile_name == "glsl_3_3_0")
-        return "#version 330\n\n";
-    else if(profile_name == "glsl_4_0_0")
-        return "#version 400\n\n";
-    else if(profile_name == "glsl_4_1_0")
-        return "#version 410\n\n";
-    else if(profile_name == "glsl_4_2_0")
-        return "#version 420\n\n";
-    else if(profile_name == "glsl_4_4_0")
-        return "#version 440\n"
-               "#extension GL_ARB_shader_draw_parameters : require\n"
-               "#extension GL_ARB_bindless_texture : require\n\n";
-    
-    Log(LogLevel::Error, "Unknown profile: ", profile_name);
-    return "";
-}
-
-void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, size_t* binding_counter)
-{
+    bool status = true;
     switch(buffer->getBufferType())
     {
     default: TGE_ASSERT(false, "Unknown buffer type");
@@ -275,7 +263,7 @@ void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
     {
         for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
             printer->stream() << "\t";
-        printer->stream() << "layout(std140, binding = " << (*binding_counter)++ << ") uniform " << buffer->getNodeName()
+        printer->stream() << "layout(std140, binding = " << (*ubo_binding_counter)++ << ") uniform " << buffer->getNodeName()
                           << "{\n";
         auto* list = buffer->getBody();
         visitor->visit(list);
@@ -285,13 +273,80 @@ void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
     {
         for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
             printer->stream() << "\t";
-        printer->stream() << "layout(std430, binding = " << (*binding_counter)++ << ") buffer " << buffer->getNodeName()
+        printer->stream() << "layout(std430, binding = " << (*ssbo_binding_counter)++ << ") buffer " << buffer->getNodeName()
                           << "{\n";
         auto* list = buffer->getBody();
         visitor->visit(list);
         printer->stream() << "};\n";
     } break;
+    case Shader::BufferType::Resource:
+    {
+        for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
+            printer->stream() << "\t";
+        printer->stream() << "layout(std140, binding = 0) uniform " << buffer->getNodeName()
+            << "{\n";
+        auto* list = buffer->getBody();
+        for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
+        {
+            TGE_ASSERT(iter->getNodeType() == Shader::TGE_EFFECT_DECLARATION, "Expected declaration");
+            auto* vars = iter->extract<Shader::Declaration>()->getVariables();
+            auto check_variable = [](const Shader::Variable* var)
+            {
+                if(var->getType()->getTypeEnum() != Shader::ElementType::Sampler)
+                {
+                    Log(LogLevel::Error, "Top-level samplers are only allowed in resource buffer for compatibility reasons.");
+                    return false;
+                }
+                return true;
+            };
+
+            if(vars->getNodeType() == Shader::TGE_EFFECT_VARIABLE)
+            {
+                auto var = vars->extract<Shader::Variable>();
+                status &= check_variable(var);
+            }
+            else if(vars->getNodeType() == AST::TGE_AST_LIST_ELEMENT)
+            {
+                auto sub_list = vars->extract<AST::List>();
+                TGE_ASSERT(sub_list->current()->getNodeType() == Shader::TGE_EFFECT_VARIABLE, "Expecting variables within declaration list");
+                auto sub_start = sub_list->current();
+                auto* var = sub_start->extract<Shader::Variable>();
+                status &= check_variable(var);
+            }
+        }
+        visitor->visit(list);
+        printer->stream() << "};\n";
+    } break;
     }
+    return status;
+}
+
+static void ProcessStructBuffer(ShaderPrinter* visitor, uint64 settings, const Shader::Variable* var,
+                                size_t* ssbo_binding_counter, size_t* ubo_binding_counter, Shader::EffectDescription* effect)
+{
+    auto size = ConvertStructBuffer(var, effect);
+
+    size_t elems = (1 << 16) / size;
+
+    auto& os = visitor->stream();
+    for(size_t i = 0, indentation = visitor->getIndentation(); i < indentation; ++i)
+        os << "\t";
+    if(settings & TEMPEST_DISABLE_SSBO)
+        os << "layout(std140, binding = 0) uniform ";
+    else
+        os << "layout(std430, binding = 0) buffer ";
+    os << var->getNodeName() << "_StructBuffer "
+        << "{\n";
+    for(size_t i = 0, indentation = visitor->getIndentation() + 1; i < indentation; ++i)
+        os << "\t";
+    os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName();
+    if(settings & TEMPEST_DISABLE_SSBO)
+        os << "[" << elems << "];\n";
+    else
+        os << "[];\n";
+    for(size_t i = 0, indentation = visitor->getIndentation(); i < indentation; ++i)
+        os << "\t";
+    os << "}";
 }
 
 void Generator::visit(const Shader::Declaration* decl)
@@ -311,29 +366,7 @@ void Generator::visit(const Shader::Declaration* decl)
         auto* var = var_node->extract<Shader::Variable>();
         if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
         {
-            auto size = ConvertStructBuffer(var, &m_Effect);
-
-            size_t elems = (1 << 16) / size;
-
-            auto& os = m_RawImportStream;
-            for(size_t i = 0, indentation = m_RawImport.getIndentation(); i < indentation; ++i)
-                os << "\t";
-            if(m_Settings & TEMPEST_DISABLE_SSBO)
-                os << "layout(std140, binding = " << m_BindingCounter++ << ") uniform ";
-            else
-                os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer ";
-            os << var->getNodeName() << "_StructBuffer "
-               << "{\n";
-            for(size_t i = 0, indentation = m_RawImport.getIndentation() + 1; i < indentation; ++i)
-                os << "\t";
-            os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName();
-            if(m_Settings & TEMPEST_DISABLE_SSBO)
-                os << "[" << elems << "];\n";
-            else
-                os << "[];\n";
-            for(size_t i = 0, indentation = m_RawImport.getIndentation(); i < indentation; ++i)
-                os << "\t";
-            os << "}";
+            ProcessStructBuffer(&m_RawImport, m_Settings, var, &m_SSBOBindingCounter, &m_UBOBindingCounter, &m_Effect);
         }
         else
         {
@@ -359,112 +392,6 @@ void Generator::visit(const AST::ListElement* lst)
         if(!i->isBlockStatement())
             m_RawImport.stream() << ";\n";
     }
-}
-
-void Generator::visit(const Shader::Technique* _technique)
-{
-    // Techniques are used for gathering shaders in passes. The layout resembles the one in HLSL FX files.
-    for(size_t i = 0, iend = m_Effect.getTechniqueCount(); i < iend; ++i)
-        if(m_Effect.getTechnique(i).getName() == _technique->getNodeName())
-        {
-            Log(LogLevel::Error, "technique already specified ", _technique->getNodeName());
-            m_Valid = false;
-            return;
-        }
-    Shader::TechniqueDescription technique_desc(_technique->getNodeName());
-
-    auto* technique_body = _technique->getBody();
-    TGE_ASSERT(technique_body->current_front(), "Expected valid technique body");
-    if(*technique_body->next())
-    {
-        Log(LogLevel::Error, "TODO: more than one pass is currently unsupported for this back-end");
-        m_Valid = false;
-        return;
-    }
-    auto* pass = technique_body->current_front()->extract<Shader::Pass>();
-    Shader::PassDescription pass_desc(pass->getNodeName());
-    for(auto j = pass->getBody()->current(); j != pass->getBody()->end(); ++j)
-    {
-        auto* function_call = j->extract<Shader::FunctionCall>();
-        auto func_name = function_call->getNodeName();
-        Shader::ShaderType current_shader_type;
-        if(func_name == "SetVertexShader")
-        {
-            current_shader_type = Shader::ShaderType::VertexShader;
-        }
-        else if(func_name == "SetTessControlShader")
-        {
-            current_shader_type = Shader::ShaderType::TessellationControlShader;
-        }
-        else if(func_name == "SetTessEvaluationShader")
-        {
-            current_shader_type = Shader::ShaderType::TessellationEvaluationShader;
-        }
-        else if(func_name == "SetGeometryShader")
-        {
-            current_shader_type = Shader::ShaderType::GeometryShader;
-        }
-        else if(func_name == "SetFragmentShader")
-        {
-            current_shader_type = Shader::ShaderType::FragmentShader;
-        }
-        else if(func_name == "SetComputeShader")
-        {
-            current_shader_type = Shader::ShaderType::ComputeShader;
-        }
-        else
-        {
-            Log(LogLevel::Error, "Unexpected function call in technique \"", _technique->getNodeName(), "\": ", func_name);
-            m_Valid = false;
-            return;
-        }
-
-        auto args = function_call->getArguments();
-        TGE_ASSERT(args && args->current_front()->getNodeType() == Shader::TGE_EFFECT_FUNCTION_CALL, "Expected to be function call");
-        auto compile_phase = args->current_front()->extract<Shader::FunctionCall>();
-        if(compile_phase->getFunction()->getNodeName() != "CompileShader")
-        {
-            Log(LogLevel::Error, "Unexpected function call in technique \"", _technique->getNodeName(), "\"; CompileShader expected: ", func_name);
-            m_Valid = false;
-            return;
-        }
-        auto cp_args = compile_phase->getArguments();
-        TGE_ASSERT(cp_args->current_front(), "Expected valid arguments");
-        auto profile_instance = cp_args->current_front()->extract<Shader::Variable>();
-        auto shader_constructor_call = cp_args->next()->get()->current_front()->extract<Shader::ConstructorCall>();
-        auto shader_type = shader_constructor_call->getType()->extract<Shader::ShaderDeclaration>();
-
-        auto profile_name = profile_instance->getNodeName();
-        string _version = TranslateGLSLVersion(profile_name);
-        if(_version.empty())
-        {
-            m_Valid = false;
-            return;
-        }
-        
-        auto shader_name = shader_type->getNodeName();
-        size_t i, iend;
-        for(i = 0, iend = m_Effect.getShaderCount(); i < iend; ++i)
-            if(m_Effect.getShader(i).getName() == shader_name)
-                break;
-        if(i == iend)
-        {
-            Log(LogLevel::Error, "Undefined shader: ", shader_name);
-            m_Valid = false;
-            return;
-        }
-        if(m_Effect.getShader(i).getShaderType() != current_shader_type)
-        {
-            Log(LogLevel::Error, "Shader type mismatches with the type that is being compiled: ", shader_name);
-            m_Valid = false;
-            return;
-        }
-
-        Shader::PassShaderDescription shader_desc(i, _version);
-        pass_desc.addShader(shader_desc);
-    }
-    technique_desc.addPass(pass_desc);
-    m_Effect.addTechnique(technique_desc);
 }
 
 void Generator::visit(const Shader::Import* _import)
@@ -506,18 +433,17 @@ void Generator::visit(const Shader::Import* _import)
 
 void Generator::visit(const Shader::Type* type_stmt)
 {
-    TGE_ASSERT(type_stmt->getTypeEnum() == Shader::ElementType::Shader ||
-               type_stmt->getTypeEnum() == Shader::ElementType::Struct, "Unexpected top level type declaration");
+    TGE_ASSERT(type_stmt->getTypeEnum() == Shader::ElementType::Struct, "Unexpected top level type declaration");
     type_stmt->accept(this);
 }
 
 void Generator::visit(const Shader::ShaderDeclaration* _shader)
 {
     auto shader_type = _shader->getType();
-    Shader::ShaderDescription shader_desc(_shader->getType(), _shader->getNodeName());
+    std::unique_ptr<Shader::ShaderDescription> shader_desc(new Shader::ShaderDescription);
     std::stringstream ss;
     ss << m_RawImportStream.str();
-    ShaderPrinter shader_printer(ss, m_BindingCounter, m_Settings, AST::TGE_AST_PRINT_LINE_LOCATION);
+    ShaderPrinter shader_printer(ss, m_SSBOBindingCounter, m_UBOBindingCounter, m_Settings, AST::TGE_AST_PRINT_LINE_LOCATION);
     shader_printer.setShaderType(shader_type);
     
     switch(_shader->getType())
@@ -579,30 +505,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
             
             if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
             {
-                auto size = ConvertStructBuffer(var, &m_Effect);
-
-                size_t elems = (1 << 16) / size;
-
-                auto& os = shader_printer.stream();
-                for(size_t i = 0, indentation = shader_printer.getIndentation(); i < indentation; ++i)
-                    os << "\t";
-                if(m_Settings & TEMPEST_DISABLE_SSBO)
-                    os << "layout(std140, binding = " << m_BindingCounter++ << ") uniform ";
-                else
-                    os << "layout(std430, binding = " << m_BindingCounter++ << ") buffer ";
-                os  << var->getNodeName() << "_StructBuffer "
-                    << "{\n";
-                for(size_t i = 0, indentation = shader_printer.getIndentation() + 1; i < indentation; ++i)
-                    os << "\t";
-                shader_printer.visit(var);
-                os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName();
-                if(m_Settings & TEMPEST_DISABLE_SSBO)
-                    os << "[" << elems << "];\n";
-                else
-                    os << "[];\n";
-                for(size_t i = 0, indentation = shader_printer.getIndentation(); i < indentation; ++i)
-                    os << "\t";
-                os << "}";
+                ProcessStructBuffer(&shader_printer, m_Settings, var, &m_SSBOBindingCounter, &m_UBOBindingCounter, &m_Effect);
             }
             else
             {
@@ -649,9 +552,18 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     {
         source = ss.str();
     }
-    
-    shader_desc.appendContent(source);
-    m_Effect.addShader(shader_desc);
+
+    shader_desc->setAdditionalOptions(m_Version);
+    shader_desc->appendContent(source);
+    if(!m_Effect.trySetShader(shader_type, shader_desc.release()))
+    {
+        Log(LogLevel::Error, "Duplicate shader types: ", ConvertShaderTypeToText(_shader->getType()), "\n"
+            "Try using \"options\" to eliminate some of the shaders.");
+        m_Valid = false;
+        return;
+    }
+
+    m_Valid &= shader_printer.isValid();
 }
 
 void Generator::visit(const Shader::FunctionDefinition* func_def)
@@ -681,9 +593,8 @@ bool LoadEffect(const string& filename, FileLoader* loader, uint32 flags, Shader
     if(!root_node)
         return false;
 
-    GLFX::Generator _generator(loader, flags);
+    GLFX::Generator _generator(effect, loader, flags);
     _generator.visit(root_node);
-    effect = _generator.getEffect();
     return _generator.isValid();
 }
 }

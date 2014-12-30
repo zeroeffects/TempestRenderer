@@ -210,7 +210,7 @@ enum class UniformValueType: uint32
     Struct,
 };
 
-inline size_t UniformValueTypeSize(UniformValueType uniform_value)
+inline uint32 UniformValueTypeSize(UniformValueType uniform_value)
 {
     switch(uniform_value)
     {
@@ -248,8 +248,9 @@ inline size_t UniformValueTypeSize(UniformValueType uniform_value)
 
 enum
 {
-    TEMPEST_DISABLE_SSBO       = 1 << 0,
-    TEMPEST_DISABLE_MULTI_DRAW = 1 << 1
+    TEMPEST_DISABLE_SSBO             = 1 << 0,
+    TEMPEST_DISABLE_MULTI_DRAW       = 1 << 1,
+    TEMPEST_DISABLE_TEXTURE_BINDLESS = 1 << 2
 };
 
 struct VertexAttributeDescription

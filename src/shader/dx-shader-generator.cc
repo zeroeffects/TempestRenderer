@@ -112,13 +112,9 @@ public:
     virtual void visit(const Shader::CaseStatement* case_stmt) final { Shader::PrintNode(this, &m_Printer, case_stmt); }
     virtual void visit(const Shader::JumpStatement* jump_stmt) final { Shader::PrintNode(&m_Printer, jump_stmt); }
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { Shader::PrintNode(this, &m_Printer, return_stmt); }
-    virtual void visit(const Shader::Profile* _profile) final { Shader::PrintNode(&m_Printer, _profile); }
-    virtual void visit(const Shader::Technique* _technique) final { _technique->printList(this, &m_Printer, "technique"); }
     virtual void visit(const Shader::Import* _import) final { _import->printList(this, &m_Printer, "import"); }
     virtual void visit(const Shader::ShaderDeclaration* _shader) final { Shader::PrintNode(this, &m_Printer, _shader); }
     virtual void visit(const Shader::StructType* _struct) final { Shader::PrintNode(this, &m_Printer, _struct); }
-    virtual void visit(const Shader::CompiledShader* compiled_shader) final { Shader::PrintNode(&m_Printer, compiled_shader); }
-    virtual void visit(const Shader::Pass* _pass) final { _pass->printList(this, &m_Printer, "pass"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
     virtual void visit(const Shader::Buffer* buffer) final { PrintBuffer(this, &m_Printer, buffer); }
@@ -179,13 +175,9 @@ public:
     virtual void visit(const Shader::CaseStatement* case_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::JumpStatement* jump_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::Profile* _profile) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::Technique* _technique) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::Import* _import) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::ShaderDeclaration* _shader) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::StructType* _struct) final { TGE_ASSERT(false, "Types should not be entered.Catching up a variable should be enough"); }
-    virtual void visit(const Shader::CompiledShader* compiled_shader) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::Pass* _pass) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::Type* type_stmt) final { TGE_ASSERT(false, "Types should not be entered.Catching up a variable should be enough"); }
     virtual void visit(const Shader::Buffer* buffer) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
@@ -522,10 +514,10 @@ class Generator: public Shader::VisitorInterface
     size_t                     m_StructBufferBinding = 0;
 
     bool                       m_Valid;
-    Shader::EffectDescription  m_Effect;
+    Shader::EffectDescription& m_Effect;
     FileLoader*                m_FileLoader;
 public:
-    Generator(Shader::Driver& driver, const char* filename, FileLoader* include_loader);
+    Generator(Shader::Driver& driver, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader);
     virtual ~Generator();
 
     virtual void visit(const Location& loc) final { m_RawImport.visit(loc); }
@@ -560,15 +552,11 @@ public:
     virtual void visit(const Shader::CaseStatement* case_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::JumpStatement* jump_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const Shader::Profile* _profile) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const Shader::Technique* _technique) final;
     virtual void visit(const Shader::Import* _import) final;
     virtual void visit(const Shader::ShaderDeclaration* _shader) final;
     virtual void visit(const Shader::StructType* _struct) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::FunctionDefinition* func_def) final;
     virtual void visit(const Shader::FunctionDeclaration* func_decl) final;
-    virtual void visit(const Shader::CompiledShader* compiled_shader) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const Shader::Pass* _pass) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Type* type_stmt) final;
     virtual void visit(const Shader::Buffer* buffer) final;
@@ -582,12 +570,11 @@ public:
     virtual void visit(const Shader::Value<Shader::ShaderType>*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
 
     bool isValid() const { return m_Valid; }
-    
-    Shader::EffectDescription getEffect() const { return m_Effect; }
 };
 
-Generator::Generator(Shader::Driver& driver, const char* filename, FileLoader* include_loader)
+Generator::Generator(Shader::Driver& driver, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader)
     :   m_Driver(driver),
+        m_Effect(effect),
         m_RawImport(driver, filename, m_RawImportStream, AST::TGE_AST_PRINT_LINE_LOCATION),
         m_Valid(true),
         m_FileLoader(include_loader) {}
@@ -633,101 +620,6 @@ void Generator::visit(const Shader::Buffer* _buffer)
     m_RawImport.visit(_buffer);
 
     ConvertBuffer(_buffer, &m_Effect);
-}
-
-void Generator::visit(const Shader::Technique* _technique)
-{
-    // Techniques are used for gathering shaders in passes. The layout resembles the one in HLSL FX files.
-    for(size_t i = 0, iend = m_Effect.getTechniqueCount(); i < iend; ++i)
-        if(m_Effect.getTechnique(i).getName() == _technique->getNodeName())
-        {
-            Log(LogLevel::Error, "technique already specified: ", _technique->getNodeName());
-            m_Valid = false;
-            return;
-        }
-    Shader::TechniqueDescription technique_desc(_technique->getNodeName());
-
-    auto* technique_body = _technique->getBody();
-    TGE_ASSERT(technique_body->current_front(), "Expected valid technique body");
-    if(*technique_body->next())
-    {
-        Log(LogLevel::Error, "TODO: more than one pass is currently unsupported for this back-end");
-        m_Valid = false;
-        return;
-    }
-    auto* pass = technique_body->current_front()->extract<Shader::Pass>();
-    Shader::PassDescription pass_desc(pass->getNodeName());
-    for(auto j = pass->getBody()->current(); j != pass->getBody()->end(); ++j)
-    {
-        auto* function_call = j->extract<Shader::FunctionCall>();
-        auto func_name = function_call->getNodeName();
-        Shader::ShaderType current_shader_type;
-        if(func_name == "SetVertexShader")
-            current_shader_type = Shader::ShaderType::VertexShader;
-        else if(func_name == "SetTessControlShader")
-            current_shader_type = Shader::ShaderType::TessellationControlShader;
-        else if(func_name == "SetTessEvaluationShader")
-            current_shader_type = Shader::ShaderType::TessellationEvaluationShader;
-        else if(func_name == "SetGeometryShader")
-            current_shader_type = Shader::ShaderType::GeometryShader;
-        else if(func_name == "SetFragmentShader")
-            current_shader_type = Shader::ShaderType::FragmentShader;
-        else if(func_name == "SetComputeShader")
-            current_shader_type = Shader::ShaderType::ComputeShader;
-        else
-        {
-            Log(LogLevel::Error, "Unexpected function call in technique \"", _technique->getNodeName(), "\": ", func_name);
-            m_Valid = false;
-            return;
-        }
-
-
-        auto args = function_call->getArguments();
-        TGE_ASSERT(args && args->current_front()->getNodeType() == Shader::TGE_EFFECT_FUNCTION_CALL, "The declaration is expected to be function call");
-        auto compile_phase = args->current_front()->extract<Shader::FunctionCall>();
-        if(compile_phase->getFunction()->getNodeName() != "CompileShader")
-        {
-            Log(LogLevel::Error, "Unexpected function call in technique \"",  _technique->getNodeName(), "\"; CompileShader expected: ", func_name);
-            m_Valid = false;
-            return;
-        }
-        auto cp_args = compile_phase->getArguments();
-        TGE_ASSERT(cp_args->current_front(), "Expected valid arguments");
-        auto profile_instance = cp_args->current_front()->extract<Shader::Variable>();
-        auto shader_constructor_call = cp_args->next()->get()->current_front()->extract<Shader::ConstructorCall>();
-        auto shader_type = shader_constructor_call->getType()->extract<Shader::ShaderDeclaration>();
-
-        auto profile_name = profile_instance->getNodeName();
-        string _version = ConvertGLSLVersionToHLSL(current_shader_type, profile_name);
-        if(_version.empty())
-        {
-            m_Valid = false;
-            return;
-        }
-        
-        auto shader_name = shader_type->getNodeName();
-        size_t i, iend;
-        for(i = 0, iend = m_Effect.getShaderCount(); i < iend; ++i)
-            if(m_Effect.getShader(i).getName() == shader_name)
-                break;
-        if(i == iend)
-        {
-            Log(LogLevel::Error, "Undefined shader: ", shader_name);
-            m_Valid = false;
-            return;
-        }
-        if(m_Effect.getShader(i).getShaderType() != current_shader_type)
-        {
-            Log(LogLevel::Error, "Shader type mismatches with the type that is being compiled: ", shader_name);
-            m_Valid = false;
-            return;
-        }
-
-        Shader::PassShaderDescription shader_desc(i, _version);
-        pass_desc.addShader(shader_desc);
-    }
-    technique_desc.addPass(pass_desc);
-    m_Effect.addTechnique(technique_desc);
 }
 
 void Generator::visit(const Shader::Declaration* decl)
@@ -780,7 +672,7 @@ void Generator::visit(const AST::ListElement* lst)
 
 void Generator::visit(const Shader::Type* type_stmt)
 {
-    TGE_ASSERT(type_stmt->getTypeEnum() == Shader::ElementType::Shader, "Unexpected top level type declaration");
+    TGE_ASSERT(type_stmt->getTypeEnum() == Shader::ElementType::Struct, "Unexpected top level type declaration");
     type_stmt->accept(this);
 }
 
@@ -823,7 +715,7 @@ void Generator::visit(const Shader::Import* _import)
 
 void Generator::visit(const Shader::ShaderDeclaration* _shader)
 {
-    Shader::ShaderDescription shader_desc(_shader->getType(), _shader->getNodeName());
+    std::unique_ptr<Shader::ShaderDescription> shader_desc(new Shader::ShaderDescription);
 
     ShaderSignature             input_signature,
                                 output_signature,
@@ -982,7 +874,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
 
     if(entrypoint == nullptr)
     {
-        Log(LogLevel::Error, "Shader must contain valid entrypoint: ", _shader->getNodeName());
+        Log(LogLevel::Error, "Shader must contain valid entrypoint: ", ConvertShaderTypeToText(_shader->getType()));
         m_Valid = false;
         return;
     }
@@ -996,7 +888,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     else
         ss << "shader_output_signature__ ";
     
-    ss << _shader->getNodeName() << "(";
+    ss << "TempestShaderMain(";
     if(!input_signature.empty())
         ss << "shader_input_signature__ shader_in__";
     // TODO: Add any stuff that are needed by different shading stages.
@@ -1014,8 +906,14 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     ss << "\treturn shader_out__;\n"
        << "}\n";
     
-    shader_desc.appendContent(ss.str());
-    m_Effect.addShader(shader_desc);
+    shader_desc->appendContent(ss.str());
+    if(!m_Effect.trySetShader(_shader->getType(), shader_desc.release()))
+    {
+        Log(LogLevel::Error, "Duplicate shader types: ", ConvertShaderTypeToText(_shader->getType()), "\n"
+                             "Try using \"options\" to eliminate some of the shaders.");
+        m_Valid = false;
+        return;
+    }
     
     if(!common_printer.isValid() ||
        !in_printer.isValid() ||
@@ -1054,9 +952,8 @@ bool LoadEffect(const string& filename, FileLoader* loader, uint32 flags, Shader
     if(!root_node)
         return false;
 
-    DXFX::Generator _generator(effect_driver, filename.c_str(), loader);
+    DXFX::Generator _generator(effect_driver, effect, filename.c_str(), loader);
     _generator.visit(root_node);
-    effect = _generator.getEffect();
     return _generator.isValid();
 }
 }

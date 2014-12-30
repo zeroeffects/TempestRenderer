@@ -88,8 +88,6 @@
 %token <TypeRef>        T_FLOAT                     "float"
 %token <TypeRef>        T_BOOLEAN                   "boolean"
 %token <StringLiteral>  T_STRING_LITERAL            "string literal"
-%token                  T_PASS                      "pass"
-%token                  T_TECHNIQUE                 "technique"
 %token                  T_VERTEX_QUALIFIER          "vertex qualifier"
 %token                  T_GEOMETRY_QUALIFIER        "geometry qualifier"
 %token                  T_FRAGMENT_QUALIFIER        "fragment qualifier"
@@ -118,17 +116,15 @@
 %token                  T_RESOURCE_QUALIFIER        "resource qualifier"
 %token                  T_STRUCTBUFFER_QUALIFIER    "structbuffer qualifier"
 
-%type <List>                        translation_unit shader_body technique_body pass_body function_variables_list statement_list switch_statement_list
+%type <List>                        translation_unit shader_body function_variables_list statement_list switch_statement_list
 %type <List>                        layout_id_list layout_header definitions_block definitions_list function_variables_non_empty_list
 %type <List>                        function_arg_list buffer_list struct_body
 %type <void>                        external_declaration statement iteration_statement for_init_statement block_statement layout_id else_statement
 %type <void>                        selection_statement switch_statement case_statement default_statement expression_statement jump_statement
-%type <void>                        definition_pair definition_value effect_file
+%type <void>                        definition_pair definition_value effect_file shader
 %type <Buffer>                      buffer buffer_declaration
 %type <Import>                      import
-%type <TypeRef>                     shader struct_declaration
-%type <Technique>                   technique
-%type <Pass>                        pass
+%type <TypeRef>                     struct_declaration
 %type <VariableRef>                 variable output_variable interpolation_variable invariant_variable const_variable variable_with_layout
 %type <VariableRef>                 function_variable gvariable buffer_variable
 %type <void>                        function
@@ -189,7 +185,6 @@ translation_unit
 external_declaration
     : import                                                { $$ = $1; }
     | shader                                                { $$ = $1; }
-    | technique                                             { $$ = $1; }
     | function                                              { $$ = $1; } // Some shared stuff between the shaders
     | buffer                                                { $$ = $1; }
     | struct_declaration                                    { $$ = $1; }
@@ -266,15 +261,13 @@ definition_value
     ;
 
 shader
-    : shader_type "identifier" '{'
+    : shader_type '{'
             shader_body
     '}'                                                     {
                                                                 driver.endShader();
                                                                 auto shader_type = $1;
-                                                                auto identifier = $2;
                                                                 TGE_ASSERT(shader_type, "Valid shader qualifier expected");
-                                                                TGE_ASSERT(identifier, "Valid identifier expected. Potential lexer bug.");
-                                                                $$ = driver.createStackType<ShaderDeclaration>(ToLocation(@$), shader_type->getValue(), identifier ? identifier->getValue() : string(), $4);
+                                                                $$ = CreateNode<ShaderDeclaration>(ToLocation(@$), shader_type->getValue(), $3);
                                                             }
     ;
 
@@ -289,38 +282,6 @@ shader_body
     | function shader_body                                  { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
     | invariant_declaration ';'  shader_body                { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $3); }
     | struct_declaration shader_body                        { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
-    ;
-
-technique
-    : "technique" "identifier" '{'                          { driver.beginTechnique(); }
-            technique_body
-    '}'                                                     {
-                                                                driver.endTechnique();
-                                                                auto identifier = $2;
-                                                                TGE_ASSERT(identifier, "Valid identifier expected. Potential lexer bug.");
-                                                                $$ = driver.createStackNode<Technique>(ToLocation(@$), identifier->getValue(), $5);
-                                                            }
-    ;
-
-technique_body
-    : /* empty */                                           { $$ = NodeT<List>(); }
-    | pass technique_body                                   { $$ = CreateNode<List>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
-    ;
-
-pass
-    : "pass" "identifier" '{'                               { driver.beginBlock(); }
-            pass_body
-    '}'                                                     {
-                                                                driver.endBlock();
-                                                                auto identifier = $2;
-                                                                TGE_ASSERT(identifier, "Valid identifier expected. Potential lexer bug.");
-                                                                $$ = driver.createStackNode<Pass>(ToLocation(@$), identifier->getValue(), $5);
-                                                            }
-    ;
-
-pass_body
-    : /* empty */                                           { $$ = NodeT<List>(); }
-    | function_call ';' pass_body                           { auto expr = $1; $$ = CreateNode<List>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, expr ? std::move(expr->getSecond()) : AST::Node(), $3); }
     ;
 
 function

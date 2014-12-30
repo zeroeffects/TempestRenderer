@@ -38,7 +38,7 @@ class Variable;
 class BufferDescription;
 class EffectDescription;
 
-size_t ConvertStructBuffer(const Variable* var, Shader::EffectDescription* fx_desc);
+uint32 ConvertStructBuffer(const Variable* var, Shader::EffectDescription* fx_desc);
 void ConvertBuffer(const Buffer* buffer, Shader::EffectDescription* fx_desc);
 }
 }

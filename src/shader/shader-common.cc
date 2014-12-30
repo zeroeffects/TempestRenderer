@@ -28,15 +28,18 @@ namespace Tempest
 {
 namespace Shader
 {
-PassShaderDescription::PassShaderDescription(size_t shader_idx, string additional_opts)
-    :   m_ShaderIndex(shader_idx),
-        m_AdditionalOpts(additional_opts) {}
-PassShaderDescription::~PassShaderDescription() {}
- 
-void EffectDescription::clear()
+const char* ConvertShaderTypeToText(ShaderType _type)
 {
-    m_Shaders.clear();
-    m_Techniques.clear();
+    switch(_type)
+    {
+    case ShaderType::VertexShader: return "Vertex shader";
+    case ShaderType::TessellationControlShader: return "Tessellation control shader";
+    case ShaderType::TessellationEvaluationShader: return "Tessellation evaluation shader";
+    case ShaderType::GeometryShader: return "Geometry shader";
+    case ShaderType::FragmentShader: return "Fragment shader";
+    case ShaderType::ComputeShader: return "Compute shader";
+    default: return "Unknown shader type";
+    }
 }
 }
 }

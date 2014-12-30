@@ -47,11 +47,11 @@ public:
     void setSettings(uint32 settings) { m_Settings = settings; }
 
     GLShaderProgram* compileShaderProgram(const string& filename, FileLoader* file_loader,
-                                          const string& technique_name = string(), const string& pass_name = string());
+                                          const string* options = nullptr, uint32 options_count = 0);
     void destroyRenderResource(GLShaderProgram* shader_program);
 
     FileDescription* compileBinaryBlob(const string& filename, FileLoader* file_loader,
-                                       const string& technique_name = string(), const string& pass_name = string());
+                                       const string* options = nullptr, uint32 options_count = 0);
     void destroyRenderResource(FileDescription* blob);
 };
 }
