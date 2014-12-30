@@ -22,6 +22,35 @@
 *   THE SOFTWARE.
 */
 
-//#define DISABLE_MDI_BINDLESS
-//#define DISABLE_MDI
-//#define DISABLE_TEXTURE_BINDLESS
+/////////////////////
+// USER MODIFIABLE //
+/////////////////////
+//#define TEMPEST_DISABLE_MDI_BINDLESS
+//#define TEMPEST_DISABLE_MDI
+//#define TEMPEST_DISABLE_TEXTURE_BINDLESS
+
+/////////////////////////////////////
+// DON'T MODIFY THESE ONES BY HAND //
+/////////////////////////////////////
+#define TEMPEST_RESOURCE_BUFFER 0
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
+#   define TEMPEST_UBO_START 1
+#endif
+
+#if defined(TEMPEST_DISABLE_MDI) && !defined(TEMPEST_DISABLE_TEXTURE_BINDLESS)
+#   define TEMPEST_GLOBALS_BUFFER 1
+#   undef TEMPEST_UBO_START
+#   define TEMPEST_UBO_START 2
+#   define TEMPEST_SSBO_START 0
+#else
+#   define TEMPEST_GLOBALS_BUFFER 0
+#   ifdef TEMPEST_DISABLE_MDI
+#       define TEMPEST_SSBO_START 0
+#       define TEMPEST_UBO_START 1
+#   else
+#       define TEMPEST_SSBO_START 1
+#       ifndef TEMPEST_UBO_START
+#           define TEMPEST_UBO_START 0
+#       endif
+#   endif
+#endif

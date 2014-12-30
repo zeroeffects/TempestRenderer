@@ -104,7 +104,7 @@ class GLRenderingBackend
     GLRasterizerStates      m_DefaultRasterizerStates;
     GLDepthStencilStates    m_DefaultDepthStencilStates;
 
-#ifndef DISABLE_TEXTURE_BINDLESS
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     GLuint                  m_TexturesTable = 0;
     uint32                  m_ActiveTextures = 0;
 #endif

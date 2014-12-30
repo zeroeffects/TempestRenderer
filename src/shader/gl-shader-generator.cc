@@ -23,6 +23,7 @@
  */
 
 #include "tempest/shader/gl-shader-generator.hh"
+#include "tempest/graphics/opengl-backend/gl-config.hh"
 #include "tempest/shader/shader-convert-common.hh"
 #include "tempest/shader/shader-ast.hh"
 #include "tempest/shader/shader-driver.hh"
@@ -157,8 +158,8 @@ class Generator: public Shader::VisitorInterface
 
     string                     m_Version;
 
-    size_t                     m_SSBOBindingCounter = 0;
-    size_t                     m_UBOBindingCounter = 0;
+    size_t                     m_SSBOBindingCounter = TEMPEST_SSBO_START;
+    size_t                     m_UBOBindingCounter = TEMPEST_UBO_START;
     bool                       m_Valid;
     Shader::EffectDescription& m_Effect;
     FileLoader*                m_FileLoader;
@@ -226,15 +227,10 @@ Generator::Generator(Shader::EffectDescription& effect, FileLoader* include_load
         m_FileLoader(include_loader),
         m_Settings(settings)
 {
-    uint32 min_version = 400;
+    uint32 min_version = 420;
     if((m_Settings & TEMPEST_DISABLE_SSBO) == 0)
     {
         min_version = std::max(min_version, 430U);
-        ++m_SSBOBindingCounter;
-    }
-    else
-    {
-        ++m_UBOBindingCounter;
     }
     if((m_Settings & TEMPEST_DISABLE_MULTI_DRAW) == 0)
     {
@@ -243,7 +239,6 @@ Generator::Generator(Shader::EffectDescription& effect, FileLoader* include_load
     if((m_Settings & TEMPEST_DISABLE_TEXTURE_BINDLESS) == 0)
     {
         m_Version += "#extension GL_ARB_bindless_texture : require\n";
-        ++m_UBOBindingCounter; // The first one is reserved
     } // TODO: Bindless and disabled SSBO
     std::stringstream ss;
     ss << "#version " << min_version << "\n";
@@ -283,7 +278,7 @@ bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
     {
         for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
             printer->stream() << "\t";
-        printer->stream() << "layout(std140, binding = 0) uniform " << buffer->getNodeName()
+        printer->stream() << "layout(std140, binding = " TO_STRING(TEMPEST_RESOURCE_BUFFER) ") uniform " << buffer->getNodeName()
             << "{\n";
         auto* list = buffer->getBody();
         for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
@@ -332,9 +327,9 @@ static void ProcessStructBuffer(ShaderPrinter* visitor, uint64 settings, const S
     for(size_t i = 0, indentation = visitor->getIndentation(); i < indentation; ++i)
         os << "\t";
     if(settings & TEMPEST_DISABLE_SSBO)
-        os << "layout(std140, binding = 0) uniform ";
+        os << "layout(std140, binding = " TO_STRING(TEMPEST_GLOBALS_BUFFER) ") uniform ";
     else
-        os << "layout(std430, binding = 0) buffer ";
+        os << "layout(std430, binding = " TO_STRING(TEMPEST_GLOBALS_BUFFER) ") buffer ";
     os << var->getNodeName() << "_StructBuffer "
         << "{\n";
     for(size_t i = 0, indentation = visitor->getIndentation() + 1; i < indentation; ++i)

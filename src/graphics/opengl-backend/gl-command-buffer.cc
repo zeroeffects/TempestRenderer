@@ -86,7 +86,7 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
 {
     GLuint cmd_buf_size = desc.CommandCount*sizeof(DrawElementsIndirectCommand);
 
-#ifndef DISABLE_MDI
+#ifndef TEMPEST_DISABLE_MDI
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
     {
         GLuint buffers[2];
@@ -94,7 +94,7 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
         m_GPUCommandBuffer = buffers[0];
         m_ConstantBuffer = buffers[1];
         glBindBuffer(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, m_GPUCommandBuffer);
-#ifndef DISABLE_MDI_BINDLESS
+#ifndef TEMPEST_DISABLE_MDI_BINDLESS
         if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
         {
             cmd_buf_size += desc.CommandCount*(sizeof(GLuint) + MAX_VERTEX_BUFFERS*sizeof(BindlessPtrNV));
@@ -131,7 +131,7 @@ GLCommandBuffer::~GLCommandBuffer()
     {
         glDeleteSync(m_GPUFence);
     }
-#ifndef DISABLE_MDI
+#ifndef TEMPEST_DISABLE_MDI
     if(m_GPUCommandBuffer)
     {
         GLuint buffers[] = { m_GPUCommandBuffer, m_ConstantBuffer };
@@ -223,7 +223,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
             
             if(res_buf != res_start)
             {
-                glBindBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, 0, const_buf_ring, res_start - reinterpret_cast<char*>(const_buf_ptr), res_buf - res_start);
+                glBindBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring, res_start - reinterpret_cast<char*>(const_buf_ptr), res_buf - res_start);
             }
             
             glMultiDrawElementsIndirectBindlessNV(TranslateDrawMode(prev_mode), GLType::GL_UNSIGNED_SHORT,
@@ -306,7 +306,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
         
         if(res_buf != res_start)
         {
-            glBindBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, 0, const_buf_ring, res_start - reinterpret_cast<char*>(const_buf_ptr), res_buf - res_start);
+            glBindBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring, res_start - reinterpret_cast<char*>(const_buf_ptr), res_buf - res_start);
         }
         
         glMultiDrawElementsIndirectBindlessNV(TranslateDrawMode(prev_mode), GLType::GL_UNSIGNED_SHORT,
@@ -364,7 +364,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
         {
             if(res_buf != res_start)
             {
-                glBindBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, 0, const_buf_ring, res_start - reinterpret_cast<char*>(const_buf_ptr), res_buf - res_start);
+                glBindBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring, res_start - reinterpret_cast<char*>(const_buf_ptr), res_buf - res_start);
             }
             
             glMultiDrawElementsIndirect(TranslateDrawMode(prev_mode), GLType::GL_UNSIGNED_SHORT,
@@ -434,7 +434,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
         
         if(res_buf != res_start)
         {
-            glBindBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, 0, const_buf_ring,
+            glBindBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring,
                               res_start - reinterpret_cast<char*>(const_buf_ptr), res_buf - res_start);
         }
         
@@ -516,7 +516,7 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, GLDrawBatc
         if(cpu_cmd.ResourceTable)
         {
             auto size = cpu_cmd.ResourceTable->getSize();
-            glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, 0, const_buf_ring, offset, size);
+            glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring, offset, size);
             offset += size;
         }
 
@@ -532,7 +532,7 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
     if(m_CommandCount == 0)
         return;
     
-#ifndef DISABLE_MDI
+#ifndef TEMPEST_DISABLE_MDI
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
     {
         glBindBuffer(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, m_GPUCommandBuffer);
@@ -544,7 +544,7 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
             glClientWaitSync(m_GPUFence, GL_SYNC_FLUSH_COMMANDS_BIT, std::numeric_limits<uint64>::max());
             glDeleteSync(m_GPUFence);
         }
-#ifndef DISABLE_MDI_BINDLESS
+#ifndef TEMPEST_DISABLE_MDI_BINDLESS
         if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
         {
             ExecuteCommandBufferNV(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr, m_ConstantBuffer, m_ConstantBufferPtr);

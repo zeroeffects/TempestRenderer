@@ -226,7 +226,7 @@ void GLRenderingBackend::init()
         glDebugMessageCallback(&DebugLoggingCallback, nullptr);
     }
 #endif
-#if !defined(DISABLE_MDI_BINDLESS) && !defined(DISABLE_MDI)
+#if !defined(TEMPEST_DISABLE_MDI_BINDLESS) && !defined(TEMPEST_DISABLE_MDI)
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
     {
         glEnableClientState(GLClientState::GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
@@ -286,7 +286,7 @@ void GLRenderingBackend::setActiveTextures(uint32 num_textures)
         return;
     m_ActiveTextures = num_textures;
 
-#ifndef DISABLE_TEXTURE_BINDLESS
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
     {
         if(m_TexturesTable)
@@ -303,7 +303,7 @@ void GLRenderingBackend::setActiveTextures(uint32 num_textures)
 
 void GLRenderingBackend::setTextures(const GLBakedResourceTable* resource_table)
 {
-#ifndef DISABLE_TEXTURE_BINDLESS
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
     {
         TGE_ASSERT(resource_table->getSize() / sizeof(GLuint64) <= m_ActiveTextures, "Texture descriptor overflow");

@@ -51,13 +51,13 @@ GLShaderType TranslateShaderType(Shader::ShaderType type)
 GLShaderCompiler::GLShaderCompiler(uint32 settings)
     :   m_Settings(settings)
 {
-#ifndef DISABLE_MDI
+#ifndef TEMPEST_DISABLE_MDI
     if(!IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
 #endif
     {
         m_Settings |= TEMPEST_DISABLE_MULTI_DRAW|TEMPEST_DISABLE_SSBO;
     }
-#ifndef DISABLE_TEXTURE_BINDLESS
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     if(!IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
 #endif
     {
