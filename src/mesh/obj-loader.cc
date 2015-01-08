@@ -122,9 +122,10 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
         InterleaveVertices(verts, strides, num, inds, ind_count, &interm_indices, res_data);
     }
 
-    if(res_inds->size() < std::numeric_limits<uint16>::max())
+    if(interm_indices.size() < std::numeric_limits<uint16>::max())
     {
         size_t i = 0;
+        res_inds->resize(interm_indices.size());
         for(auto ind : interm_indices)
         {
             TGE_ASSERT(ind < std::numeric_limits<uint16>::max(), "Invalid index");
@@ -286,7 +287,8 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         auto& diffuse = material.DiffuseReflectivity;
         auto& specular = material.SpecularReflectivity;
     
-        auto globals_res_table = CreateResourceTable(shader_prog, "GlobalsBuffer", 1);
+        auto globals_res_table = CreateResourceTable(shader_prog, "Globals", 1);
+        TGE_ASSERT(globals_res_table, "Expecting valid table");
         globals_res_table->setResource("Globals.Transform", Imat);
         if(flags & AmbientAvailable)
         {

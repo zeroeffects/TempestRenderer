@@ -129,6 +129,7 @@ fragment shader
             {
                 uint ambient_slot, ambient_slice;
                 GetResourceIndex(Globals[DrawIndex].AmbientReflectivityMap, ambient_slot, ambient_slice);
+                ambient.xyz *= texture(Textures[ambient_slot], vec3(InterpTexCoord, float(ambient_slice))).xyz;
                 alpha *= texture(Textures[dissolve_slot], vec3(InterpTexCoord, float(dissolve_slice))).x;
             }
             @MaterialSpecular
@@ -140,7 +141,6 @@ fragment shader
                 specular.xyz *= texture(Textures[specular_slot], vec3(InterpTexCoord, float(specular_slice))).xyz;
                 specular.w = texture(Textures[specular_exp_slot], vec3(InterpTexCoord, float(specular_exp_slice))).x;
             }
-            @MaterialAmbient ambient.xyz *= texture(Textures[ambient_slot], vec3(InterpTexCoord, float(ambient_slice))).xyz;
         }
 
         vec3 color = diffuse.xyz*dot(SunDirection, normal);

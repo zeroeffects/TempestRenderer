@@ -31,7 +31,7 @@ namespace Tempest
 namespace Shader
 {
 static uint32 ConvertVariable(const string* opts, size_t opts_count, const string& base, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc);
-static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const List* list, uint32* offset, Shader::BufferDescription* buf_desc);
+static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const string& base, const List* list, uint32* offset, Shader::BufferDescription* buf_desc);
 
 static void ConvertType(const string* opts, size_t opts_count, const string& base, const Shader::Type* _type, UniformValueType* uniform_type, uint32* elem_size, uint32* offset, Shader::BufferDescription* buf_desc)
 {
@@ -148,7 +148,7 @@ static void ConvertType(const string* opts, size_t opts_count, const string& bas
         uint32 struct_offset = 0; // members are in relative offset units
         auto* struct_type = _type->extract<Shader::StructType>();
         auto* struct_body = struct_type->getBody();
-        RecursiveConvertBuffer(opts, opts_count, struct_body, &struct_offset, buf_desc);
+        RecursiveConvertBuffer(opts, opts_count, base, struct_body, &struct_offset, buf_desc);
         *uniform_type = UniformValueType::Struct;
         *elem_size = struct_offset;
     } break;
@@ -282,7 +282,7 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
     return elem_size;
 }
 
-static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const List* list, uint32* offset, Shader::BufferDescription* buf_desc)
+static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const string& base, const List* list, uint32* offset, Shader::BufferDescription* buf_desc)
 {
     for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
     {
@@ -297,7 +297,7 @@ static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const 
             auto* content = _opt->getContent();
             if(content->getNodeType() == TGE_AST_BLOCK)
             {
-                RecursiveConvertBuffer(opts, opts_count, content->extract<Block>()->getBody(), offset, buf_desc);
+                RecursiveConvertBuffer(opts, opts_count, base, content->extract<Block>()->getBody(), offset, buf_desc);
                 continue;
             }
             else if(content->getNodeType() == TGE_EFFECT_DECLARATION)
@@ -322,7 +322,7 @@ static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const 
         auto* var = decl->getVariables()->extract<Shader::Variable>();
 
         auto _type = var->getType();
-        ConvertVariable(opts, opts_count, "", var, offset, buf_desc);
+        ConvertVariable(opts, opts_count, base, var, offset, buf_desc);
     }
 }
 
@@ -331,7 +331,7 @@ void ConvertBuffer(const string* opts, size_t opts_count, const Buffer* buffer, 
     uint32 offset = 0;
     Shader::BufferDescription buf_desc(buffer->getBufferType(), buffer->getNodeName());
     auto* _list = buffer->getBody();
-    RecursiveConvertBuffer(opts, opts_count, _list, &offset, &buf_desc);
+    RecursiveConvertBuffer(opts, opts_count, "", _list, &offset, &buf_desc);
     if(buf_desc.getResiablePart() == std::numeric_limits<uint32>::max())
         buf_desc.setResizablePart(0);
     fx_desc->addBuffer(buf_desc);
