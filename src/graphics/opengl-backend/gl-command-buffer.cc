@@ -266,7 +266,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
         
         gpu_cmd.cmd.count = cpu_cmd.VertexCount;
         gpu_cmd.cmd.instanceCount = 1;
-        gpu_cmd.cmd.firstIndex = 0;
+        gpu_cmd.cmd.firstIndex = cpu_cmd.BaseIndex;
         gpu_cmd.cmd.baseVertex = cpu_cmd.BaseVertex;
         gpu_cmd.cmd.baseInstance = 0;
         gpu_cmd.indexBuffer.index = 0;
@@ -420,7 +420,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
         
         gpu_cmd.count = cpu_cmd.VertexCount;
         gpu_cmd.instanceCount = 1;
-        gpu_cmd.firstIndex = 0;
+        gpu_cmd.firstIndex = cpu_cmd.BaseIndex;
         gpu_cmd.baseVertex = cpu_cmd.BaseVertex;
         gpu_cmd.baseInstance = 0;
 
@@ -521,7 +521,8 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, GLDrawBatc
         }
 
         auto mode = TranslateDrawMode(prev_state->getPrimitiveType());
-        glDrawElementsBaseVertex(mode, cpu_cmd.VertexCount, GLType::GL_UNSIGNED_SHORT, nullptr, cpu_cmd.BaseVertex);
+        glDrawElementsBaseVertex(mode, cpu_cmd.VertexCount, GLType::GL_UNSIGNED_SHORT,
+                                 reinterpret_cast<char*>(nullptr) + cpu_cmd.BaseIndex, cpu_cmd.BaseVertex);
         CheckOpenGL();
     }
 }

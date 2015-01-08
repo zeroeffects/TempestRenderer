@@ -24,13 +24,9 @@
 
 options
 {
-    @MaterialSpecular,
-    @MaterialAmbient,
-    @MaterialFormat
-    {
-        @MaterialTexture,
-        @MaterialColor
-    }
+    MaterialSpecular,
+    MaterialAmbient,
+    MaterialTexture
 }
 
 constant buffer SceneParams
@@ -62,12 +58,11 @@ struct GlobalsDesc
 void GetResourceIndex(in uint packed_res_idx, out uint tex_slot, out uint tex_slice)
 {
     tex_slot  = packed_res_idx >> 16;
-    tex_slice = packed_res_idx & 0xFFFF;
+    tex_slice = packed_res_idx & 0xFFFFu;
 }
 
-// The main reason is APIs that support some non-bindless weirdness for the old hardware
-// sake.
-resources ResourcesTable
+// The main reason is APIs that support some non-bindless weirdness for the old hardware sake.
+resource buffer ResourcesTable
 {
     sampler2DArray Textures[16];
 }
@@ -76,7 +71,7 @@ structbuffer GlobalsDesc Globals;
 
 // TODO: Position should be vec3
 
-vertex shader VS
+vertex shader
 {
     in vec4 Position;
     @MaterialTexture in vec2 TexCoord;
@@ -84,7 +79,7 @@ vertex shader VS
     
     out vec2 InterpTexCoord;
     out vec3 InterpNormal;
-    out vec3 InterpView;
+    @MaterialSpecular out vec3 InterpView;
     
     flat out int DrawIndex;
     
@@ -93,52 +88,62 @@ vertex shader VS
         DrawIndex = tge_DrawID;
         @MaterialTexture InterpTexCoord = TexCoord;
         InterpNormal = Normal;
-        InterpView = CameraPosition - Position.xyz/Position.w;
+        @MaterialSpecular InterpView = CameraPosition - Position.xyz/Position.w;
         gl_Position = Globals[tge_DrawID].Transform*Position;
     }
 }
 
-fragment shader FS
+fragment shader
 {
     flat in int DrawIndex;
 
     @MaterialTexture in vec2 InterpTexCoord;
     in vec3 InterpNormal;
-    in vec3 InterpView;
+    @MaterialSpecular in vec3 InterpView;
     
     out vec4 FragmentColor;
     
     void main()
     {
-        vec3 eye = normalize(InterpView);
+        @MaterialSpecular vec3 eye = normalize(InterpView);
         vec3 normal = normalize(InterpNormal);
-        vec4 ambient, diffuse, specular;
-        vec4 ambient = Globals[DrawIndex].AmbientDissolve;
+        float alpha = 1.0;
+        @MaterialAmbient
+        {
+            vec4 ambient = Globals[DrawIndex].AmbientDissolve;
+            alpha = ambient.w;
+        }
         vec4 diffuse = Globals[DrawIndex].DiffuseReflectivity;
-        @MaterialSpecular vec4 specular = Globals[DrawIndex].Specular.xyz;
+        @MaterialSpecular vec4 specular = Globals[DrawIndex].Specular;
     
         @MaterialTexture
         {
-            uint ambient_slot, ambient_slice,
-                 diffuse_slot, diffuse_slice,
-                 specular_slot, specular_slice,
-                 dissolve_slot, dissolve_slice,
-                 specular_exp_slot, specular_exp_slice;
+            uint diffuse_slot, diffuse_slice,
+                 dissolve_slot, dissolve_slice;
 
-            GetResourceIndex(Globals[DrawIndex].AmbientReflectivityMap, ambient_slot, ambient_slice);
-            GetResourceIndex(Globals[DrawIndex].DiffuseReflectivityMap, diffuse_slot, diffuse_slice);
-            GetResourceIndex(Globals[DrawIndex].SpecularReflectivityMap, specular_slot, specular_slice);
             GetResourceIndex(Globals[DrawIndex].DissolveMap, dissolve_slot, dissolve_slice);
-            GetResourceIndex(Globals[DrawIndex].SpecularExponentMap, specular_exp_slot, specular_exp_slice);
+            GetResourceIndex(Globals[DrawIndex].DiffuseReflectivityMap, diffuse_slot, diffuse_slice);
 
-            diffuse.xyz *= texture(Textures[diffuse_slot], vec3(InterpTexCoord, float(diffuse_slice)).xyz;
-            specular.xyz *= texture(Textures[specular_slot], vec3(InterpTexCoord, float(specular_slice)).xyz;
-            ambient.w *= texture(Textures[dissolve_slot], vec3(InterpTexCoord, float(dissolve_slice)).x;
-            @MaterialSpecular specular.w = texture(Textures[specular_exp_slot], vec3(InterpTexCoord, specular_exp_slice)).x;
-            @MaterialAmbient ambient.xyz *= texture(Textures[ambient_slot], vec3(InterpTexCoord, float(ambient_slice)).xyz;
+            diffuse.xyz *= texture(Textures[diffuse_slot], vec3(InterpTexCoord, float(diffuse_slice))).xyz;
+            @MaterialAmbient
+            {
+                uint ambient_slot, ambient_slice;
+                GetResourceIndex(Globals[DrawIndex].AmbientReflectivityMap, ambient_slot, ambient_slice);
+                alpha *= texture(Textures[dissolve_slot], vec3(InterpTexCoord, float(dissolve_slice))).x;
+            }
+            @MaterialSpecular
+            {
+                uint specular_slot, specular_slice,
+                     specular_exp_slot, specular_exp_slice;
+                GetResourceIndex(Globals[DrawIndex].SpecularReflectivityMap, specular_slot, specular_slice);
+                GetResourceIndex(Globals[DrawIndex].SpecularExponentMap, specular_exp_slot, specular_exp_slice);
+                specular.xyz *= texture(Textures[specular_slot], vec3(InterpTexCoord, float(specular_slice))).xyz;
+                specular.w = texture(Textures[specular_exp_slot], vec3(InterpTexCoord, float(specular_exp_slice))).x;
+            }
+            @MaterialAmbient ambient.xyz *= texture(Textures[ambient_slot], vec3(InterpTexCoord, float(ambient_slice))).xyz;
         }
 
-        vec3 color = diffuse.xyz*dot(light, normal);
+        vec3 color = diffuse.xyz*dot(SunDirection, normal);
 
         @MaterialSpecular
         {
@@ -148,6 +153,6 @@ fragment shader FS
 
         @MaterialAmbient color += ambient.xyz;
         
-        FragmentColor = vec4(color, ambient.w);
+        FragmentColor = vec4(color, alpha);
     }
 }

@@ -31,6 +31,8 @@
 #include "tempest/shader/shader-common.hh"
 #include "tempest/parser/ast.hh"
 
+#include <algorithm>
+
 namespace Tempest
 {
 namespace Shader
@@ -67,7 +69,10 @@ enum NodeType
     TGE_EFFECT_RETURN_STATEMENT,
     TGE_EFFECT_EXPRESSION,
     TGE_EFFECT_BUFFER,
-    TGE_EFFECT_SHADER_DECLARATION
+    TGE_EFFECT_SHADER_DECLARATION,
+    TGE_EFFECT_OPTIONS_DECLARATION,
+    TGE_EFFECT_OPTIONAL,
+    TGE_EFFECT_OPTION
 };
 
 enum BinaryOperatorType
@@ -131,6 +136,8 @@ class Typedef;
 class ConstructorCall;
 class Import;
 class ShaderDeclaration;
+class OptionsDeclaration;
+class Optional;
 class UnaryOperator;
 class BinaryOperator;
 class TernaryIf;
@@ -145,6 +152,7 @@ class JumpStatement;
 class ReturnStatement;
 class VisitorInterface;
 class Buffer;
+class Option;
 class ShaderDeclaration;
 typedef Value<string> Identifier;
 typedef Intermediate<const Type*, NodeT<Identifier>> DeclarationInfo;
@@ -156,11 +164,15 @@ typedef Value<ShaderType> ValueShaderType;
 typedef AST::Reference<FunctionSet> FunctionSetRef;
 typedef AST::Reference<Variable> VariableRef;
 typedef AST::Reference<Type> TypeRef;
+typedef AST::Reference<Option> OptionRef;
 }
 
 namespace AST
 {
 TGE_AST_NODE_INFO(Shader::ShaderDeclaration, Shader::TGE_EFFECT_SHADER_DECLARATION, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::OptionsDeclaration, Shader::TGE_EFFECT_OPTIONS_DECLARATION, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Optional, Shader::TGE_EFFECT_OPTIONAL, Shader::VisitorInterface)
+TGE_AST_NODE_INFO(Shader::Option, Shader::TGE_EFFECT_OPTION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::FunctionDeclaration, Shader::TGE_EFFECT_FUNCTION_DECLARATION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::FunctionDefinition, Shader::TGE_EFFECT_FUNCTION_DEFINITION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::FunctionSet, Shader::TGE_EFFECT_FUNCTION_SET, Shader::VisitorInterface)
@@ -599,7 +611,7 @@ public:
     const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const;
 
     const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
-    const Type* getArrayElementType() const;
+    const Type* getArrayElementType() const { return m_Type; }
     bool hasValidConstructor(const List* var_list) const;
 };
 
@@ -1022,7 +1034,7 @@ class ShaderDeclaration
     ShaderType  m_Type;
     NodeT<List> m_Body;
 public:
-    ShaderDeclaration::ShaderDeclaration(ShaderType _type, NodeT<List> body)
+    ShaderDeclaration(ShaderType _type, NodeT<List> body)
         :   m_Type(_type),
             m_Body(std::move(body)) {}
     ~ShaderDeclaration()=default;
@@ -1033,6 +1045,60 @@ public:
 
     List* getBody() { return m_Body.get(); }
     const List* getBody() const { return m_Body.get(); }
+};
+
+class Option
+{
+    string m_Name;
+public:
+    Option(string name)
+        : m_Name(name) {}
+    ~Option() {}
+
+    bool isBlockStatement() const { return false; }
+    virtual string getNodeName() const { return m_Name; }
+};
+
+class Optional
+{
+    const Option*    m_Option;
+    AST::Node        m_Content;
+public:
+    Optional(const Option* _opt, AST::Node _content)
+        :   m_Option(_opt),
+            m_Content(std::move(_content)) {}
+    ~Optional() = default;
+
+    const Option* getOption() const { return m_Option; }
+
+    bool isBlockStatement() const { return true; }
+    string getNodeName() const { return m_Option->getNodeName(); }
+
+    AST::Node* getContent() { return &m_Content; }
+    const AST::Node* getContent() const { return &m_Content; }
+};
+
+typedef std::vector<const Option*> OptionVector;
+
+class OptionsDeclaration
+{
+    OptionVector m_Options;
+public:
+    OptionsDeclaration() = default;
+    ~OptionsDeclaration() = default;
+
+    bool isBlockStatement() const { return true; }
+    virtual string getNodeName() const { return "options"; }
+    
+    void addOption(const Option* opt) { m_Options.push_back(opt); }
+    string getOption(size_t idx) const { return m_Options[idx]->getNodeName(); }
+    size_t getOptionCount() const { return m_Options.size(); }
+    size_t getOptionIndex(const string& name) const
+    {
+        auto begin_iter = std::begin(m_Options),
+             end_iter = std::end(m_Options);
+        return std::find_if(begin_iter, end_iter, [&name](const Option* ref) { return ref->getNodeName() == name; }) - begin_iter;
+    }
 };
 
 class VisitorInterface: public AST::VisitorInterface
@@ -1070,6 +1136,9 @@ public:
     virtual void visit(const Expression*)=0;
     virtual void visit(const Import*)=0;
 	virtual void visit(const ShaderDeclaration*) = 0;
+    virtual void visit(const OptionsDeclaration*) = 0;
+    virtual void visit(const Optional*) = 0;
+    virtual void visit(const Option* _opt) = 0;
     virtual void visit(const StructType*)=0;
     virtual void visit(const IfStatement*)=0;
     virtual void visit(const Buffer*)=0;
@@ -1108,9 +1177,13 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
 void PrintNode(AST::PrinterInfrastructure* printer, const JumpStatement* jump_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const ReturnStatement* return_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const ShaderDeclaration* shader_stmt);
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const OptionsDeclaration* opt_decl);
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Optional* opt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct);
 void PrintNode(VisitorInterface* visitor, const Type* type_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const IfStatement* if_stmt);
+void PrintOptional(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Optional* _opt, const string* opts, size_t opts_count);
+inline void PrintNode(AST::PrinterInfrastructure* printer, const Shader::Option* _opt) { printer->stream() << _opt->getNodeName(); }
 
 void PrintDeclaration(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct);
 
@@ -1165,6 +1238,9 @@ public:
     virtual void visit(const ReturnStatement* return_stmt) override { PrintNode(this, &m_Printer, return_stmt); }
     virtual void visit(const Import* _import) override { _import->printList(this, &m_Printer, "import"); }
 	virtual void visit(const ShaderDeclaration* _shader) override { PrintNode(this, &m_Printer, _shader); }
+    virtual void visit(const OptionsDeclaration* _opt_decl) override { PrintNode(this, &m_Printer, _opt_decl); }
+    virtual void visit(const Optional* _opt) override { PrintNode(this, &m_Printer, _opt); }
+    virtual void visit(const Option* _opt) override { PrintNode(&m_Printer, _opt); }
     virtual void visit(const StructType* _struct) override { PrintNode(this, &m_Printer, _struct); }
     virtual void visit(const IfStatement* if_stmt) override { PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Type* type_stmt) override { PrintNode(this, type_stmt); }

@@ -16,10 +16,10 @@ TGE_TEST("Testing shader compiler feature")
         fs.close();
         
         Tempest::Shader::EffectDescription fx;
-        auto status = Tempest::DXFX::LoadEffect("test.tfx", nullptr, 0, fx);
+        auto status = Tempest::DXFX::LoadEffect("test.tfx", nullptr, nullptr, 0, 0, fx);
         TGE_ASSERT(status, "Loading effect file failed.");
         
-        status = Tempest::GLFX::LoadEffect("test.tfx", nullptr, 0, fx);
+        status = Tempest::GLFX::LoadEffect("test.tfx", nullptr, nullptr, 0, 0, fx);
         TGE_ASSERT(status, "Loading effect file failed.");
     }
 }

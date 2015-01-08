@@ -25,6 +25,7 @@
 #ifndef TEMPEST_RENDERING_DEFS_HH
 #define TEMPEST_RENDERING_DEFS_HH
 
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/utils/types.hh"
 #include "tempest/utils/assert.hh"
 
@@ -239,7 +240,19 @@ inline uint32 UniformValueTypeSize(UniformValueType uniform_value)
     case UniformValueType::Matrix3x4: return 3*4*sizeof(float);
     case UniformValueType::Matrix4x2: return 4*2*sizeof(float);
     case UniformValueType::Matrix4x3: return 4*3*sizeof(float);
-    case UniformValueType::Texture: return sizeof(uint64);
+    case UniformValueType::Texture:
+    {
+    #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
+        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+        {
+            return sizeof(uint64);
+        }
+        else
+    #endif
+        {
+            return sizeof(uint32);
+        }
+    }
     case UniformValueType::Struct: return 1;
     default: TGE_ASSERT(false, "Unsupported uniform value type"); break;
     }

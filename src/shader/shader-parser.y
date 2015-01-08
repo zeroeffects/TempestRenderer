@@ -95,6 +95,7 @@
 %token <TypeRef>        T_TYPE                      "type"
 %token <FunctionSetRef> T_FUNCTION                  "function"
 %token <VariableRef>    T_VARIABLE                  "variable"
+%token <OptionRef>      T_OPTION                    "option"
 %token                  T_LAYOUT_QUALIFIER          "layout qualifier"
 %token                  T_INVARIANT_QUALIFIER       "invariant qualifier"
 %token                  T_CONST_QUALIFIER           "const qualifier"
@@ -115,13 +116,17 @@
 %token                  T_UNIFORM_QUALIFIER         "uniform qualifier"
 %token                  T_RESOURCE_QUALIFIER        "resource qualifier"
 %token                  T_STRUCTBUFFER_QUALIFIER    "structbuffer qualifier"
+%token                  T_OPTIONS                   "options"
 
 %type <List>                        translation_unit shader_body function_variables_list statement_list switch_statement_list
 %type <List>                        layout_id_list layout_header definitions_block definitions_list function_variables_non_empty_list
-%type <List>                        function_arg_list buffer_list struct_body
+%type <List>                        function_arg_list buffer_list struct_body ext_decl_list
+%type <OptionsDeclaration>          options_body
 %type <void>                        external_declaration statement iteration_statement for_init_statement block_statement layout_id else_statement
 %type <void>                        selection_statement switch_statement case_statement default_statement expression_statement jump_statement
-%type <void>                        definition_pair definition_value effect_file shader
+%type <void>                        definition_pair definition_value effect_file shader options removable_ext_declaration optional_ext_declaration
+%type <void>                        shader_ext_declaration optional_shader_ext_decl struct_members option_statement
+%type <OptionRef>                   option_declaration
 %type <Buffer>                      buffer buffer_declaration
 %type <Import>                      import
 %type <TypeRef>                     struct_declaration
@@ -183,13 +188,59 @@ translation_unit
     ;
 
 external_declaration
+    : removable_ext_declaration                             { $$ = $1; }
+    | options                                               { $$ = $1; }
+    ;
+
+removable_ext_declaration
     : import                                                { $$ = $1; }
     | shader                                                { $$ = $1; }
     | function                                              { $$ = $1; } // Some shared stuff between the shaders
     | buffer                                                { $$ = $1; }
     | struct_declaration                                    { $$ = $1; }
+    | optional_ext_declaration                              { $$ = $1; }
     ;
 
+option_declaration
+    : '@' "option"                                          { auto opt = $2; driver.beginOptionBlock(opt.get()); $$ = std::move(opt); }
+    ;
+
+optional_ext_declaration
+    : option_declaration removable_ext_declaration          { $$ = CreateNodeTyped<Optional>(ToLocation(@$), $1.get(), $2); driver.endOptionBlock();  }
+    | option_declaration '{'
+          ext_decl_list
+      '}'                                                   { $$ = CreateNodeTyped<Optional>(ToLocation(@$), $1.get(), CreateNode<Block>(ToLocation(@2), $3)); driver.endOptionBlock(); }
+    ;
+
+ext_decl_list
+    : /* empty */                                           { $$ = NodeT<List>(); }
+    | removable_ext_declaration ext_decl_list               { $$ = CreateNodeTyped<List>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
+    ;
+
+options
+    : "options" '{'
+         options_body
+      '}'                                                   { $$ = $3; }
+    ;
+
+    // TODO: fix order
+options_body
+    : "identifier"                                          {
+                                                                auto root = CreateNodeTyped<OptionsDeclaration>(ToLocation(@$));
+                                                                // TODO: Optimize with string ref
+                                                                auto identifier = $1;
+                                                                auto option = driver.createStackNode<Option>(ToLocation(@$), identifier->getValue());
+                                                                root->addOption(option.get());
+                                                                $$ = std::move(root);
+                                                            }
+    | options_body ',' "identifier"                         {
+                                                                auto root = $1;
+                                                                auto identifier = $3;
+                                                                auto option = driver.createStackNode<Option>(ToLocation(@$), identifier->getValue());
+                                                                root->addOption(option.get());
+                                                                $$ = std::move(root);
+                                                            }
+    ;
 
 buffer
     : "constant qualifier" buffer_declaration               { auto buf = $2; buf->setBufferType(BufferType::Constant); $$ = std::move(buf); }
@@ -277,11 +328,23 @@ shader_type
     ;
 
 shader_body
-    :   /* empty */                                         { $$ = NodeT<List>(); }
-    | gvariable shader_body                                 { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, CreateNode<Declaration>(ToLocation(@$), $1), $2); }
-    | function shader_body                                  { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
-    | invariant_declaration ';'  shader_body                { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $3); }
-    | struct_declaration shader_body                        { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
+    : /* empty */                                           { $$ = NodeT<List>(); }
+    | shader_ext_declaration shader_body                    { $$ = CreateNode<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
+    ;
+
+shader_ext_declaration
+    : gvariable                                             { $$ = CreateNode<Declaration>(ToLocation(@$), $1); }
+    | function                                              { $$ = $1; }
+    | invariant_declaration ';'                             { $$ = $1; }
+    | struct_declaration                                    { $$ = $1; }
+    | optional_shader_ext_decl                              { $$ = $1; }
+    ;
+
+optional_shader_ext_decl
+    : option_declaration shader_ext_declaration             { $$ = CreateNodeTyped<Optional>(ToLocation(@$), $1.get(), $2);driver.endOptionBlock(); }
+    | option_declaration '{'
+          shader_body
+      '}'                                                   { $$ = CreateNodeTyped<Optional>(ToLocation(@$), $1.get(), CreateNode<Block>(ToLocation(@2), $3)); driver.endOptionBlock();  }
     ;
 
 function
@@ -305,7 +368,11 @@ struct_declaration
 
 struct_body
     : /* empty */                                           { $$ = AST::NodeT<List>(); }
-    | basic_variable_declaration ';' struct_body            {
+    | struct_members struct_body                            { $$ = CreateNodeTyped<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, $1, $2); }
+    ;
+
+struct_members
+    : basic_variable_declaration ';'                        {
                                                                 auto decl = $1;
                                                                 AST::Node result;
                                                                 if(decl && decl->getSecond())
@@ -318,8 +385,27 @@ struct_body
                                                                         moved_decl = std::move(*decl->getSecond()->current_front());
                                                                     result = CreateNode<Declaration>(ToLocation(@$), std::move(moved_decl));
                                                                 }
-                                                                $$ = CreateNodeTyped<ListElement>(ToLocation(@$), TGE_AST_SEMICOLON_SEPARATED_LIST, std::move(result), $3);
+                                                                $$ = std::move(result);
                                                             }
+    | option_declaration basic_variable_declaration ';'     {
+                                                                auto decl = $2;
+                                                                AST::Node result;
+                                                                if(decl && decl->getSecond())
+                                                                {
+                                                                    // Reduce nodes by removing lists of a single node and placing the node directly in the AST
+                                                                    AST::Node moved_decl;
+                                                                    if(*decl->getSecond()->next())
+                                                                        moved_decl = std::move(decl->getSecond());
+                                                                    else
+                                                                        moved_decl = std::move(*decl->getSecond()->current_front());
+                                                                    result = CreateNode<Optional>(ToLocation(@$), $1.get(), CreateNode<Declaration>(ToLocation(@2), std::move(moved_decl)));
+                                                                 }
+                                                                 $$ = std::move(result);
+                                                                 driver.endOptionBlock();
+                                                            }
+    | option_declaration '{'
+          struct_body
+      '}'                                                   { $$ = CreateNode<Optional>(ToLocation(@$), $1.get(), CreateNode<Block>(ToLocation(@2), $3)); driver.endOptionBlock();  }
     ;
 
 function_declaration
@@ -445,6 +531,14 @@ statement
     | expression_statement                                  { $$ = $1; }
     | block_statement                                       { $$ = $1; }
     | jump_statement                                        { $$ = $1; }
+    | option_statement                                      { $$ = $1; }
+    ;
+
+option_statement
+    : option_declaration statement                          { $$ = CreateNodeTyped<Optional>(ToLocation(@$), $1.get(), $2); driver.endOptionBlock(); }
+    | option_declaration '{'
+          statement_list
+      '}'                                                   { $$ = CreateNodeTyped<Optional>(ToLocation(@$), $1.get(), CreateNode<Block>(ToLocation(@2), $3)); driver.endOptionBlock(); }
     ;
 
 iteration_statement
@@ -628,8 +722,13 @@ basic_variable_declaration
     | variable_declaration ',' "variable" '[' optional_expression ']' { ErrorRedefinition(driver, ToLocation(@$), $3); $1; $5; $$ = NodeT<Variable>(); }
     | variable                                              {
                                                                 auto var = $1;
-                                                                const Type* _type = var->getType();
-                                                                $$ = var ? CreateNodeTyped<Expression>(ToLocation(@$), _type, CreateNode<ListElement>(ToLocation(@$), TGE_AST_COMMA_SEPARATED_LIST, std::move(var))) : NodeT<Expression>();
+                                                                NodeT<Expression> expr;
+                                                                if(var)
+                                                                {
+                                                                    const Type* _type = var->getType();
+                                                                    expr = CreateNodeTyped<Expression>(ToLocation(@$), _type, CreateNode<ListElement>(ToLocation(@$), TGE_AST_COMMA_SEPARATED_LIST, std::move(var)));
+                                                                }
+                                                                $$ = std::move(expr);
                                                             }
     ;
 

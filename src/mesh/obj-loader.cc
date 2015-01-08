@@ -40,8 +40,8 @@ namespace Tempest
 {
 class FileLoader;
 
-void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoader::GroupHeader& hdr, size_t pos_size, size_t tc_size, size_t norm_size,
-                      std::vector<int32>* res_inds, std::vector<char>* res_data)
+static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoader::GroupHeader& hdr, size_t pos_size, size_t tc_size, size_t norm_size,
+                             std::vector<uint16>* res_inds, std::vector<char>* res_data)
 {
     int32        strides[3];
     const int32* inds[3];
@@ -116,14 +116,32 @@ void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoader::Gro
         strides[num++] = sizeof(gen_norms.front());
     }
     
+    std::vector<int32> interm_indices;
     if(num != 0)
     {
-        InterleaveVertices(verts, strides, num, inds, ind_count, res_inds, res_data);
+        InterleaveVertices(verts, strides, num, inds, ind_count, &interm_indices, res_data);
+    }
+
+    if(res_inds->size() < std::numeric_limits<uint16>::max())
+    {
+        size_t i = 0;
+        for(auto ind : interm_indices)
+        {
+            TGE_ASSERT(ind < std::numeric_limits<uint16>::max(), "Invalid index");
+            (*res_inds)[i] = static_cast<uint16>(ind);
+        }
+    }
+    else
+    {
+        TGE_ASSERT(false, "Mesh splitting is unsupported");
     }
 }
 
-template<class TBackend, class TShaderProgram, class TDrawBatch>
-bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShaderProgram** progs, TBackend* backend, size_t* batch_count, TDrawBatch** batches)
+template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObject>
+bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
+                               TShaderProgram** progs, TBackend* backend,
+                               size_t* batch_count, TDrawBatch** batches,
+                               size_t* state_count, TStateObject*** states)
 {
     ObjLoader::Driver obj_loader_driver(Path(filename).directoryPath(), loader);
     if(loader)
@@ -145,7 +163,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
         }
     }
     
-    std::vector<int32> res_inds;
+    std::vector<uint16> res_inds;
     std::vector<char>   res_data;
     
     auto& groups = obj_loader_driver.getGroups();
@@ -155,7 +173,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
     *batch_count = groups.size();
     *batches = new TDrawBatch[groups.size()];
     
-    size_t prev_size = 0;
+    size_t prev_ind_size = 0, prev_vert_size = 0;
     
     std::vector<Tempest::VertexAttributeDescription> layout_tex
     {
@@ -171,9 +189,17 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
     };
     
     auto rt_fmt = Tempest::DataFormat::RGBA8;
+    
+    struct StateDescription
+    {
+        size_t        model;
+        TStateObject* state;
 
-    auto state_object_tex = CreateStateObject(backend, layout_tex, &rt_fmt, 1, progs[0]);
-    auto state_object_wo_tex = CreateStateObject(backend, layout_wo_tex, &rt_fmt, 1, progs[1]);
+        StateDescription(size_t _model, TStateObject* _state)
+            :   model(_model), state(std::move(_state)) {}
+    };
+    std::vector<StateDescription> pstates;
+    auto cleanup = CreateAtScopeExit([&pstates, backend] { for(auto& pstate : pstates) backend->destroyRenderResource(pstate.state); });
 
     auto& pos_ind = obj_loader_driver.getPositionIndices();
     auto& tc_ind = obj_loader_driver.getTexCoordIndices();
@@ -200,39 +226,57 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
         InterleaveInterm(obj_loader_driver, groups[i], pos_size, tc_size, norm_size, &res_inds, &res_data);
         
         auto& batch = (*batches)[i];
-        batch.VertexCount   = static_cast<uint16>(res_inds.size() - prev_size);
+        batch.VertexCount   = static_cast<uint32>(res_inds.size() - prev_ind_size);
+        batch.BaseIndex     = static_cast<uint32>(prev_ind_size);
         batch.BaseVertex    = 0;
         batch.SortKey       = 0; // This could be regenerated on the fly
-        
-        auto* shader_prog = progs[tc_size != 0 ? 0 : 1];
+        batch.VertexBuffers[0].Offset = static_cast<uint32>(prev_vert_size);
 
         auto& material = obj_loader_driver.getMaterials().at(groups[i].MaterialIndex);
-        /*
-        auto subr_res_table = CreateResourceTable(shader_prog, "$Subroutines");
+
+        enum
+        {
+            AmbientAvailable = 1 << 0,
+            SpecularAvailable = 1 << 1
+        };
+
+        size_t model = 0;
+        size_t flags = 0;
+
         switch(material.IllumModel)
         {
         default: TGE_ASSERT(false, "Unsupported illumination model");
-            // TODO: Nope no longer supported because it is hard to do cross-platform!
-            
-        case ObjMtlLoader::IlluminationModel::Diffuse:
-            subr_res_table->setSubroutine("Illum", "DiffuseDirectLight"); break;
-        case ObjMtlLoader::IlluminationModel::DiffuseAndAmbient:
-            subr_res_table->setSubroutine("Illum", "AmbientAndDiffuseDirectLight"); break;
-        case ObjMtlLoader::IlluminationModel::SpecularDiffuseAmbient:
-            subr_res_table->setSubroutine("Illum", "BlinnPhongDirectLight"); break;
+        case ObjMtlLoader::IlluminationModel::Diffuse: model = 0; break;
+        case ObjMtlLoader::IlluminationModel::DiffuseAndAmbient: model = 1; flags = AmbientAvailable; break;
+        case ObjMtlLoader::IlluminationModel::SpecularDiffuseAmbient: model = 2; flags = AmbientAvailable | SpecularAvailable;  break;
         }
-        
-        auto subr_baked_table = ExtractBakedResourceTable(subr_res_table.get());
-        */
+
+        std::vector<Tempest::VertexAttributeDescription>* layout;
         if(tc_size != 0)
         {
-            batch.PipelineState           = state_object_tex.get();
+            model += 3;
+            layout = &layout_tex;
             batch.VertexBuffers[0].Stride = sizeof(Vector4) + sizeof(Vector2) + sizeof(Vector3);
         }
         else
         {
-            batch.PipelineState           = state_object_wo_tex.get();
+            layout = &layout_wo_tex;
             batch.VertexBuffers[0].Stride = sizeof(Vector4) + sizeof(Vector3);
+        }
+
+        auto begin_state_iter = std::begin(pstates),
+             end_state_iter = std::end(pstates);
+        auto iter = std::find_if(begin_state_iter, end_state_iter, [&model](const StateDescription& st_desc) { return st_desc.model == model; });
+        auto* shader_prog = progs[model];
+        if(iter == end_state_iter)
+        {
+            auto pipeline_state = backend->createStateObject(&layout->front(), layout->size(), &rt_fmt, 1, shader_prog);
+            batch.PipelineState = pipeline_state;
+            pstates.emplace_back(model, pipeline_state);
+        }
+        else
+        {
+            batch.PipelineState = iter->state;
         }
         
         Matrix4 Imat;
@@ -244,17 +288,24 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
     
         auto globals_res_table = CreateResourceTable(shader_prog, "GlobalsBuffer", 1);
         globals_res_table->setResource("Globals.Transform", Imat);
-        globals_res_table->setResource("Globals.AmbientDissolve", Vector4(ambient.x(), ambient.y(), ambient.z(), material.Dissolve));
+        if(flags & AmbientAvailable)
+        {
+            globals_res_table->setResource("Globals.AmbientDissolve", Vector4(ambient.x(), ambient.y(), ambient.z(), material.Dissolve));
+        }
         globals_res_table->setResource("Globals.DiffuseReflectivity", Vector4(diffuse.x(), diffuse.y(), diffuse.z(), material.ReflectionSharpness));
-        globals_res_table->setResource("Globals.Specular", Vector4(specular.x(), specular.y(), specular.z(), material.SpecularExponent));
+        if(flags & SpecularAvailable)
+        {
+            globals_res_table->setResource("Globals.Specular", Vector4(specular.x(), specular.y(), specular.z(), material.SpecularExponent));
+        }
         
         batch.ResourceTable = globals_res_table->extractBakedTable();        
        
-        prev_size = res_inds.size();
+        prev_ind_size = res_inds.size();
+        prev_vert_size = res_data.size()*batch.VertexBuffers[0].Stride;
     }
     
-    auto* vbo = backend->createBuffer(res_data.size(), VBType::VertexBuffer, RESOURCE_STATIC_DRAW, &res_data.front());
-    auto* ibo = backend->createBuffer(res_inds.size(), VBType::IndexBuffer, RESOURCE_STATIC_DRAW, &res_inds.front());
+    auto *vbo = backend->createBuffer(res_data.size(), VBType::VertexBuffer, RESOURCE_STATIC_DRAW, &res_data.front());
+    auto *ibo = backend->createBuffer(res_inds.size(), VBType::IndexBuffer, RESOURCE_STATIC_DRAW, &res_inds.front());
     
     for(size_t i = 0; i < *batch_count; ++i)
     {
@@ -263,8 +314,20 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, TShad
         batch.VertexBuffers[0].VertexBuffer = vbo;
     }
     
+    *state_count = pstates.size();
+    *states = new TStateObject*[pstates.size()];
+    for(size_t i = 0, iend = pstates.size(); i < iend; ++i)
+    {
+        (*states)[i] = pstates[i].state;
+    }
+    // Basically, stop the deletion process
+    pstates.clear();
+
     return true;
 }
 
-template bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader, GLShaderProgram** progs, GLRenderingBackend* backend, size_t* batch_count, GLDrawBatch** batches);
+template bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
+                                        GLShaderProgram** progs, GLRenderingBackend* backend,
+                                        size_t* batch_count, GLDrawBatch** batches,
+                                        size_t* num_states, GLStateObject*** states);
 }

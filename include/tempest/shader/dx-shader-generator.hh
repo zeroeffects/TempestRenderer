@@ -33,7 +33,7 @@ class FileLoader;
 
 namespace DXFX
 {
-bool LoadEffect(const string& filename, FileLoader* loader, uint32 flags, Shader::EffectDescription& effect);
+bool LoadEffect(const string& filename, FileLoader* loader, const string* opts, size_t opts_count, uint32 flags, Shader::EffectDescription& effect);
 }
 }
 

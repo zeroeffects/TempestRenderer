@@ -69,7 +69,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
                                                         const string* options, uint32 options_count)
 {
     Shader::EffectDescription effect;
-    auto status = GLFX::LoadEffect(filename, file_loader, m_Settings, effect);
+    auto status = GLFX::LoadEffect(filename, file_loader, options, options_count, m_Settings, effect);
     if(!status)
         return nullptr;
     

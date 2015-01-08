@@ -61,6 +61,8 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 {INTEGER}{MANTISA}                      *yylval = CreateNode<Value<float>>(ToLocation(*yylloc), static_cast<float>(atof(yytext))); return Parser::token::T_FLOAT;
 {INTEGER}u                              *yylval = CreateNode<Value<unsigned>>(ToLocation(*yylloc), strtoul(yytext, 0, 0)); return Parser::token::T_UNSIGNED;
 {INTEGER}                               *yylval = CreateNode<Value<int>>(ToLocation(*yylloc), atoi(yytext)); return Parser::token::T_INTEGER;
+"0x"[0-9A-F]+                           *yylval = CreateNode<Value<int>>(ToLocation(*yylloc), strtol(yytext, nullptr, 16)); return Parser::token::T_INTEGER;
+"0x"[0-9A-F]+u                          *yylval = CreateNode<Value<int>>(ToLocation(*yylloc), strtoul(yytext, nullptr, 16)); return Parser::token::T_UNSIGNED;
 "import"                                *yylval = AST::Node(); return Parser::token::T_IMPORT;
 "if"                                    *yylval = AST::Node(); return Parser::token::T_IF;
 "else"                                  *yylval = AST::Node(); return Parser::token::T_ELSE;
@@ -99,6 +101,7 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 "noperspective"                         *yylval = AST::Node(); return Parser::token::T_NOPERSPECTIVE_QUALIFIER;
 "resource"                              *yylval = AST::Node(); return Parser::token::T_RESOURCE_QUALIFIER;
 "structbuffer"                          *yylval = AST::Node(); return Parser::token::T_STRUCTBUFFER_QUALIFIER;
+"options"                               *yylval = AST::Node(); return Parser::token::T_OPTIONS;
 {IDENTIFIER}                            {
                                             auto node = driver.findIdentifier(yytext);
                                             if(node)
@@ -109,6 +112,7 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
                                                 case TGE_EFFECT_VARIABLE: *yylval = CreateNode<VariableRef>(ToLocation(*yylloc), node->extract<Variable>()); return Parser::token::T_VARIABLE;
                                                 case TGE_EFFECT_TYPE: *yylval = CreateNode<TypeRef>(ToLocation(*yylloc), node->extract<Type>()); return Parser::token::T_TYPE;
                                                 case TGE_EFFECT_TYPEDEF: *yylval = CreateNode<TypeRef>(ToLocation(*yylloc), node->extract<Typedef>()->getType()); return Parser::token::T_TYPE;
+                                                case TGE_EFFECT_OPTION: *yylval = CreateNode<OptionRef>(ToLocation(*yylloc), node->extract<Option>()); return Parser::token::T_OPTION;
                                                 default:
                                                     TGE_ASSERT(false, "Unexpected type bound to identifier"); break;
                                                 }
@@ -140,7 +144,7 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
                                             *yylval = CreateNode<StringLiteral>(ToLocation(*yylloc), yytext+1);
                                             return Parser::token::T_STRING_LITERAL;
                                         }
-[,;:?=|\^&><\+\-\*/%!~\.\(\)\[\]\{\}]   *yylval = AST::Node(); return static_cast<Parser::token_type>(yytext[0]);
+[,;:?=|\^&>\@<\+\-\*/%!~\.\(\)\[\]\{\}] *yylval = AST::Node(); return static_cast<Parser::token_type>(yytext[0]);
 "//"                                    { BEGIN(CPP_COMMENT); }
 <CPP_COMMENT>\n                         { BEGIN(INITIAL); yylloc->lines(yyleng); }
 <CPP_COMMENT>.                          { }

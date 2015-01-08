@@ -261,7 +261,8 @@ void GLTexture::setMaxLOD(float max_lod)
     glTextureParameterfEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_MAX_LOD, max_lod);
 }
 
-GLuint64 GLTexture::getHandle() const
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
+GLuint64 GLTexture::getGPUHandle() const
 {
     if(m_GPUHandle == 0)
     {
@@ -270,4 +271,5 @@ GLuint64 GLTexture::getHandle() const
     }
     return m_GPUHandle;
 }
+#endif
 }

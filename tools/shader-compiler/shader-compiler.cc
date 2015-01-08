@@ -64,19 +64,20 @@ enum CompilerFlags
 
 bool BuildTextShaderSimple(const string& input_file, std::ostream& output_file, uint32 flags)
 {
+    // TODO: Options
     DummyIncludeLoader include_loader;
     Shader::EffectDescription effect;
     int compile_flag = (flags >> CompileFlagShift) & CompileFlagMask;
     if(compile_flag == CompileToGLSL)
     {
-        if(!GLFX::LoadEffect(input_file, &include_loader, 0, effect))
+        if(!GLFX::LoadEffect(input_file, &include_loader, nullptr, 0, 0, effect))
         {
             return false;
         }
     }
     else if(compile_flag == CompileToHLSL)
     {
-        if(!DXFX::LoadEffect(input_file, &include_loader, 0, effect))
+        if(!DXFX::LoadEffect(input_file, &include_loader, nullptr, 0, 0, effect))
         {
             return false;
         }

@@ -312,7 +312,13 @@ void GLRenderingBackend::setTextures(const GLBakedResourceTable* resource_table)
         glUnmapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER);
         glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, 0, m_TexturesTable, 0, m_ActiveTextures*sizeof(GLuint64));
     }
+    else
 #endif
+    {
+        // Well, we need signature to workaround the issue.
+        GLsizei count = static_cast<GLsizei>(resource_table->getSize() / sizeof(GLuint));
+        glBindTextures(0, count, reinterpret_cast<const GLuint*>(resource_table->get()));
+    }
 }
 
 GLBuffer* GLRenderingBackend::createBuffer(size_t size, VBType vb_type, uint32 flags, const void* data)

@@ -58,6 +58,7 @@ struct GLDrawBatch
     uint64                    SortKey = 0;
     uint32                    VertexCount = 0;
     uint32                    BaseVertex = 0;
+    uint32                    BaseIndex = 0;
     GLBakedResourceTable*     ResourceTable = nullptr;
     GLStateObject*            PipelineState = nullptr;
     GLBuffer*                 IndexBuffer = nullptr;

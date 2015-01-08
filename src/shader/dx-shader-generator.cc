@@ -56,10 +56,13 @@ class ShaderPrinter: public Shader::VisitorInterface
     ShaderSignature            m_InputSignature;
     ShaderSignature            m_OutputSignature;
     
+    const string*              m_Options;
+    size_t                     m_OptionCount;
+
     typedef bool (ShaderPrinter::*TranslationFunction)(const Shader::FunctionCall* func_call);
     std::unordered_map<string, TranslationFunction> m_FunctionTranslator;
 public:
-    ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, uint32 flags);
+    ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, const string* opts, size_t opts_count, uint32 flags);
     virtual ~ShaderPrinter();
 
     void setSamplerTextureAssociation(string texture, string sampler)
@@ -73,6 +76,7 @@ public:
     void setIndentation(size_t indentation) { m_Printer.setIndentation(indentation); }
     
     std::ostream& stream() { return m_Printer.stream(); }
+    AST::PrinterInfrastructure* getPrinter() { return &m_Printer; }
 
     bool isValid() const { return m_Valid; }
     
@@ -113,7 +117,10 @@ public:
     virtual void visit(const Shader::JumpStatement* jump_stmt) final { Shader::PrintNode(&m_Printer, jump_stmt); }
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { Shader::PrintNode(this, &m_Printer, return_stmt); }
     virtual void visit(const Shader::Import* _import) final { _import->printList(this, &m_Printer, "import"); }
-    virtual void visit(const Shader::ShaderDeclaration* _shader) final { Shader::PrintNode(this, &m_Printer, _shader); }
+    virtual void visit(const Shader::ShaderDeclaration* _shader) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::OptionsDeclaration* _opt_decl) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Optional* _opt) final { PrintOptional(this, &m_Printer, _opt, m_Options, m_OptionCount); }
+    virtual void visit(const Shader::Option* _opt) final { PrintNode(&m_Printer, _opt); }
     virtual void visit(const Shader::StructType* _struct) final { Shader::PrintNode(this, &m_Printer, _struct); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
@@ -177,6 +184,9 @@ public:
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::Import* _import) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::ShaderDeclaration* _shader) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::OptionsDeclaration* _opt_decl) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Optional* _opt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const Shader::Option* _opt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::StructType* _struct) final { TGE_ASSERT(false, "Types should not be entered.Catching up a variable should be enough"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::Type* type_stmt) final { TGE_ASSERT(false, "Types should not be entered.Catching up a variable should be enough"); }
@@ -403,10 +413,12 @@ bool ShaderPrinter::TranslateTexelFetch(const Shader::FunctionCall* func_call)
     return true;
 }
 
-ShaderPrinter::ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, uint32 flags)
+ShaderPrinter::ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, const string* opts, size_t opts_count, uint32 flags)
     :   m_Printer(os, flags),
         m_Driver(driver),
         m_Filename(filename),
+        m_Options(opts),
+        m_OptionCount(opts_count),
         m_Valid(true)
 {
     m_FunctionTranslator["texelFetch"] = &ShaderPrinter::TranslateTexelFetch;
@@ -513,11 +525,15 @@ class Generator: public Shader::VisitorInterface
     ShaderPrinter              m_RawImport;
     size_t                     m_StructBufferBinding = 0;
 
+    const Shader::OptionsDeclaration* m_OptionsDeclaration = nullptr;
+
     bool                       m_Valid;
     Shader::EffectDescription& m_Effect;
     FileLoader*                m_FileLoader;
+    const string*              m_Options;
+    size_t                     m_OptionCount;
 public:
-    Generator(Shader::Driver& driver, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader);
+    Generator(Shader::Driver& driver, const string* opts, size_t count, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader);
     virtual ~Generator();
 
     virtual void visit(const Location& loc) final { m_RawImport.visit(loc); }
@@ -554,6 +570,9 @@ public:
     virtual void visit(const Shader::ReturnStatement* return_stmt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::Import* _import) final;
     virtual void visit(const Shader::ShaderDeclaration* _shader) final;
+    virtual void visit(const Shader::OptionsDeclaration* _opt_decl) final;
+    virtual void visit(const Shader::Optional* _opt) final  { PrintOptional(this, m_RawImport.getPrinter(), _opt, m_Options, m_OptionCount); }
+    virtual void visit(const Shader::Option* _opt) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::StructType* _struct) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const Shader::FunctionDefinition* func_def) final;
     virtual void visit(const Shader::FunctionDeclaration* func_decl) final;
@@ -572,12 +591,14 @@ public:
     bool isValid() const { return m_Valid; }
 };
 
-Generator::Generator(Shader::Driver& driver, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader)
+Generator::Generator(Shader::Driver& driver, const string* opts, size_t opts_count, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader)
     :   m_Driver(driver),
         m_Effect(effect),
-        m_RawImport(driver, filename, m_RawImportStream, AST::TGE_AST_PRINT_LINE_LOCATION),
+        m_RawImport(driver, filename, m_RawImportStream, opts, opts_count, AST::TGE_AST_PRINT_LINE_LOCATION),
         m_Valid(true),
-        m_FileLoader(include_loader) {}
+        m_FileLoader(include_loader),
+        m_Options(opts),
+        m_OptionCount(opts_count) {}
 
 Generator::~Generator() {}
 
@@ -619,7 +640,7 @@ void Generator::visit(const Shader::Buffer* _buffer)
 {
     m_RawImport.visit(_buffer);
 
-    ConvertBuffer(_buffer, &m_Effect);
+    ConvertBuffer(m_Options, m_OptionCount, _buffer, &m_Effect);
 }
 
 void Generator::visit(const Shader::Declaration* decl)
@@ -649,7 +670,7 @@ void Generator::visit(const Shader::Declaration* decl)
 
             m_RawImportStream << "StructuredBuffer<" << elem_type->getNodeName() << "> " << name << ": register(t" << m_StructBufferBinding++ << ")";
 
-            ConvertStructBuffer(var, &m_Effect);
+            ConvertStructBuffer(m_Options, m_OptionCount, var, &m_Effect);
         }
         else
         {
@@ -727,9 +748,9 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                                 
     // The actual trick out here is that we want the common stuff to be printed through
     // the extended version which accumulates all associations.
-    ShaderPrinter   common_printer(m_Driver, m_RawImport.getFilename(), ss, AST::TGE_AST_PRINT_LINE_LOCATION),
-                    in_printer(m_Driver, m_RawImport.getFilename(), in_signature_ss, AST::TGE_AST_PRINT_LINE_LOCATION),
-                    out_printer(m_Driver, m_RawImport.getFilename(), out_signature_ss, AST::TGE_AST_PRINT_LINE_LOCATION);
+    ShaderPrinter common_printer(m_Driver, m_RawImport.getFilename(), ss, m_Options, m_OptionCount, AST::TGE_AST_PRINT_LINE_LOCATION),
+                  in_printer(m_Driver, m_RawImport.getFilename(), in_signature_ss, m_Options, m_OptionCount, AST::TGE_AST_PRINT_LINE_LOCATION),
+                  out_printer(m_Driver, m_RawImport.getFilename(), out_signature_ss, m_Options, m_OptionCount, AST::TGE_AST_PRINT_LINE_LOCATION);
     const Shader::FunctionDefinition* entrypoint = nullptr;
     
     if(_shader->getType() == Shader::ShaderType::VertexShader)
@@ -924,6 +945,27 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     }
 }
 
+void Generator::visit(const Shader::OptionsDeclaration* _opt_decl)
+{
+    if(m_OptionsDeclaration)
+    {
+        Log(LogLevel::Error, "More than a single options declaration is unsupported");
+        m_Valid = false;
+        return;
+    }
+    m_OptionsDeclaration = _opt_decl;
+    size_t decl_opts_count = m_OptionsDeclaration->getOptionCount();
+    for(size_t i = 0, iend = m_OptionCount; i < iend; ++i)
+    {
+        auto& opt = m_Options[i];
+        if(m_OptionsDeclaration->getOptionIndex(opt) == decl_opts_count)
+        {
+            Log(LogLevel::Error, "Unspecified option ", opt);
+            m_Valid = false;
+        }
+    }
+}
+
 void Generator::visit(const Shader::FunctionDefinition* func_def)
 {
     m_RawImport.visit(func_def);
@@ -935,7 +977,7 @@ void Generator::visit(const Shader::FunctionDeclaration* func_decl)
     m_RawImportStream << ";\n";
 }
 
-bool LoadEffect(const string& filename, FileLoader* loader, uint32 flags, Shader::EffectDescription& effect)
+bool LoadEffect(const string& filename, FileLoader* loader, const string* opts, size_t opts_count, uint32 flags, Shader::EffectDescription& effect)
 {
     Shader::Driver  effect_driver;
     auto            parse_ret = effect_driver.parseFile(filename);
@@ -952,7 +994,7 @@ bool LoadEffect(const string& filename, FileLoader* loader, uint32 flags, Shader
     if(!root_node)
         return false;
 
-    DXFX::Generator _generator(effect_driver, effect, filename.c_str(), loader);
+    DXFX::Generator _generator(effect_driver, opts, opts_count, effect, filename.c_str(), loader);
     _generator.visit(root_node);
     return _generator.isValid();
 }

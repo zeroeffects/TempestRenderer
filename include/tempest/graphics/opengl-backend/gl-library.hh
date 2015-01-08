@@ -890,6 +890,7 @@ DECLARE_GL_FUNCTION(void, glGenTextures, GLsizei n, GLuint *textures);
 DECLARE_GL_FUNCTION(void, glDeleteTextures, GLsizei n, const GLuint *textures);
 DECLARE_GL_FUNCTION(void, glBindTexture, GLTextureTarget target, GLuint texture);
 DECLARE_GL_FUNCTION(GLboolean, glIsTexture, GLuint texture); // Use for debug only
+DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_440, void, glBindTextures, GLuint first, GLsizei count, const GLuint *textures);
 
 DECLARE_GL_FUNCTION(void, glTexSubImage1D, GLTextureTarget target, GLint level, GLint xoffset, GLsizei width, GLFormat format, GLType type, const GLvoid *pixels);
 DECLARE_GL_FUNCTION(void, glTexSubImage2D, GLTextureTarget target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLFormat format, GLType type, const GLvoid *pixels);

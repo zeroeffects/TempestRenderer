@@ -411,11 +411,6 @@ const AST::Node* ArrayType::getSize() const
     return &m_Size;
 }
 
-const Type* ArrayType::getArrayElementType() const
-{
-    return m_Type;
-}
-
 bool ArrayType::hasValidConstructor(const List* var_list) const
 {
     for(List::const_iterator i = var_list->current(), iend = var_list->end(); i != iend; ++i)
@@ -517,6 +512,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
         case TGE_EFFECT_ADD_ASSIGN:
         case TGE_EFFECT_SUB_ASSIGN:
         case TGE_EFFECT_DIV_ASSIGN:
+        case TGE_EFFECT_MUL_ASSIGN:
         {
             if(operandB->hasImplicitConversionTo(this_type))
                 return this_type;
@@ -919,13 +915,47 @@ const Type* SamplerType::unaryOperatorResultType(Driver& driver, const Type* thi
 const Type* SamplerType::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
 const Type* SamplerType::getArrayElementType() const { return nullptr; }
 
-const Type* StructType::getMemberType(Driver& driver, const Type* this_type, const string& name) const
+static const Type* RecursiveGetMemberType(Driver& driver, const List* _list, const string& name)
 {
-    for(auto iter = getBody()->current(), iter_end = getBody()->end(); iter != iter_end; ++iter)
+    for(auto iter = _list->current(), iter_end = _list->end(); iter != iter_end; ++iter)
     {
-        TGE_ASSERT(iter->getNodeType() == TGE_EFFECT_DECLARATION, "Expecting declaration");
-        auto* decl = iter->extract<Declaration>();
-        
+        auto node_type = iter->getNodeType();
+        const Declaration* decl = nullptr;
+        if(node_type == TGE_EFFECT_OPTIONAL)
+        {
+            auto* _opt = iter->extract<Optional>();
+            if(!driver.isOptionEnabled(_opt->getOption()))
+                continue;
+
+            auto* content = _opt->getContent();
+            if(content->getNodeType() == TGE_AST_BLOCK)
+            {
+                auto* result = RecursiveGetMemberType(driver, content->extract<Block>()->getBody(), name);
+                if(result)
+                {
+                    return result;
+                }
+                continue;
+            }
+            else if(content->getNodeType() == TGE_EFFECT_DECLARATION)
+            {
+                decl = content->extract<Declaration>();
+            }
+            else
+            {
+                TGE_ASSERT(false, "Unexpected mode");
+            }
+        }
+        else if(node_type == TGE_EFFECT_DECLARATION)
+        {
+            decl = iter->extract<Declaration>();
+        }
+        else
+        {
+            TGE_ASSERT(false, "Unexpected node type");
+            return nullptr;
+        }
+
         auto* vars = decl->getVariables();
         switch(vars->getNodeType())
         {
@@ -955,6 +985,11 @@ const Type* StructType::getMemberType(Driver& driver, const Type* this_type, con
         }
     }
     return nullptr;
+}
+
+const Type* StructType::getMemberType(Driver& driver, const Type* this_type, const string& name) const
+{
+    return RecursiveGetMemberType(driver, getBody(), name);
 }
 
 Variable::Variable(const Type* _type, string name)
@@ -1872,9 +1907,59 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
     os << "}\n";
 }
 
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const OptionsDeclaration* opt_decl)
+{
+    std::ostream& os = printer->stream();
+    os << "options\n";
+    for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
+        os << "\t";
+    os << "{\n";
+    for(size_t opt = 0, opt_end = opt_decl->getOptionCount(); opt < opt_end; ++opt)
+    {
+        os << opt;
+        if(opt + 1 != opt_end)
+        {
+            os << ",\n";
+        }
+    }
+    for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
+        os << "\t";
+    os << "}\n";
+}
+
+void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Optional* opt)
+{
+    printer->stream() << "@" << opt->getNodeName() << " ";
+    opt->getContent()->accept(visitor);
+}
+
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct)
 {
     printer->stream() << _struct->getNodeName();
+}
+
+void PrintOptional(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Optional* _opt, const string* opts, size_t opts_count)
+{
+    auto *begin_ptr = opts,
+         *end_ptr = begin_ptr + opts_count;
+    // Basically, ignore if it is not covered by the current options set.
+    auto& os = printer->stream();
+    if(std::find(begin_ptr, end_ptr, _opt->getNodeName()) != end_ptr)
+    {
+        auto* content = _opt->getContent();
+        if(content->getNodeType() == TGE_AST_BLOCK)
+        {
+            static_cast<AST::VisitorInterface*>(visitor)->visit(content->extract<Block>()->getBody());
+        }
+        else
+        {
+            content->accept(visitor);
+        }
+        if(!content->isBlockStatement())
+            os << ";\n";
+    }
+    else
+        os << "\n";
 }
 
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const IfStatement* if_stmt)

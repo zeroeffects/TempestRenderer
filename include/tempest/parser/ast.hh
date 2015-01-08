@@ -834,7 +834,14 @@ public:
     void printList(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const string& declaration) const
     {
         std::ostream& os = printer->stream();
-        os << declaration << " " << m_Name << "\n";
+        if(declaration.empty())
+        {
+            os << m_Name;
+        }
+        else
+        {
+            os << declaration << " " << m_Name << "\n";
+        }
         for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
             os << "\t";
         os << "{\n";

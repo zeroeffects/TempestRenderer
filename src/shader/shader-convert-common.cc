@@ -22,6 +22,7 @@
 *   THE SOFTWARE.
 */
 
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/shader/shader-convert-common.hh"
 #include "tempest/shader/shader-ast.hh"
 
@@ -29,53 +30,71 @@ namespace Tempest
 {
 namespace Shader
 {
-static uint32 ConvertVariable(const string& base, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc);
+static uint32 ConvertVariable(const string* opts, size_t opts_count, const string& base, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc);
+static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const List* list, uint32* offset, Shader::BufferDescription* buf_desc);
 
-static void ConvertType(const string& base, const Shader::Type* _type, UniformValueType* uniform_type, uint32* elem_size, uint32* offset, Shader::BufferDescription* buf_desc)
+static void ConvertType(const string* opts, size_t opts_count, const string& base, const Shader::Type* _type, UniformValueType* uniform_type, uint32* elem_size, uint32* offset, Shader::BufferDescription* buf_desc)
 {
     switch(_type->getTypeEnum())
     {
+    case Shader::ElementType::Scalar:
+    {
+        auto basic_type_str = _type->getNodeName();
+        if(basic_type_str == "int")
+            *uniform_type = UniformValueType::Integer;
+        else if(basic_type_str == "bool")
+            *uniform_type = UniformValueType::Boolean;
+        else if(basic_type_str == "uint")
+            *uniform_type = UniformValueType::UnsignedInteger;
+        else if(basic_type_str == "float")
+            *uniform_type = UniformValueType::Float;
+        else
+            TGE_ASSERT(false, "Unknown vector type");
+        
+        *elem_size = UniformValueTypeSize(*uniform_type);
+    } break;
     case Shader::ElementType::Vector:
     {
         auto* vector_type = _type->extract<Shader::VectorType>();
         auto* basic_type = vector_type->getBasicType()->extract<Shader::ScalarType>();
+        auto basic_type_str = basic_type->getNodeName();
         switch(vector_type->getDimension())
         {
         case 2:
         {
-            if(basic_type->getNodeName() == "int")
+            if(basic_type_str == "int")
                 *uniform_type = UniformValueType::IntegerVector2;
-            else if(basic_type->getNodeName() == "bool")
+            else if(basic_type_str == "bool")
                 *uniform_type = UniformValueType::BooleanVector2;
-            else if(basic_type->getNodeName() == "uint")
+            else if(basic_type_str == "uint")
                 *uniform_type = UniformValueType::UnsignedIntegerVector2;
-            else if(basic_type->getNodeName() == "float")
+            else if(basic_type_str == "float")
                 *uniform_type = UniformValueType::Vector2;
             else
                 TGE_ASSERT(false, "Unknown vector type");
         } break;
         case 3:
         {
-            if(basic_type->getNodeName() == "int")
+            if(basic_type_str == "int")
                 *uniform_type = UniformValueType::IntegerVector3;
-            else if(basic_type->getNodeName() == "bool")
+            else if(basic_type_str == "bool")
                 *uniform_type = UniformValueType::BooleanVector3;
-            else if(basic_type->getNodeName() == "uint")
+            else if(basic_type_str == "uint")
                 *uniform_type = UniformValueType::UnsignedIntegerVector3;
-            else if(basic_type->getNodeName() == "float")
+            else if(basic_type_str == "float")
                 *uniform_type = UniformValueType::Vector3;
             else
                 TGE_ASSERT(false, "Unknown vector type");
         } break;
         case 4:
         {
-            if(basic_type->getNodeName() == "int")
+            if(basic_type_str == "int")
                 *uniform_type = UniformValueType::IntegerVector4;
-            else if(basic_type->getNodeName() == "bool")
+            else if(basic_type_str == "bool")
                 *uniform_type = UniformValueType::BooleanVector4;
-            else if(basic_type->getNodeName() == "uint")
+            else if(basic_type_str == "uint")
                 *uniform_type = UniformValueType::UnsignedIntegerVector4;
-            else if(basic_type->getNodeName() == "float")
+            else if(basic_type_str == "float")
                 *uniform_type = UniformValueType::Vector4;
             else
                 TGE_ASSERT(false, "Unknown vector type");
@@ -129,32 +148,15 @@ static void ConvertType(const string& base, const Shader::Type* _type, UniformVa
         uint32 struct_offset = 0; // members are in relative offset units
         auto* struct_type = _type->extract<Shader::StructType>();
         auto* struct_body = struct_type->getBody();
-        for(auto elem_iter = struct_body->current(), elem_iter_end = struct_body->end(); elem_iter != elem_iter_end; ++elem_iter)
-        {
-            TGE_ASSERT(elem_iter->getNodeType() == Shader::TGE_EFFECT_DECLARATION, "Expecting only declarations");
-            auto* decl = elem_iter->extract<Shader::Declaration>();
-            auto* vars = decl->getVariables();
-            switch(vars->getNodeType())
-            {
-            case Shader::TGE_EFFECT_VARIABLE:
-            {
-                ConvertVariable(base, vars->extract<Shader::Variable>(), &struct_offset, buf_desc);
-            } break;
-            case Shader::TGE_AST_LIST_ELEMENT:
-            {
-                auto _list = vars->extract<AST::ListElement>();
-                for(auto var_iter = _list->current(), var_iter_end = _list->end(); var_iter != var_iter_end; ++var_iter)
-                {
-                    TGE_ASSERT(var_iter->getNodeType() == Shader::TGE_EFFECT_VARIABLE, "Expecting variable");
-                    auto* var = var_iter->extract<Shader::Variable>();
-                    ConvertVariable(base, var, &struct_offset, buf_desc);
-                }
-            } break;
-            default: TGE_ASSERT(false, "Unexpected node");
-            }
-        }
+        RecursiveConvertBuffer(opts, opts_count, struct_body, &struct_offset, buf_desc);
         *uniform_type = UniformValueType::Struct;
         *elem_size = struct_offset;
+    } break;
+    case Shader::ElementType::Sampler:
+    {
+        auto* sampler_type = _type->extract<Shader::SamplerType>();
+        *uniform_type = UniformValueType::Texture;
+        *elem_size = UniformValueTypeSize(*uniform_type);
     } break;
     default: TGE_ASSERT(false, "Unexpected type"); break;
     }
@@ -190,14 +192,26 @@ static uint32 GetAlignment(UniformValueType _type)
     case UniformValueType::Matrix3x4: return 3 * 4 * sizeof(float);
     case UniformValueType::Matrix4x2: return 4 * 2 * sizeof(float);
     case UniformValueType::Matrix4x3: return 4 * 4 * sizeof(float);
-    case UniformValueType::Texture: return sizeof(uint64);
+    case UniformValueType::Texture:
+    {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
+        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+        {
+            return sizeof(uint64);
+        }
+        else
+#endif
+        {
+            return sizeof(uint32);
+        }
+    }
     case UniformValueType::Struct: return 4 * sizeof(float);
     default: TGE_ASSERT(false, "Unexpected uniform type");
     }
     return 0;
 }
 
-static uint32 ConvertVariable(const string& base, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc)
+static uint32 ConvertVariable(const string* opts, size_t opts_count, const string& base, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc)
 {
     UniformValueType uniform_type;
     uint32           elem_size,
@@ -208,16 +222,17 @@ static uint32 ConvertVariable(const string& base, const Shader::Variable* var, u
 
     switch(type_enum)
     {
+    case Shader::ElementType::Scalar:
     case Shader::ElementType::Struct:
     case Shader::ElementType::Vector:
     case Shader::ElementType::Matrix:
     {
-         ConvertType(base.empty() ? var_name : (base + "." + var_name), _type, &uniform_type, &elem_size, offset, buf_desc);
+        ConvertType(opts, opts_count, base.empty() ? var_name : (base + "." + var_name), _type, &uniform_type, &elem_size, offset, buf_desc);
     } break;
     case Shader::ElementType::Array:
     {
         auto* array_type = _type->extract<Shader::ArrayType>();
-        ConvertType(base.empty() ? var_name : (base + "." + var_name), array_type->getBasicType(), &uniform_type, &elem_size, offset, buf_desc);
+        ConvertType(opts, opts_count, base.empty() ? var_name : (base + "." + var_name), array_type->getBasicType(), &uniform_type, &elem_size, offset, buf_desc);
         TGE_ASSERT(array_size == 1, "Arrays of arrays are unsupported");
         auto* size = array_type->getSize();
         if(*size)
@@ -235,7 +250,16 @@ static uint32 ConvertVariable(const string& base, const Shader::Variable* var, u
     {
         auto* sampler_type = _type->extract<Shader::SamplerType>();
         uniform_type = UniformValueType::Texture;
-        elem_size = sizeof(uint64);
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
+        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+        {
+            elem_size = sizeof(uint64);
+        }
+        else
+#endif
+        {
+            elem_size = sizeof(uint32);
+        }
         // TODO
     } break;
     default:
@@ -258,30 +282,67 @@ static uint32 ConvertVariable(const string& base, const Shader::Variable* var, u
     return elem_size;
 }
 
-void ConvertBuffer(const Buffer* buffer, Shader::EffectDescription* fx_desc)
+static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const List* list, uint32* offset, Shader::BufferDescription* buf_desc)
 {
-    uint32 offset = 0;
-    Shader::BufferDescription buf_desc(buffer->getBufferType(), buffer->getNodeName());
-    auto* list = buffer->getBody();
     for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
     {
-        auto* decl = iter->extract<Shader::Declaration>();
+        auto node_type = iter->getNodeType();
+        const Declaration* decl = nullptr;
+        if(node_type == TGE_EFFECT_OPTIONAL)
+        {
+            auto* _opt = iter->extract<Optional>();
+            auto* opts_end = opts + opts_count;
+            if(std::find(opts, opts_end, _opt->getNodeName()) == opts_end)
+                continue;
+            auto* content = _opt->getContent();
+            if(content->getNodeType() == TGE_AST_BLOCK)
+            {
+                RecursiveConvertBuffer(opts, opts_count, content->extract<Block>()->getBody(), offset, buf_desc);
+                continue;
+            }
+            else if(content->getNodeType() == TGE_EFFECT_DECLARATION)
+            {
+                decl = content->extract<Declaration>();
+            }
+            else
+            {
+                TGE_ASSERT(false, "Unexpected mode");
+            }
+        }
+        else if(node_type == TGE_EFFECT_DECLARATION)
+        {
+            decl = iter->extract<Declaration>();
+        }
+        else
+        {
+            TGE_ASSERT(false, "Unexpected node type");
+            continue;
+        }
+
         auto* var = decl->getVariables()->extract<Shader::Variable>();
 
         auto _type = var->getType();
-        ConvertVariable("", var, &offset, &buf_desc);
+        ConvertVariable(opts, opts_count, "", var, offset, buf_desc);
     }
+}
+
+void ConvertBuffer(const string* opts, size_t opts_count, const Buffer* buffer, Shader::EffectDescription* fx_desc)
+{
+    uint32 offset = 0;
+    Shader::BufferDescription buf_desc(buffer->getBufferType(), buffer->getNodeName());
+    auto* _list = buffer->getBody();
+    RecursiveConvertBuffer(opts, opts_count, _list, &offset, &buf_desc);
     if(buf_desc.getResiablePart() == std::numeric_limits<uint32>::max())
         buf_desc.setResizablePart(0);
     fx_desc->addBuffer(buf_desc);
 }
 
-uint32 ConvertStructBuffer(const Variable* var, Shader::EffectDescription* fx_desc)
+uint32 ConvertStructBuffer(const string* opts, size_t opts_count, const Variable* var, Shader::EffectDescription* fx_desc)
 {
     TGE_ASSERT(var->getStorage() == Shader::StorageQualifier::StructBuffer, "Input variable should be of StructBuffer type");
     uint32 offset = 0;
     Shader::BufferDescription buf_desc(BufferType::StructBuffer, var->getNodeName());
-    uint32 elem_size = ConvertVariable("", var, &offset, &buf_desc);
+    uint32 elem_size = ConvertVariable(opts, opts_count, "", var, &offset, &buf_desc);
     fx_desc->addBuffer(buf_desc);
     return elem_size;
 }

@@ -38,7 +38,9 @@ class Driver: public AST::Driver
     friend class ShaderParser;
 
     typedef std::vector<size_t> StackPointers;
+    typedef std::vector<const Shader::Option*> OptionStackType;
 
+    OptionStackType         m_OptionStack;
     AST::StackType          m_ShaderBuiltIns,
                             m_FSBuiltIns;
     StackPointers           m_StackPointers;
@@ -55,6 +57,16 @@ public:
             return id->extract<Typedef>()->getType();
         return nullptr;
     }
+
+    bool isOptionEnabled(const Option* _opt)
+    {
+        auto begin_opt = std::begin(m_OptionStack),
+             end_opt = std::end(m_OptionStack);
+        return std::find(begin_opt, end_opt, _opt) != end_opt;
+    }
+
+    void beginOptionBlock(const Option* _opt) { m_OptionStack.push_back(_opt); }
+    void endOptionBlock() { m_OptionStack.pop_back(); }
 
     void beginBlock();
     void endBlock();

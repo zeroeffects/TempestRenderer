@@ -25,6 +25,7 @@
 #ifndef _GL_TEXTURE_HH_
 #define _GL_TEXTURE_HH_
 
+#include "tempest/graphics/opengl-backend/gl-config.hh"
 #include "tempest/graphics/texture.hh"
 #include "tempest/utils/types.hh"
 
@@ -44,7 +45,9 @@ class GLTexture
     GLTextureTarget     m_Target;
     uint32              m_Flags;
     GLuint              m_Texture;
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     mutable GLuint64    m_GPUHandle;
+#endif
 public:
     explicit GLTexture(const TextureDescription& desc, uint32 flags, const void* data);
      ~GLTexture();
@@ -58,9 +61,13 @@ public:
     void setMinLOD(float min_lod);
     void setMaxLOD(float max_lod);
      
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     //! \remarks Once you extract the handle state changes are going to be ignored.
-    GLuint64 getHandle() const;
+    GLuint64 getGPUHandle() const;
+#endif
      
+    GLuint getCPUHandle() const { return m_Texture; }
+
     const TextureDescription& getDescription() const { return m_Description; }
 };
 }
