@@ -169,15 +169,14 @@ bool GLCommandBuffer::enqueueBatch(const GLDrawBatch& draw_batch)
         #ifndef TEMPEST_DISABLE_MDI
             if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
             {
-                m_ConstantBufferReqSize += static_cast<uint32>(draw_batch.ResourceTable->getSize();
+                m_ConstantBufferReqSize += static_cast<uint32>(draw_batch.ResourceTable->getSize());
             }
             else
-        #else
+        #endif
             {
                 auto align = m_Alignment - 1;
                 m_ConstantBufferReqSize += (static_cast<uint32>(draw_batch.ResourceTable->getSize()) + align) / ~align;
             }
-        #endif
     }
 
     m_CommandBuffer[m_CommandCount++] = draw_batch;
