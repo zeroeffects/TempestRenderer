@@ -680,6 +680,56 @@ enum class GLShaderParameter: GLuint
     GL_SHADER_SOURCE_LENGTH                   = 0x8B88
 };
 
+enum class GLFramebufferTarget: GLuint
+{
+    GL_READ_FRAMEBUFFER                       = 0x8CA8,
+    GL_DRAW_FRAMEBUFFER                       = 0x8CA9,
+    GL_FRAMEBUFFER                            = 0x8D40
+};
+
+enum class GLAttachmentIndex: GLuint
+{
+    GL_COLOR_ATTACHMENT0                      = 0x8CE0,
+    GL_COLOR_ATTACHMENT1                      = 0x8CE1,
+    GL_COLOR_ATTACHMENT2                      = 0x8CE2,
+    GL_COLOR_ATTACHMENT3                      = 0x8CE3,
+    GL_COLOR_ATTACHMENT4                      = 0x8CE4,
+    GL_COLOR_ATTACHMENT5                      = 0x8CE5,
+    GL_COLOR_ATTACHMENT6                      = 0x8CE6,
+    GL_COLOR_ATTACHMENT7                      = 0x8CE7,
+    GL_COLOR_ATTACHMENT8                      = 0x8CE8,
+    GL_COLOR_ATTACHMENT9                      = 0x8CE9,
+    GL_COLOR_ATTACHMENT10                     = 0x8CEA,
+    GL_COLOR_ATTACHMENT11                     = 0x8CEB,
+    GL_COLOR_ATTACHMENT12                     = 0x8CEC,
+    GL_COLOR_ATTACHMENT13                     = 0x8CED,
+    GL_COLOR_ATTACHMENT14                     = 0x8CEE,
+    GL_COLOR_ATTACHMENT15                     = 0x8CEF,
+    GL_DEPTH_ATTACHMENT                       = 0x8D00,
+    GL_STENCIL_ATTACHMENT                     = 0x8D20
+};
+
+enum class GLFramebufferStatus: GLuint
+{
+    GL_FRAMEBUFFER_UNDEFINED                  = 0x8219,
+    GL_FRAMEBUFFER_COMPLETE                   = 0x8CD5,
+    GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT      = 0x8CD6,
+    GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT = 0x8CD7,
+    GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER     = 0x8CDB,
+    GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER     = 0x8CDC,
+    GL_FRAMEBUFFER_UNSUPPORTED                = 0x8CDD,
+    GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE     = 0x8D56,
+    GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS   = 0x8DA8
+};
+
+// These are discouraged to be used. So only the ones that are needed would be added.
+enum class GLParameterType: GLint
+{
+    GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT        = 0x8A34
+};
+
+#define UINT_TO_GL_COLOR_ATTACHMENT(num) static_cast<GLAttachmentIndex>(static_cast<GLuint>(GLAttachmentIndex::GL_COLOR_ATTACHMENT0) + num)
+
 enum
 {
     GL_FALSE                                  = 0,
@@ -999,6 +1049,20 @@ DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_TEXTURE_BINDLESS, void, glMakeTextu
 DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_440, void, glBufferStorage, GLBufferTarget target, GLsizeiptr size, const void *data, GLbitfield flags);
 DECLARE_GL_FUNCTION(void *, glMapBufferRange, GLBufferTarget target, GLintptr offset, GLsizeiptr length, GLbitfield access);
 DECLARE_GL_FUNCTION(void, glVertexAttribPointer, GLuint index, GLint size, GLType type, GLboolean normalized, GLsizei stride, const void *pointer);
+
+DECLARE_GL_FUNCTION(void, glCopyBufferSubData, GLBufferTarget readTarget, GLBufferTarget writeTarget, GLintptr readOffset, GLintptr writeOffset, GLsizeiptr size);
+
+DECLARE_GL_FUNCTION(void, glCreateFramebuffers, GLsizei n, GLuint *framebuffers);
+DECLARE_GL_FUNCTION(void, glBindFramebuffer, GLFramebufferTarget target, GLuint framebuffer);
+DECLARE_GL_FUNCTION(void, glDeleteFramebuffers, GLsizei n, const GLuint *framebuffers);
+DECLARE_GL_FUNCTION(void, glGenFramebuffers, GLsizei n, GLuint *framebuffers);
+DECLARE_GL_FUNCTION(GLFramebufferStatus, glCheckFramebufferStatus, GLFramebufferTarget target);
+DECLARE_GL_FUNCTION(void, glFramebufferTexture1D, GLFramebufferTarget target, GLAttachmentIndex attachment, GLTextureTarget textarget, GLuint texture, GLint level);
+DECLARE_GL_FUNCTION(void, glFramebufferTexture2D, GLFramebufferTarget target, GLAttachmentIndex attachment, GLTextureTarget textarget, GLuint texture, GLint level);
+DECLARE_GL_FUNCTION(void, glFramebufferTexture3D, GLFramebufferTarget target, GLAttachmentIndex attachment, GLTextureTarget textarget, GLuint texture, GLint level, GLint zoffset);
+DECLARE_GL_FUNCTION(void, glFramebufferRenderbuffer, GLFramebufferTarget target, GLAttachmentIndex attachment, GLTextureTarget renderbuffertarget, GLuint renderbuffer);
+
+DECLARE_GL_FUNCTION(void, glGetIntegerv, GLParameterType pname, GLint *data);
 
 #ifndef TEMPEST_EXTRACT_FUNCTIONS
 #ifdef _WIN32

@@ -86,6 +86,8 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
 {
     GLuint cmd_buf_size = desc.CommandCount*sizeof(DrawElementsIndirectCommand);
 
+    glGetIntegerv(GLParameterType::GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &m_Alignment);
+
 #ifndef TEMPEST_DISABLE_MDI
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
     {
@@ -164,7 +166,18 @@ bool GLCommandBuffer::enqueueBatch(const GLDrawBatch& draw_batch)
         if(m_ConstantBufferReqSize + size > m_ConstantBufferSize)
             return false;
 
-        m_ConstantBufferReqSize += static_cast<uint32>(draw_batch.ResourceTable->getSize());
+        #ifndef TEMPEST_DISABLE_MDI
+            if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
+            {
+                m_ConstantBufferReqSize += static_cast<uint32>(draw_batch.ResourceTable->getSize();
+            }
+            else
+        #else
+            {
+                auto align = m_Alignment - 1;
+                m_ConstantBufferReqSize += (static_cast<uint32>(draw_batch.ResourceTable->getSize()) + align) / ~align;
+            }
+        #endif
     }
 
     m_CommandBuffer[m_CommandCount++] = draw_batch;
@@ -341,7 +354,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
         {
             vb.VertexBuffer->bindVertexBuffer(vb_idx, vb.Offset, vb.Stride);
             buffer_table[vb_idx].Offset = vb.Offset;
-            buffer_table[vb_idx + 1].Stride = vb.Stride;
+            buffer_table[vb_idx].Stride = vb.Stride;
         }
     }
     
@@ -444,7 +457,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
     }
 }
 
-static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLuint const_buf_ring)
+static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, GLint alignment, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLuint const_buf_ring)
 {
     auto& first = *cpu_cmd_buf;
     auto* prev_state = first.PipelineState;
@@ -463,7 +476,7 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, GLDrawBatc
         {
             vb.VertexBuffer->bindVertexBuffer(vb_idx, vb.Offset, vb.Stride);
             buffer_table[vb_idx].Offset = vb.Offset;
-            buffer_table[vb_idx + 1].Stride = vb.Stride;
+            buffer_table[vb_idx].Stride = vb.Stride;
         }
     }
 
@@ -515,12 +528,15 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, GLDrawBatc
         }
         if(cpu_cmd.ResourceTable)
         {
-            auto size = cpu_cmd.ResourceTable->getSize();
-            glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring, offset, size);
+            auto align = alignment - 1;
+            auto real_size = cpu_cmd.ResourceTable->getSize();
+            auto size = (real_size + align) & ~align;
+            glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring, offset, real_size);
             offset += size;
         }
 
         auto mode = TranslateDrawMode(prev_state->getPrimitiveType());
+        CheckOpenGL();
         glDrawElementsBaseVertex(mode, cpu_cmd.VertexCount, GLType::GL_UNSIGNED_SHORT,
                                  reinterpret_cast<char*>(nullptr) + cpu_cmd.BaseIndex, cpu_cmd.BaseVertex);
         CheckOpenGL();
@@ -570,14 +586,16 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
             auto& cpu_cmd = cpu_cmd_buf[cmd_idx];
             if(cpu_cmd.ResourceTable)
             {
-                auto size = cpu_cmd.ResourceTable->getSize();
-                std::copy_n(cpu_cmd.ResourceTable->get(), size, res_buf);
-                res_buf += size;
+                auto align = m_Alignment - 1;
+                auto real_size = cpu_cmd.ResourceTable->getSize();
+                auto offset = (cpu_cmd.ResourceTable->getSize() + align) & ~align;
+                std::copy_n(cpu_cmd.ResourceTable->get(), real_size, res_buf);
+                res_buf += offset;
             }
         }
         glUnmapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER);
 
-        ExecuteCommandBufferOldStyle(backend, m_CommandBuffer.get(), m_CommandCount, m_ConstantBuffer);
+        ExecuteCommandBufferOldStyle(backend, m_Alignment, m_CommandBuffer.get(), m_CommandCount, m_ConstantBuffer);
     }
 }
 }

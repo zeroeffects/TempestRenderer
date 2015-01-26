@@ -39,6 +39,59 @@ namespace Tempest
 {
 struct Vector4;
     
+struct TextureInfo
+{
+    GLFormat InternalFormat;
+    GLFormat Format;
+    GLType   Type;
+};
+
+inline TextureInfo TranslateTextureInfo(DataFormat fmt)
+{
+    switch(fmt)
+    {
+        //  case DataFormat::Unknown: break;
+    case DataFormat::R32F: return TextureInfo{ GLFormat::GL_R32F, GLFormat::GL_RED, GLType::GL_FLOAT }; break;
+    case DataFormat::RG32F: return TextureInfo{ GLFormat::GL_RG32F, GLFormat::GL_RG, GLType::GL_FLOAT }; break;
+    case DataFormat::RGB32F: return TextureInfo{ GLFormat::GL_RGB32F, GLFormat::GL_RGB, GLType::GL_FLOAT }; break;
+    case DataFormat::RGBA32F: return TextureInfo{ GLFormat::GL_RGBA32F, GLFormat::GL_RGBA, GLType::GL_FLOAT }; break;
+    case DataFormat::R16F: return TextureInfo{ GLFormat::GL_R16F, GLFormat::GL_RED, GLType::GL_FLOAT }; break;
+    case DataFormat::RG16F: return TextureInfo{ GLFormat::GL_RG16F, GLFormat::GL_RG, GLType::GL_FLOAT }; break;
+        //  case DataFormat::RGB16F: break; 
+    case DataFormat::RGBA16F: return TextureInfo{ GLFormat::GL_RGBA16F, GLFormat::GL_RGBA, GLType::GL_FLOAT }; break;
+        //  case DataFormat::R32: return TextureInfo{ GL_RED, GL_RED, GL_INT }; break;
+        //  case DataFormat::RG32: return TextureInfo{ GL_RG, GL_RG, GL_INT }; break;
+        //  case DataFormat::RGB32: return TextureInfo{ GL_RGB, GL_RGB, GL_INT }; break;
+        //  case DataFormat::RGBA32: return TextureInfo{ GL_RGBA, GL_RGBA, GL_INT }; break;
+    case DataFormat::R16SNorm: return TextureInfo{ GLFormat::GL_R16_SNORM, GLFormat::GL_RED, GLType::GL_SHORT }; break;
+    case DataFormat::RG16SNorm: return TextureInfo{ GLFormat::GL_RG16_SNORM, GLFormat::GL_RG, GLType::GL_SHORT }; break;
+        //  case DataFormat::RGB16SNorm: break;
+    case DataFormat::RGBA16SNorm: return TextureInfo{ GLFormat::GL_RGBA16_SNORM, GLFormat::GL_RGBA, GLType::GL_SHORT }; break;
+    case DataFormat::R8SNorm: return TextureInfo{ GLFormat::GL_R8_SNORM, GLFormat::GL_RED, GLType::GL_BYTE }; break;
+    case DataFormat::RG8SNorm: return TextureInfo{ GLFormat::GL_RG8_SNORM, GLFormat::GL_RG, GLType::GL_BYTE }; break;
+        //  case DataFormat::RGB8SNorm: break;
+    case DataFormat::RGBA8SNorm: return TextureInfo{ GLFormat::GL_RGBA8_SNORM, GLFormat::GL_RGBA, GLType::GL_BYTE }; break;
+        //  case DataFormat::R32: return TextureInfo{GL_RED, GL_RED, GL_UNSIGNED_INT }; break;
+        //  case DataFormat::RG32: return TextureInfo{ GL_RG, GL_RG, GL_UNSIGNED_INT }; break;
+        //  case DataFormat::RGB32: return TextureInfo{ GL_RGB, GL_RGB, GL_UNSIGNED_INT }; break;
+        //  case DataFormat::RGBA32: return TextureInfo{ GL_RGBA, GL_RGBA, GL_UNSIGNED_INT }; break;
+    case DataFormat::R16UNorm: return TextureInfo{ GLFormat::GL_R16, GLFormat::GL_RED, GLType::GL_UNSIGNED_SHORT }; break;
+    case DataFormat::RG16UNorm: return TextureInfo{ GLFormat::GL_RG16, GLFormat::GL_RG, GLType::GL_UNSIGNED_SHORT }; break;
+        //  case DataFormat::RGB16UNorm: return TextureInfo{ GL_RGB, GL_RGB, GL_UNSIGNED_SHORT }; break;
+    case DataFormat::RGBA16UNorm: return TextureInfo{ GLFormat::GL_RGBA16, GLFormat::GL_RGBA, GLType::GL_UNSIGNED_SHORT }; break;
+    case DataFormat::R8UNorm: return TextureInfo{ GLFormat::GL_R8, GLFormat::GL_RED, GLType::GL_UNSIGNED_BYTE }; break;
+    case DataFormat::RG8UNorm: return TextureInfo{ GLFormat::GL_RG8, GLFormat::GL_RG, GLType::GL_UNSIGNED_BYTE }; break;
+        //  case DataFormat::RGB8UNorm: break;
+    default: TGE_ASSERT(false, "Unsupported texture format.");
+    case DataFormat::RGBA8UNorm: return TextureInfo{ GLFormat::GL_RGBA8, GLFormat::GL_RGBA, GLType::GL_UNSIGNED_BYTE }; break;
+    case DataFormat::D16: return TextureInfo{ GLFormat::GL_DEPTH_COMPONENT16, GLFormat::GL_DEPTH_COMPONENT, GLType::GL_UNSIGNED_SHORT }; break;
+    case DataFormat::D24S8: return TextureInfo{ GLFormat::GL_DEPTH24_STENCIL8, GLFormat::GL_DEPTH_STENCIL, GLType::GL_UNSIGNED_INT_24_8 }; break;
+    case DataFormat::D32: return TextureInfo{ GLFormat::GL_DEPTH_COMPONENT32, GLFormat::GL_DEPTH_COMPONENT, GLType::GL_UNSIGNED_INT }; break;
+    case DataFormat::R10G10B10A2: return TextureInfo{ GLFormat::GL_RGBA, GLFormat::GL_RGBA, GLType::GL_INT_2_10_10_10_REV }; break;
+    case DataFormat::uR10G10B10A2: return TextureInfo{ GLFormat::GL_RGBA, GLFormat::GL_RGBA, GLType::GL_UNSIGNED_INT_10_10_10_2 }; break;
+    }
+}
+
 class GLTexture
 {
     TextureDescription  m_Description;
@@ -67,6 +120,20 @@ public:
 #endif
      
     GLuint getCPUHandle() const { return m_Texture; }
+
+    const char* getHandlePointer()
+    {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
+        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+        {
+            return reinterpret_cast<const char*>(&m_GPUHandle);
+        }
+        else
+#endif
+        {
+            return reinterpret_cast<const char*>(&m_Texture);
+        }
+    }
 
     const TextureDescription& getDescription() const { return m_Description; }
 };

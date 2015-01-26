@@ -242,6 +242,7 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
         else
         {
             array_size = 0; // infinite
+            elem_size = (elem_size + 4 * sizeof(float) - 1) & ~(4 * sizeof(float) - 1);
             buf_desc->setResizablePart(elem_size);
         }
         *offset = (*offset + 4 * sizeof(float)-1) & ~(4 * sizeof(float)-1);

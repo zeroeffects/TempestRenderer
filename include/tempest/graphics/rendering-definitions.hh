@@ -180,6 +180,67 @@ enum class DataFormat
     uR10G10B10A2
 };
 
+inline uint32 DataFormatElementSize(DataFormat format)
+{
+    switch(format)
+    {
+    default: TGE_ASSERT(false, "Unknown format"); return 0;
+    case DataFormat::R32F: return sizeof(float);
+    case DataFormat::RG32F: return 2*sizeof(float);
+    case DataFormat::RGB32F: return 3*sizeof(float);
+    case DataFormat::RGBA32F: return 4*sizeof(float);
+    case DataFormat::R16F: return sizeof(float)/2;
+    case DataFormat::RG16F: return 2*sizeof(float)/2;
+    //  RGB16F,
+    case DataFormat::RGBA16F: return 4*sizeof(float)/2;
+    case DataFormat::R32: return sizeof(int32);
+    case DataFormat::RG32: return 2*sizeof(int32);
+    case DataFormat::RGB32: return 3*sizeof(int32);
+    case DataFormat::RGBA32: return 4*sizeof(int32);
+    case DataFormat::R16: return sizeof(int16);
+    case DataFormat::RG16: return 2*sizeof(int16);
+    //  RGB16,
+    case DataFormat::RGBA16: return 4*sizeof(int16);
+    case DataFormat::R8: return sizeof(int8);
+    case DataFormat::RG8: return 2*sizeof(int8);
+    //  RGB8,
+    case DataFormat::RGBA8: return 4*sizeof(int8);
+    case DataFormat::uR32: return sizeof(uint32);
+    case DataFormat::uRG32: return 2*sizeof(uint32);
+    case DataFormat::uRGB32: return 3*sizeof(uint32);
+    case DataFormat::uRGBA32: return 4*sizeof(uint32);
+    case DataFormat::uR16: return sizeof(uint16);
+    case DataFormat::uRG16: return 2*sizeof(uint16);
+    //  uRGB16,
+    case DataFormat::uRGBA16: return 4*sizeof(uint16);
+    case DataFormat::uR8: return sizeof(uint8);
+    case DataFormat::uRG8: return 2*sizeof(uint8);
+    //  uRGB8,
+    case DataFormat::uRGBA8: return 4*sizeof(uint8);
+    case DataFormat::R16SNorm: return sizeof(int16);
+    case DataFormat::RG16SNorm: return 2*sizeof(int16);
+    //  RGB16SNorm,
+    case DataFormat::RGBA16SNorm: return 4*sizeof(int16);
+    case DataFormat::R8SNorm: return sizeof(int8);
+    case DataFormat::RG8SNorm: return 2*sizeof(int8);
+    //  RGB8SNorm,
+    case DataFormat::RGBA8SNorm: return 4*sizeof(int8);
+    case DataFormat::R16UNorm: return sizeof(uint16);
+    case DataFormat::RG16UNorm: return 2*sizeof(uint16);
+    //  RGB16UNorm,
+    case DataFormat::RGBA16UNorm: return 4*sizeof(uint16);
+    case DataFormat::R8UNorm: return sizeof(uint8);
+    case DataFormat::RG8UNorm: return 2*sizeof(uint8);
+    //  RGB8UNorm,
+    case DataFormat::RGBA8UNorm: return 4*sizeof(uint8);
+    case DataFormat::D16: return sizeof(uint16);
+    case DataFormat::D24S8: return (24 + 8)/8;
+    case DataFormat::D32: return sizeof(uint32);
+    case DataFormat::R10G10B10A2: return (10 + 10 + 10 + 2)/8;
+    case DataFormat::uR10G10B10A2:  return (10 + 10 + 10 + 2)/8;
+    }
+}
+
 enum class UniformValueType: uint32
 {
     Float,
@@ -209,6 +270,14 @@ enum class UniformValueType: uint32
     Matrix4x3,
     Texture,
     Struct,
+};
+
+enum class StorageMode: uint32
+{
+    BufferRead,
+    BufferWrite,
+    PixelPack,
+    PixelUnpack
 };
 
 inline uint32 UniformValueTypeSize(UniformValueType uniform_value)
@@ -278,6 +347,11 @@ struct CommandBufferDescription
 {
     uint32 CommandCount;
     uint32 ConstantsBufferSize;
+};
+
+struct IOCommandBufferDescription
+{
+    uint32 CommandCount;
 };
 }
 

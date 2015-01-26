@@ -37,6 +37,8 @@
 #include "tempest/graphics/opengl-backend/gl-texture.hh"
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
 #include "tempest/graphics/opengl-backend/gl-config.hh"
+#include "tempest/graphics/opengl-backend/gl-storage.hh"
+#include "tempest/graphics/opengl-backend/gl-io-command-buffer.hh"
 #include "tempest/graphics/state-object.hh"
 #include "tempest/utils/logging.hh"
 
@@ -113,7 +115,7 @@ LogLevel TranslateDebugSeverity(GLSeverityType severity)
 
 static const LogLevel MinSeverity = LogLevel::Error;
 
-void DebugLoggingCallback(GLDebugSourceType source, GLDebugType type, GLuint id, GLSeverityType severity, GLsizei length, const GLchar* message, const void*)
+void APIENTRY DebugLoggingCallback(GLDebugSourceType source, GLDebugType type, GLuint id, GLSeverityType severity, GLsizei length, const GLchar* message, const void*)
 {
     auto log_level = TranslateDebugSeverity(severity);
     if(log_level < MinSeverity)
@@ -275,6 +277,21 @@ void GLRenderingBackend::submitCommandBuffer(GLCommandBuffer* cmd_buffer)
     cmd_buffer->_executeCommandBuffer(this);
 }
 
+GLIOCommandBuffer* GLRenderingBackend::createIOCommandBuffer(const IOCommandBufferDescription& cmd_buf_desc)
+{
+    return new GLIOCommandBuffer(cmd_buf_desc);
+}
+
+void GLRenderingBackend::destroyRenderResource(GLIOCommandBuffer* cmd_buffer)
+{
+    delete cmd_buffer;
+}
+
+void GLRenderingBackend::submitCommandBuffer(GLIOCommandBuffer* cmd_buffer)
+{
+    cmd_buffer->_executeCommandBuffer();
+}
+
 void GLRenderingBackend::destroyRenderResource(GLCommandBuffer* buffer)
 {
     delete buffer;
@@ -318,6 +335,20 @@ void GLRenderingBackend::setTextures(const GLBakedResourceTable* resource_table)
         // Well, we need signature to workaround the issue.
         GLsizei count = static_cast<GLsizei>(resource_table->getSize() / sizeof(GLuint));
         glBindTextures(0, count, reinterpret_cast<const GLuint*>(resource_table->get()));
+    }
+}
+
+uint32 GLRenderingBackend::getTextureHandleSize()
+{
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
+    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+    {
+        return sizeof(GLuint64);
+    }
+    else
+#endif
+    {
+        return sizeof(GLuint);
     }
 }
 
@@ -383,7 +414,17 @@ GLStateObject* GLRenderingBackend::createStateObject(const VertexAttributeDescri
 
     return m_StateObjects.emplace(new GLStateObject(layout, shader_program, primitive_type, gl_rast_states, gl_blend_states, gl_depth_stencil_states)).first->get();
 }
-    
+
+GLStorage* GLRenderingBackend::createStorageBuffer(StorageMode storage_type, uint32 size)
+{
+    return new GLStorage(storage_type, size);
+}
+
+void GLRenderingBackend::destroyRenderResource(GLStorage* storage)
+{
+    delete storage;
+}
+
 void GLRenderingBackend::setScissorRect(uint32 x, uint32 y, uint32 width, uint32 height)
 {
     glScissor(x, y, width, height);
@@ -403,5 +444,32 @@ void GLRenderingBackend::clearColorBuffer(uint32 idx, const Vector4& color)
 void GLRenderingBackend::clearDepthStencilBuffer(float depth, uint8 stencil)
 {
     glClearBufferfi(GLBufferContentType::GL_DEPTH_STENCIL, 0, depth, stencil);
+}
+
+GLRenderingBackend::FenceType* GLRenderingBackend::createFence()
+{
+    return new GLsync{ 0 };
+}
+
+void GLRenderingBackend::pushFence(GLRenderingBackend::FenceType* fence)
+{
+    if(*fence)
+        glDeleteSync(*fence);
+    *fence = glFenceSync(GLSyncCondition::GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+}
+
+void GLRenderingBackend::destroyRenderResource(GLRenderingBackend::FenceType* fence)
+{
+    if(*fence)
+        glDeleteSync(*fence);
+    delete fence;
+}
+
+void GLRenderingBackend::waitFence(FenceType* fence)
+{
+    if(*fence == 0)
+        return;
+    glClientWaitSync(*fence, GL_SYNC_FLUSH_COMMANDS_BIT, std::numeric_limits<uint64>::max());
+    *fence = 0;
 }
 }

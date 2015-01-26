@@ -22,40 +22,15 @@
 *   THE SOFTWARE.
 */
 
-#ifndef _TEMPEST_GL_CONFIG_HH_
-#define _TEMPEST_GL_CONFIG_HH_
+#ifndef _PNG_IMAGE_HH_
+#define _PNG_IMAGE_HH_
 
-/////////////////////
-// USER MODIFIABLE //
-/////////////////////
-//#define TEMPEST_DISABLE_MDI_BINDLESS
-//#define TEMPEST_DISABLE_MDI
-//#define TEMPEST_DISABLE_TEXTURE_BINDLESS
+namespace Tempest
+{
+class Texture;
+class Path;
 
-/////////////////////////////////////
-// DON'T MODIFY THESE ONES BY HAND //
-/////////////////////////////////////
-#define TEMPEST_RESOURCE_BUFFER 0
-#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
-#   define TEMPEST_UBO_START 1
-#endif
+Texture* LoadPNGImage(const Path& file_path);
+}
 
-#if defined(TEMPEST_DISABLE_MDI) && !defined(TEMPEST_DISABLE_TEXTURE_BINDLESS)
-#   define TEMPEST_GLOBALS_BUFFER 1
-#   undef TEMPEST_UBO_START
-#   define TEMPEST_UBO_START 2
-#   define TEMPEST_SSBO_START 0
-#else
-#   define TEMPEST_GLOBALS_BUFFER 0
-#   ifdef TEMPEST_DISABLE_MDI
-#       define TEMPEST_SSBO_START 0
-#       define TEMPEST_UBO_START 1
-#   else
-#       define TEMPEST_SSBO_START 1
-#       ifndef TEMPEST_UBO_START
-#           define TEMPEST_UBO_START 0
-#       endif
-#   endif
-#endif
-
-#endif
+#endif // _PNG_IMAGE_HH_

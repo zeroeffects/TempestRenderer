@@ -64,6 +64,8 @@ struct ResourceIndex
     uint32 ResourceTableIndex = 0;
     uint32 BaseOffset = 0;
 };
+
+const uint32 InvalidResourceIndex = std::numeric_limits<uint32>::max();
 }
 
 #endif // _TEMPEST_SHADER_HH_

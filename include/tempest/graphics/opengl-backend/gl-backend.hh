@@ -55,6 +55,9 @@ class GLTexture;
 class GLShaderProgram;
 class GLInputLayout;
 class GLWindow;
+class GLStorage;
+class GLFence;
+class GLIOCommandBuffer;
 
 struct GLBlendStates;
 struct GLRasterizerStates;
@@ -119,13 +122,16 @@ class GLRenderingBackend
 #endif
     OSWindowSystem* m_Display = nullptr;
 public:
-    typedef GLRenderTarget  RenderTargetType;
-    typedef GLCommandBuffer CommandBufferType;
-    typedef GLFramebuffer   FramebufferType;
-    typedef GLBuffer        BufferType;
-    typedef GLStateObject   StateObjectType;
-    typedef GLTexture       TextureType;
-    typedef GLShaderProgram ShaderProgramType;
+    typedef GLRenderTarget    RenderTargetType;
+    typedef GLCommandBuffer   CommandBufferType;
+    typedef GLFramebuffer     FramebufferType;
+    typedef GLBuffer          BufferType;
+    typedef GLStateObject     StateObjectType;
+    typedef GLTexture         TextureType;
+    typedef GLStorage         StorageType;
+    typedef GLShaderProgram   ShaderProgramType;
+    typedef GLIOCommandBuffer IOCommandBufferType;
+    typedef GLsync            FenceType;
     
     //! Constructor.
     explicit GLRenderingBackend();
@@ -193,12 +199,28 @@ public:
     
     /*! \brief Submit a command buffer.
      *  
-     *  This function schedules the command buffer that was hopefully built in another thread.
+     *  This function schedules the command buffer that was can be built in another thread.
      * 
      *  \param cmd_buffer   a pointer to a command buffer object.
      */
     void submitCommandBuffer(GLCommandBuffer* cmd_buffer);
     
+    /*! \brief Create an I/O command buffer used for scheduling asynchronous copy operations.
+     */
+    GLIOCommandBuffer* createIOCommandBuffer(const IOCommandBufferDescription& cmd_buf_desc);
+
+    /*! \brief Destroy an I/O command buffer.
+     */
+    void destroyRenderResource(GLIOCommandBuffer* cmd_buffer);
+    
+    /*! \brief Submit an I/O command buffer.
+    *
+    *  This function schedules the I/O command buffer that can be built in another thread.
+    *
+    *  \param cmd_buffer   a pointer to a command buffer object.
+    */
+    void submitCommandBuffer(GLIOCommandBuffer* cmd_buffer);
+
     /*! \brief Destroy a command buffer object.
      * 
      *  Deallocates the command buffer object. It might not get executed immediately because of stalling prevention.
@@ -328,6 +350,46 @@ public:
      *  \param stencil the stencil value.
      */
     void clearDepthStencilBuffer(float depth=1.0f, uint8 stencil=0);
+
+    /*! \brief Create a storage buffer.
+     *  
+     *  Storage buffers are allocated in CPU visible memory and they are used for transferring
+     *  resource data to GPU visible memory in asynchronous fashion.
+     *
+     *  \param storage_type     the type of the storage buffer.
+     *  \param size             the size of the storage buffer in bytes.
+     */
+    GLStorage* createStorageBuffer(StorageMode storage_type, uint32 size);
+
+    /*! \brief Destroy a storage buffer.
+     *
+     *  \param storage           a pointer to the storage buffer.
+     */
+    void destroyRenderResource(GLStorage* storage);
+
+    /*! \brief Create fence object used for synchronization between CPU and GPU.
+     */
+    FenceType* createFence();
+
+    /*! \brief Push a fence object to command stream.
+     */
+    void pushFence(FenceType* fence);
+
+    /*! \brief Destroy fence object
+     */
+    void destroyRenderResource(FenceType* fence);
+
+    /*! \brief Wait on a fence object. 
+     *  
+     *  \remarks Fence objects can't be used outside of rendering thread for platform specific reasons.
+     */
+    void waitFence(FenceType* fence);
+
+    /*! \brief Get texture handle size.
+     *
+     *  It is used for building baked texture tables by hand.
+     */
+    uint32 getTextureHandleSize();
 };
 }
 

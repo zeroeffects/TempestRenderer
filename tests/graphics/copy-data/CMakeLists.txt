@@ -23,9 +23,9 @@
 #   THE SOFTWARE.
 ##################################################################################
 
-ADD_SUBDIRECTORY(draw-quad)
-ADD_SUBDIRECTORY(window-init)
-ADD_SUBDIRECTORY(object-file-viewer)
-ADD_SUBDIRECTORY(draw-quad-texture)
-ADD_SUBDIRECTORY(draw-quad-texture-table)
-ADD_SUBDIRECTORY(copy-data)
+ADD_DEFINITIONS("-DCURRENT_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+ADD_EXECUTABLE(CopyDataTest WIN32 copy-data.cc)
+ADD_TEST(CopyDataTest CopyDataTest)
+
+TARGET_LINK_LIBRARIES(CopyDataTest tempest-static tempest-main)

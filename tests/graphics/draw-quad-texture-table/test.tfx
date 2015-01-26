@@ -1,0 +1,52 @@
+struct GlobalsDesc
+{
+    vec4 Transform;
+    uint TextureID;
+};
+
+void GetResourceIndex(in uint packed_res_idx, out uint tex_slot, out uint tex_slice)
+{
+    tex_slot  = packed_res_idx >> 16;
+    tex_slice = packed_res_idx & 0xFFFFu;
+}
+
+// The main reason is APIs that support some non-bindless weirdness for the old hardware sake.
+resource buffer ResourcesTable
+{
+    sampler2DArray Textures[16];
+}
+
+structbuffer GlobalsDesc Globals;
+
+vertex shader
+{
+    in vec2      Position;
+    in vec2      TexCoord;
+
+    flat out int DrawIndex;
+    out vec2     InterpTexCoord;
+    
+    void main()
+    {
+        vec4 transform = Globals[tge_DrawID].Transform;
+        DrawIndex = tge_DrawID;
+        InterpTexCoord = TexCoord;
+        gl_Position = vec4(Position.xy*transform.zw + transform.xy, 0.0, 1.0);
+    }
+}
+
+fragment shader
+{
+    flat in int DrawIndex;
+    in vec2     InterpTexCoord;
+
+    out vec4    FragmentColor;
+
+    void main()
+    {
+        uint tex_slot, tex_slice;
+        GetResourceIndex(Globals[DrawIndex].TextureID, tex_slot, tex_slice);
+        vec3 color = texture(Textures[tex_slot], vec3(InterpTexCoord, float(tex_slice))).xyz;
+        FragmentColor = vec4(color + 0.5, 1.0);
+    }
+}

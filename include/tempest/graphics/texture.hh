@@ -44,10 +44,10 @@ struct TextureDescription
 {
     uint16          Width;
     uint16          Height;
-    uint16          Depth;
+    uint16          Depth = 1;
     uint16          Samples = 1;
     DataFormat      Format;
-    TextureTiling   Tiling;
+    TextureTiling   Tiling = TextureTiling::Flat;
 };
 
 class Texture
@@ -62,7 +62,9 @@ public:
     
     const TextureDescription& getHeader() const { return m_Header; }
     
-    const uint8* getData() { return m_Data.get(); }
+    void convertToRGBA();
+
+    const uint8* getData() const { return m_Data.get(); }
 };
 }
 

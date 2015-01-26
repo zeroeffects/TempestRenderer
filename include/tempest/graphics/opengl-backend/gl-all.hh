@@ -30,3 +30,5 @@
 #include "tempest/graphics/opengl-backend/gl-convenience.hh"
 #include "tempest/graphics/opengl-backend/gl-compiler.hh"
 #include "tempest/graphics/opengl-backend/gl-texture.hh"
+#include "tempest/graphics/opengl-backend/gl-storage.hh"
+#include "tempest/graphics/opengl-backend/gl-io-command-buffer.hh"

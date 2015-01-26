@@ -167,10 +167,29 @@ UniqueResource<TBackend, typename TBackend::TextureType> CreateTexture(TBackend*
 }
 
 template<class TBackend>
+UniqueResource<TBackend, typename TBackend::TextureType> CreateTexture(TBackend* backend, const TextureDescription& tex_desc, uint32 flags = RESOURCE_STATIC_DRAW)
+{
+    return CreateUniqueResource(backend, backend->createTexture(tex_desc, flags, nullptr));
+}
+
+template<class TBackend>
 UniqueResource<TBackend, typename TBackend::CommandBufferType> CreateCommandBuffer(TBackend* backend, const CommandBufferDescription& desc)
 {
     return CreateUniqueResource(backend, backend->createCommandBuffer(desc));
 }
+
+template<class TBackend>
+UniqueResource<TBackend, typename TBackend::IOCommandBufferType> CreateIOCommandBuffer(TBackend* backend, const IOCommandBufferDescription& desc)
+{
+    return CreateUniqueResource(backend, backend->createIOCommandBuffer(desc));
+}
+
+template<class TBackend>
+UniqueResource<TBackend, typename TBackend::StorageType> CreateStorageBuffer(TBackend* backend, StorageMode storage_type, uint32 size)
+{
+    return CreateUniqueResource(backend, backend->createStorageBuffer(storage_type, size));
+}
+
 
 class BasicFileLoader: public FileLoader
 {

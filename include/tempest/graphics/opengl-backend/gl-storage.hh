@@ -22,40 +22,35 @@
 *   THE SOFTWARE.
 */
 
-#ifndef _TEMPEST_GL_CONFIG_HH_
-#define _TEMPEST_GL_CONFIG_HH_
+#ifndef _TEMPEST_GL_STORAGE_HH_
+#define _TEMPEST_GL_STORAGE_HH_
 
-/////////////////////
-// USER MODIFIABLE //
-/////////////////////
-//#define TEMPEST_DISABLE_MDI_BINDLESS
-//#define TEMPEST_DISABLE_MDI
-//#define TEMPEST_DISABLE_TEXTURE_BINDLESS
+#include "tempest/graphics/rendering-definitions.hh"
+#include "tempest/graphics/opengl-backend/gl-library.hh"
 
-/////////////////////////////////////
-// DON'T MODIFY THESE ONES BY HAND //
-/////////////////////////////////////
-#define TEMPEST_RESOURCE_BUFFER 0
-#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
-#   define TEMPEST_UBO_START 1
-#endif
+namespace Tempest
+{
+struct TextureDescription;
 
-#if defined(TEMPEST_DISABLE_MDI) && !defined(TEMPEST_DISABLE_TEXTURE_BINDLESS)
-#   define TEMPEST_GLOBALS_BUFFER 1
-#   undef TEMPEST_UBO_START
-#   define TEMPEST_UBO_START 2
-#   define TEMPEST_SSBO_START 0
-#else
-#   define TEMPEST_GLOBALS_BUFFER 0
-#   ifdef TEMPEST_DISABLE_MDI
-#       define TEMPEST_SSBO_START 0
-#       define TEMPEST_UBO_START 1
-#   else
-#       define TEMPEST_SSBO_START 1
-#       ifndef TEMPEST_UBO_START
-#           define TEMPEST_UBO_START 0
-#       endif
-#   endif
-#endif
+class GLStorage
+{
+    uint32      m_Size;
+    GLuint      m_Storage;
+    uint8*      m_DataPtr;
+public:
+    GLStorage(StorageMode storage_type, uint32 size);
+    ~GLStorage();
 
-#endif
+    uint32 getSize() const { return m_Size; }
+
+    void bindToTarget(GLBufferTarget target) { glBindBuffer(target, m_Storage); }
+
+    void storeLinearBuffer(uint32 offset, uint32 size, const void* data);
+    void storeTexture(uint32 offset, const TextureDescription& tex_desc, const void* data);
+
+    void extractLinearBuffer(uint32 offset, uint32 size, void* data);
+    void extractTexture(uint32 offset, const TextureDescription& tex_desc, void* data);
+};
+}
+
+#endif // _TEMPEST_GL_STORAGE_HH_

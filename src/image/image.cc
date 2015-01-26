@@ -24,6 +24,8 @@
 
 #include "tempest/image/image.hh"
 #include "tempest/image/tga-image.hh"
+#include "tempest/image/png-image.hh"
+#include "tempest/graphics/texture.hh"
 #include "tempest/utils/file-system.hh"
 #include "tempest/utils/logging.hh"
 
@@ -37,6 +39,10 @@ Texture* LoadImage(const Path& file_path)
     if(ext == "tga")
     {
         return LoadTGAImage(file_path);
+    }
+    else if(ext == "png")
+    {
+        return LoadPNGImage(file_path);
     }
     else
     {

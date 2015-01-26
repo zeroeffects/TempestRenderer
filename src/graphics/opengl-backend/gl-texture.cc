@@ -33,57 +33,8 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
         m_Flags(flags),
         m_GPUHandle(0)
 {
-    struct TexInfo
-    {
-        GLFormat internalFormat;
-        GLFormat format;
-        GLType   type;
-    } tex_info;
-    
-    switch(desc.Format)
-    {
-//  case DataFormat::Unknown: break;
-    case DataFormat::R32F: tex_info = TexInfo{ GLFormat::GL_R32F, GLFormat::GL_RED, GLType::GL_FLOAT }; break;
-    case DataFormat::RG32F: tex_info = TexInfo{ GLFormat::GL_RG32F, GLFormat::GL_RG, GLType::GL_FLOAT }; break;
-    case DataFormat::RGB32F: tex_info = TexInfo{ GLFormat::GL_RGB32F, GLFormat::GL_RGB, GLType::GL_FLOAT }; break;
-    case DataFormat::RGBA32F: tex_info = TexInfo{ GLFormat::GL_RGBA32F, GLFormat::GL_RGBA, GLType::GL_FLOAT }; break;
-    case DataFormat::R16F: tex_info = TexInfo{ GLFormat::GL_R16F, GLFormat::GL_RED, GLType::GL_FLOAT }; break;
-    case DataFormat::RG16F: tex_info = TexInfo{ GLFormat::GL_RG16F, GLFormat::GL_RG, GLType::GL_FLOAT }; break;
-//  case DataFormat::RGB16F: break; 
-    case DataFormat::RGBA16F: tex_info = TexInfo{ GLFormat::GL_RGBA16F, GLFormat::GL_RGBA, GLType::GL_FLOAT }; break;
-//  case DataFormat::R32: tex_info = TexInfo{ GL_RED, GL_RED, GL_INT }; break;
-//  case DataFormat::RG32: tex_info = TexInfo{ GL_RG, GL_RG, GL_INT }; break;
-//  case DataFormat::RGB32: tex_info = TexInfo{ GL_RGB, GL_RGB, GL_INT }; break;
-//  case DataFormat::RGBA32: tex_info = TexInfo{ GL_RGBA, GL_RGBA, GL_INT }; break;
-    case DataFormat::R16SNorm: tex_info = TexInfo{ GLFormat::GL_R16_SNORM, GLFormat::GL_RED, GLType::GL_SHORT }; break;
-    case DataFormat::RG16SNorm: tex_info = TexInfo{ GLFormat::GL_RG16_SNORM, GLFormat::GL_RG, GLType::GL_SHORT }; break;
-//  case DataFormat::RGB16SNorm: break;
-    case DataFormat::RGBA16SNorm: tex_info = TexInfo{ GLFormat::GL_RGBA16_SNORM, GLFormat::GL_RGBA, GLType::GL_SHORT }; break;
-    case DataFormat::R8SNorm: tex_info = TexInfo{ GLFormat::GL_R8_SNORM, GLFormat::GL_RED, GLType::GL_BYTE }; break;
-    case DataFormat::RG8SNorm: tex_info = TexInfo{ GLFormat::GL_RG8_SNORM, GLFormat::GL_RG, GLType::GL_BYTE }; break;
-//  case DataFormat::RGB8SNorm: break;
-    case DataFormat::RGBA8SNorm: tex_info = TexInfo{ GLFormat::GL_RGBA8_SNORM, GLFormat::GL_RGBA, GLType::GL_BYTE }; break;
-//  case DataFormat::R32: tex_info = TexInfo{GL_RED, GL_RED, GL_UNSIGNED_INT }; break;
-//  case DataFormat::RG32: tex_info = TexInfo{ GL_RG, GL_RG, GL_UNSIGNED_INT }; break;
-//  case DataFormat::RGB32: tex_info = TexInfo{ GL_RGB, GL_RGB, GL_UNSIGNED_INT }; break;
-//  case DataFormat::RGBA32: tex_info = TexInfo{ GL_RGBA, GL_RGBA, GL_UNSIGNED_INT }; break;
-    case DataFormat::R16UNorm: tex_info = TexInfo{ GLFormat::GL_R16, GLFormat::GL_RED, GLType::GL_UNSIGNED_SHORT }; break;
-    case DataFormat::RG16UNorm: tex_info = TexInfo{ GLFormat::GL_RG16, GLFormat::GL_RG, GLType::GL_UNSIGNED_SHORT }; break;
-//  case DataFormat::RGB16UNorm: tex_info = TexInfo{ GL_RGB, GL_RGB, GL_UNSIGNED_SHORT }; break;
-    case DataFormat::RGBA16UNorm: tex_info = TexInfo{ GLFormat::GL_RGBA16, GLFormat::GL_RGBA, GLType::GL_UNSIGNED_SHORT }; break;
-    case DataFormat::R8UNorm: tex_info = TexInfo{ GLFormat::GL_R8, GLFormat::GL_RED, GLType::GL_UNSIGNED_BYTE }; break;
-    case DataFormat::RG8UNorm: tex_info = TexInfo{ GLFormat::GL_RG8, GLFormat::GL_RG, GLType::GL_UNSIGNED_BYTE }; break;
-//  case DataFormat::RGB8UNorm: break;
-    case DataFormat::RGBA8UNorm: tex_info = TexInfo{ GLFormat::GL_RGBA8, GLFormat::GL_RGBA, GLType::GL_UNSIGNED_BYTE }; break;
-    case DataFormat::D16: tex_info = TexInfo{ GLFormat::GL_DEPTH_COMPONENT16, GLFormat::GL_DEPTH_COMPONENT, GLType::GL_UNSIGNED_SHORT }; break;
-    case DataFormat::D24S8: tex_info = TexInfo{ GLFormat::GL_DEPTH24_STENCIL8, GLFormat::GL_DEPTH_STENCIL, GLType::GL_UNSIGNED_INT_24_8 }; break;
-    case DataFormat::D32: tex_info = TexInfo{ GLFormat::GL_DEPTH_COMPONENT32, GLFormat::GL_DEPTH_COMPONENT, GLType::GL_UNSIGNED_INT }; break;
-    case DataFormat::R10G10B10A2: tex_info = TexInfo{ GLFormat::GL_RGBA, GLFormat::GL_RGBA, GLType::GL_INT_2_10_10_10_REV }; break;
-    case DataFormat::uR10G10B10A2: tex_info = TexInfo{ GLFormat::GL_RGBA, GLFormat::GL_RGBA, GLType::GL_UNSIGNED_INT_10_10_10_2 }; break;
-    default: TGE_ASSERT(false, "Unsupported texture format."); break;
-    }
-    
     glGenTextures(1, &m_Texture);
+    auto tex_info = TranslateTextureInfo(desc.Format);
     TGE_ASSERT(desc.Width && desc.Height && desc.Depth, "Texture should have all dimensions different than zero");
     if(desc.Tiling == TextureTiling::Cube)
     {
@@ -110,11 +61,11 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
         glBindTexture(m_Target, m_Texture);
         if(desc.Samples > 1)
         {
-            glTexImage3DMultisample(m_Target, desc.Samples, tex_info.internalFormat, desc.Width, desc.Height, desc.Depth, GL_TRUE);
+            glTexImage3DMultisample(m_Target, desc.Samples, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, GL_TRUE);
         }
         else
         {
-            glTexImage3D(m_Target, 0, tex_info.internalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.format, tex_info.type, data);
+            glTexImage3D(m_Target, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, data);
         }
     }
     else if(desc.Height)
@@ -129,12 +80,12 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
         glBindTexture(m_Target, m_Texture);
         if(desc.Samples > 1)
         {
-            glTexImage2DMultisample(m_Target, desc.Samples, tex_info.internalFormat, desc.Width, desc.Height, GL_TRUE);
+            glTexImage2DMultisample(m_Target, desc.Samples, tex_info.InternalFormat, desc.Width, desc.Height, GL_TRUE);
             TGE_ASSERT(data == nullptr, "Uploading data on multisampled textures is unsupported");
         }
         else
         {
-            glTexImage2D(m_Target, 0, tex_info.internalFormat, desc.Width, desc.Height, 0, tex_info.format, tex_info.type, data);
+            glTexImage2D(m_Target, 0, tex_info.InternalFormat, desc.Width, desc.Height, 0, tex_info.Format, tex_info.Type, data);
         }
     }
     else
@@ -143,7 +94,7 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
         m_Target = GLTextureTarget::GL_TEXTURE_1D;
         glBindTexture(m_Target, m_Texture);
         TGE_ASSERT(desc.Samples <= 1, "Multisampling is unsupported for 1D textures");
-        glTexImage1D(m_Target, 0, tex_info.internalFormat, desc.Width, 0, tex_info.format, tex_info.type, data);
+        glTexImage1D(m_Target, 0, tex_info.InternalFormat, desc.Width, 0, tex_info.Format, tex_info.Type, data);
     }
 
     glTexParameteri(m_Target, GLTextureParameter::GL_TEXTURE_SWIZZLE_R, GL_RED);

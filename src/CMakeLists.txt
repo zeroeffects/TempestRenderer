@@ -29,10 +29,13 @@ IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/nda-build.cmake)
     SET(TEMPEST_NDA_APIS on PARENT_SCOPE)
 ENDIF()
 
+ADD_DEFINITIONS(${PNG_DEFINITIONS})
+
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_BINARY_DIR}/include
                     ${CMAKE_SOURCE_DIR}/external
                     ${FLEX_INCLUDE_DIRS}
+                    ${PNG_INCLUDE_DIRS}
                     ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}
                     ${WINDOW_SYSTEM_INCLUDE_DIR}
@@ -90,7 +93,10 @@ SET(TEMPEST_GRAPHICS_SRC
     graphics/opengl-backend/gl-input-layout.cc
     graphics/opengl-backend/gl-texture.cc
 	graphics/opengl-backend/gl-state-object.cc
+    graphics/opengl-backend/gl-storage.cc
+    graphics/opengl-backend/gl-io-command-buffer.cc
     graphics/rendering-convenience.cc
+    graphics/texture.cc
    )
 
 SET(TEMPEST_GRAPHICS_INC
@@ -110,6 +116,8 @@ SET(TEMPEST_GRAPHICS_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-utils.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-window.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-state-object.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-storage.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/graphics/opengl-backend/gl-io-command-buffer.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/api-all.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/os-window.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/graphics/rendering-backend.hh
@@ -123,13 +131,23 @@ SET(TEMPEST_GRAPHICS_INC
 SET(TEMPEST_IMAGE_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/image/image.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/image/tga-image.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/image/png-image.hh
    )
 
 SET(TEMPEST_IMAGE_SRC
     ${CMAKE_SOURCE_DIR}/src/image/image.cc
     ${CMAKE_SOURCE_DIR}/src/image/tga-image.cc
+    ${CMAKE_SOURCE_DIR}/src/image/png-image.cc
    )
-   
+
+SET(TEMPEST_TEXTURE_INC
+    ${CMAKE_SOURCE_DIR}/include/tempest/texture/texture-table.hh
+   )
+
+SET(TEMPEST_TEXTURE_SRC
+    ${CMAKE_SOURCE_DIR}/src/texture/texture-table.cc
+   )
+
 IF(UNIX)   
 	SET(TEMPEST_INPUT_SRC
 		input/controller-linux.cc
@@ -253,7 +271,9 @@ SET(TEMPEST_LIBRARY_FILES
     ${TEMPEST_SHADER_SRC}
     ${TEMPEST_SHADER_INC}
     ${TEMPEST_MESH_SRC}
-    ${TEMPEST_MESH_INC} 
+    ${TEMPEST_MESH_INC}
+    ${TEMPEST_TEXTURE_SRC}
+    ${TEMPEST_TEXTURE_INC} 
    )
 
 SOURCE_GROUP("Utility functions" FILES ${TEMPEST_UTILS_INC}
@@ -280,10 +300,10 @@ SET_PROPERTY(SOURCE ${TEMPEST_MESH_SRC} ${TEMPEST_MESH_INC} APPEND PROPERTY COMP
              "-I${CMAKE_CURRENT_BINARY_DIR}/mesh")
 
 ADD_LIBRARY(tempest-static STATIC ${TEMPEST_LIBRARY_FILES})
-TARGET_LINK_LIBRARIES(tempest-static ${EXTRA_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} xxhash)
+TARGET_LINK_LIBRARIES(tempest-static ${EXTRA_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} ${PNG_LIBRARIES} xxhash)
 
 ADD_LIBRARY(tempest-shared SHARED ${TEMPEST_LIBRARY_FILES})
-TARGET_LINK_LIBRARIES(tempest-shared ${EXTRA_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} xxhash)
+TARGET_LINK_LIBRARIES(tempest-shared ${EXTRA_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} ${PNG_LIBRARIES} xxhash)
 
 IF(UNIX)
     SET_TARGET_PROPERTIES(tempest-static tempest-shared PROPERTIES LINK_FLAGS "-Wl,--no-undefined")

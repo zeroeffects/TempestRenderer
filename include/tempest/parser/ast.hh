@@ -890,8 +890,6 @@ protected:
 
     AST::Node               m_ASTRoot;
 
-    size_t                  m_ErrorCount,
-                            m_WarningCount;
 public:
     Driver();
      ~Driver();

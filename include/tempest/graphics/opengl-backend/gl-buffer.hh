@@ -45,8 +45,9 @@ public:
     explicit GLBuffer(size_t size, VBType vb_type, size_t usage, const void* data);
      ~GLBuffer();
     
-     void bindVertexBuffer(GLuint bind_slot, GLintptr offset, GLsizei stride);
+    void bindVertexBuffer(GLuint bind_slot, GLintptr offset, GLsizei stride);
     void bindIndexBuffer();
+    void bindToTarget(GLBufferTarget target) { glBindBuffer(target, m_Buffer); }
     
     GLuint64 getGPUAddress() const { return m_GPUAddress; }
     size_t getSize() const { return m_Size; }

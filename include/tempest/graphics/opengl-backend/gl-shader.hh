@@ -79,12 +79,17 @@ public:
             m_Size(size) {}
     ~GLBakedResourceTable() { delete m_Table; }
     
+    void reset()
+    {
+        if(m_Table == nullptr)
+            m_Table = new char[m_Size];
+    }
+
     GLBakedResourceTable(GLBakedResourceTable&& table)
     {
         m_Table = table.m_Table;
         m_Size = table.m_Size;
         table.m_Table = nullptr;
-        table.m_Size = 0;
     }
     
     GLBakedResourceTable& operator=(GLBakedResourceTable&& table)
@@ -92,7 +97,6 @@ public:
         m_Table = table.m_Table;
         m_Size = table.m_Size;
         table.m_Table = nullptr;
-        table.m_Size = 0;
     }
     
     template<class T>
@@ -104,8 +108,9 @@ public:
     operator bool() const { return m_Table != nullptr; }
     
     const char* get() const { return m_Table; }
-    
-    size_t getSize() const { return m_Size; }
+    char* get() { return m_Table; }
+
+    size_t getSize() const { return m_Table ? m_Size : 0; }
 };
 
 class GLResourceTable
@@ -170,6 +175,8 @@ public:
     GLBakedResourceTable* extractBakedTable() { return new GLBakedResourceTable(std::move(m_BakedResourceTable)); }
     
     GLBakedResourceTable* getBakedTable() { return &m_BakedResourceTable; }
+
+    void resetBakedTable() { m_BakedResourceTable.reset(); }
 };
 
 class GLShaderProgram;
@@ -180,10 +187,11 @@ class GLShaderProgram
 {
     GLuint                                       m_Program;
     std::unique_ptr<ResourceTableDescription*[]> m_ResourceTables;
-    GLint                                        m_ResourceTableCount;
+    uint32                                       m_ResourceTableCount;
 
 public:
     typedef GLResourceTable ResourceTableType;
+    typedef GLBakedResourceTable BakedResourceTableType;
     
     explicit GLShaderProgram(GLuint shader_program, ResourceTableDescription* resource_tables[], uint32 res_table_count);
      ~GLShaderProgram();

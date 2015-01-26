@@ -113,7 +113,7 @@ GLShaderProgram::GLShaderProgram(GLuint prog, ResourceTableDescription* res_tabl
 
 GLShaderProgram::~GLShaderProgram()
 {
-    for(size_t i = 0; i < m_ResourceTableCount; ++i)
+    for(uint32 i = 0; i < m_ResourceTableCount; ++i)
     {
         DestroyPackedData(m_ResourceTables[i]);
     }

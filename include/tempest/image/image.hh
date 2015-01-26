@@ -22,10 +22,13 @@
  *   THE SOFTWARE.
  */
 
+#include "tempest/graphics/rendering-definitions.hh"
+
 namespace Tempest
 {
 class Texture;
 class Path;
 
 Texture* LoadImage(const Path& file_path);
+void ConvertImageToRGBA(Texture* tex);
 }

@@ -157,8 +157,6 @@ bool ListElement::isBlockStatement() const
 }
 
 Driver::Driver()
-    :   m_ErrorCount(0),
-        m_WarningCount(0)
 {
 }
 

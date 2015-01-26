@@ -151,6 +151,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
             auto cur_end = static_cast<uint32>(uval.Offset + uval.ElementCount*uval.ElementSize);
             res_table->BufferSize = std::max(res_table->BufferSize, cur_end);
         }
+        res_table->BufferSize = (res_table->BufferSize + 4 * sizeof(float) - 1) & ~(4 * sizeof(float) - 1);
         res_table->BufferSize -= static_cast<Tempest::uint32>(buffer.getResiablePart());
     }
     
@@ -158,6 +159,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
     
     GLint prog_status;
     glGetProgramiv(prog.get(), GLProgramParameter::GL_LINK_STATUS, &prog_status);
+    TGE_ASSERT(prog_status != GL_FALSE, "Program compilation failed");
     if(prog_status == GL_FALSE)
     {
         GLint len;
@@ -167,6 +169,36 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         glGetProgramInfoLog(prog.get(), len, nullptr, &error.front());
         Log(LogLevel::Error, "Shader program link error: ", error);
         glDeleteProgram(prog.get());
+            
+#ifdef TGE_DEBUG_GLSL_APPEND_SOURCE
+        for(Shader::ShaderType i = Shader::ShaderType::VertexShader, iend = Shader::ShaderType::ShaderTypeCount;
+            i != iend; ++reinterpret_cast<uint32&>(i))
+        {
+            auto* shader_desc = effect.getShader(i);
+            if(shader_desc == nullptr)
+                continue;
+            auto source = shader_desc->getAdditionalOptions() + shader_desc->getContent();
+
+            auto _type = static_cast<Shader::ShaderType>(i);
+            GLuint shader_id = glCreateShader(TranslateShaderType(_type));
+
+            const char* header = "\n\nSource code\n"
+                                 "=======================================\n\n";
+
+            string shader_type;
+            switch(_type)
+            {
+            case Shader::ShaderType::VertexShader: shader_type = "Vertex shader:\n"; break;
+            case Shader::ShaderType::TessellationControlShader: shader_type = "Tessellation control shader:\n"; break;
+            case Shader::ShaderType::TessellationEvaluationShader: shader_type = "Tessellation evaluation shader:\n"; break;
+            case Shader::ShaderType::GeometryShader: shader_type = "Geometry shader:\n"; break;
+            case Shader::ShaderType::FragmentShader: shader_type = "Fragment shader:\n"; break;
+            case Shader::ShaderType::ComputeShader: shader_type = "Compute shader:\n"; break;
+            default: TGE_ASSERT(false, "Unsupported shader type."); break;
+            }
+            Log(LogLevel::Error, shader_type, header, source);
+#endif
+        }
         return nullptr;
     }
     

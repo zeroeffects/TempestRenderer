@@ -82,6 +82,8 @@ class GLCommandBuffer
     
     GLuint                         m_GPUCommandBuffer      = 0;
     GLvoid*                        m_GPUCommandBufferPtr   = nullptr;
+
+    GLint                          m_Alignment             = 0;
 public:
     typedef GLDrawBatch DrawBatchType;
     
