@@ -155,14 +155,25 @@ public:
     const InputParameter& getInputParameter(uint32 idx) const { return m_InputSignature[idx]; }
 };
 
-typedef std::vector<BufferDescription>    BufferVector;
-typedef std::vector<string>               ImportedVector;
+struct VertexAttributeDescription
+{
+    uint32      BufferId = 0;
+    string      Name; // For annoying validation purposes.
+    DataFormat  Format = DataFormat::Unknown;
+    uint32      Offset = 0;
+    uint32      StepRate = 0;
+};
+
+typedef std::vector<BufferDescription>          BufferVector;
+typedef std::vector<string>                     ImportedVector;
+typedef std::vector<VertexAttributeDescription> VertexAttributeVector;
 
 class EffectDescription
 {
     ShaderDescription*       m_Shaders[ShaderType::ShaderTypeCount];
     ImportedVector           m_Imported;
     BufferVector             m_Buffers;
+    VertexAttributeVector    m_InputSignature;
 public:
     EffectDescription() { memset(m_Shaders, 0, sizeof(m_Shaders)); }
      ~EffectDescription()
@@ -178,6 +189,8 @@ public:
 
     void addImportedFile(string name) { m_Imported.push_back(name); }
 
+    void addVertexAttribute(VertexAttributeDescription desc) { m_InputSignature.push_back(desc); }
+
     bool trySetShader(ShaderType _type, ShaderDescription* shader_desc)
     {
         auto& shader = m_Shaders[static_cast<size_t>(_type)];
@@ -190,6 +203,9 @@ public:
     string getImportedFile(uint32 idx) const { return m_Imported[idx]; }
     uint32 getImportedFileCount() const { return static_cast<uint32>(m_Imported.size()); }
     
+    const VertexAttributeDescription& getVertexAttribute(uint32 idx) const { return m_InputSignature[idx]; }
+    uint32 getVertexAttributeCount() const { return m_InputSignature.size(); }
+
     const BufferDescription& getBuffer(uint32 idx) const { return m_Buffers[idx]; }
     uint32 getBufferCount() const { return static_cast<uint32>(m_Buffers.size()); }
     void addBuffer(BufferDescription buffer) { m_Buffers.push_back(buffer); }

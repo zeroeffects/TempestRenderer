@@ -40,6 +40,7 @@
 #include "tempest/utils/patterns.hh"
 #include "tempest/graphics/shader.hh"
 #include "tempest/graphics/rendering-definitions.hh"
+#include "tempest/shader/shader-common.hh"
 
 namespace Tempest
 {
@@ -69,63 +70,17 @@ UNIFORM_VALUE_BINDING(int32, UniformValueType::Integer);
 UNIFORM_VALUE_BINDING(uint32, UniformValueType::UnsignedInteger);
 UNIFORM_VALUE_BINDING(bool, UniformValueType::Boolean);
 
-class GLBakedResourceTable
-{
-    char*                   m_Table;
-    size_t                  m_Size;
-public:
-    GLBakedResourceTable(size_t size)
-        :   m_Table(new char[size]),
-            m_Size(size) {}
-    ~GLBakedResourceTable() { delete m_Table; }
-    
-    void reset()
-    {
-        if(m_Table == nullptr)
-            m_Table = new char[m_Size];
-    }
-
-    GLBakedResourceTable(GLBakedResourceTable&& table)
-    {
-        m_Table = table.m_Table;
-        m_Size = table.m_Size;
-        table.m_Table = nullptr;
-    }
-    
-    GLBakedResourceTable& operator=(GLBakedResourceTable&& table)
-    {
-        m_Table = table.m_Table;
-        m_Size = table.m_Size;
-        table.m_Table = nullptr;
-    }
-    
-    template<class T>
-    void setValue(size_t offset, const T& val)
-    {
-        *reinterpret_cast<T*>(m_Table + offset) = val;
-    }
-    
-    operator bool() const { return m_Table != nullptr; }
-    
-    const char* get() const { return m_Table; }
-    char* get() { return m_Table; }
-
-    size_t getSize() const { return m_Table ? m_Size : 0; }
-};
-
 class GLResourceTable
 {
     ResourceTableDescription* m_ResourceTable;
 
-    GLBakedResourceTable m_BakedResourceTable;
+    BakedResourceTable   m_BakedResourceTable;
     size_t               m_ExtendedUnits;
 public:
     GLResourceTable(ResourceTableDescription* desc, size_t extended)
         :   m_ResourceTable(desc),
             m_BakedResourceTable(desc->BufferSize + desc->ExtendablePart*extended),
             m_ExtendedUnits(extended) {}
-    
-    typedef GLBakedResourceTable BakedResourceTableType;
     
     inline size_t getResourceCount() const { return m_ResourceTable->Uniforms.Count; }
     
@@ -172,28 +127,29 @@ public:
      *           Also, it is completely throw-away. You might deallocate it at any time. The data is transferred to separate
      *           constant buffer.
      */
-    GLBakedResourceTable* extractBakedTable() { return new GLBakedResourceTable(std::move(m_BakedResourceTable)); }
+    BakedResourceTable* extractBakedTable() { return new BakedResourceTable(std::move(m_BakedResourceTable)); }
     
-    GLBakedResourceTable* getBakedTable() { return &m_BakedResourceTable; }
+    BakedResourceTable* getBakedTable() { return &m_BakedResourceTable; }
 
     void resetBakedTable() { m_BakedResourceTable.reset(); }
 };
 
 class GLShaderProgram;
 class GLRenderingBackend;
-struct VertexAttributeDescription;
+class GLInputLayout;
+struct GLBufferTableEntry;
 
 class GLShaderProgram
 {
     GLuint                                       m_Program;
+    GLInputLayout*                               m_InputLayout;
     std::unique_ptr<ResourceTableDescription*[]> m_ResourceTables;
     uint32                                       m_ResourceTableCount;
 
 public:
-    typedef GLResourceTable ResourceTableType;
-    typedef GLBakedResourceTable BakedResourceTableType;
+    typedef GLResourceTable     ResourceTableType;
     
-    explicit GLShaderProgram(GLuint shader_program, ResourceTableDescription* resource_tables[], uint32 res_table_count);
+    explicit GLShaderProgram(GLuint shader_program, GLInputLayout* input_signature, ResourceTableDescription* resource_tables[], uint32 res_table_count);
      ~GLShaderProgram();
     
     GLShaderProgram(const GLShaderProgram&)=delete;
@@ -201,8 +157,10 @@ public:
     GLShaderProgram(GLShaderProgram&&)=delete;
     GLShaderProgram& operator=(GLShaderProgram&&)=delete;
  
-    void bind() const;
+    void bind(GLBufferTableEntry* table_entry) const;
     
+    const GLInputLayout* getInputLayout() const { return m_InputLayout; }
+
     GLResourceTable* createResourceTable(const string& name, size_t extended = 0);
     void destroyRenderResource(GLResourceTable* buffer);
 };

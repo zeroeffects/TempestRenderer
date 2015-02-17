@@ -36,6 +36,11 @@
 
 namespace Tempest
 {
+namespace Shader
+{
+struct VertexAttributeDescription;
+}
+
 struct GLVertexAttributeDescription
 {
     int       Binding;
@@ -44,8 +49,6 @@ struct GLVertexAttributeDescription
     GLboolean Normalized;
     int       Offset;
 };
-
-struct VertexAttributeDescription;
 
 struct GLBufferTableEntry
 {
@@ -82,7 +85,7 @@ public:
     void bind(GLBufferTableEntry* buffer_table) const;
 
 private:
-    GLInputLayout(uint32 count, const VertexAttributeDescription* arr);
+    GLInputLayout(uint32 count, const Shader::VertexAttributeDescription* arr);
     ~GLInputLayout()=default;
 };
 }

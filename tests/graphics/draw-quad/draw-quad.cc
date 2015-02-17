@@ -43,14 +43,9 @@ TGE_TEST("Testing the rendering context")
     
     TGE_ASSERT(shader, "Could not create shader file");
     
-    std::vector<Tempest::VertexAttributeDescription> layout_arr
-    {
-        { 0, "VertexData", Tempest::DataFormat::RG32F, 0 }
-    };
-
     Tempest::DataFormat rt_fmt = Tempest::DataFormat::RGBA8UNorm;
     
-    auto pipeline_state = Tempest::CreateStateObject(&sys_obj->Backend, layout_arr, &rt_fmt, 1, shader.get(), Tempest::DrawModes::TriangleStrip);
+    auto pipeline_state = Tempest::CreateStateObject(&sys_obj->Backend, &rt_fmt, 1, shader.get(), Tempest::DrawModes::TriangleStrip);
     
     typedef decltype(sys_obj->Backend) BackendType;
     BackendType::CommandBufferType::DrawBatchType batch;

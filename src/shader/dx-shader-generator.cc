@@ -602,10 +602,7 @@ Generator::Generator(Shader::Driver& driver, const string* opts, size_t opts_cou
 
 Generator::~Generator() {}
 
-// TODO: I sort of hate these classifications because they don't show what features I really need. And I don't need them in the first place;
-//       it is quite easy to figure it out just by matching functions and features. Yeah, well. It is good for enforcing particular shader model,
-//       but that's more of a global option then per shader thing.
-string ConvertGLSLVersionToHLSL(Shader::ShaderType _type, const string& profile_name)
+string ConvertHLSLVersion(Shader::ShaderType _type)
 {
     string shader_type;
     switch(_type)
@@ -621,19 +618,7 @@ string ConvertGLSLVersionToHLSL(Shader::ShaderType _type, const string& profile_
         return "";
     }
     
-    if(profile_name == "glsl_1_4_0")
-        return shader_type + "3_0";
-    else if(profile_name == "glsl_1_5_0" ||
-            profile_name == "glsl_3_3_0")
-        return shader_type + "4_0";
-    else if(profile_name == "glsl_4_0_0" ||
-            profile_name == "glsl_4_1_0" ||
-            profile_name == "glsl_4_2_0" ||
-            profile_name == "glsl_4_4_0")
-        return shader_type + "5_0";
-    
-    Log(LogLevel::Error, "unknown profile: ", profile_name);
-    return "";
+    return shader_type + "5_0";
 }
 
 void Generator::visit(const Shader::Buffer* _buffer)
@@ -753,7 +738,8 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                   out_printer(m_Driver, m_RawImport.getFilename(), out_signature_ss, m_Options, m_OptionCount, AST::TGE_AST_PRINT_LINE_LOCATION);
     const Shader::FunctionDefinition* entrypoint = nullptr;
     
-    if(_shader->getType() == Shader::ShaderType::VertexShader)
+    auto shader_type = _shader->getType();
+    if(shader_type == Shader::ShaderType::VertexShader)
     {
         output_signature.push_back("gl_Position");
         out_signature_ss << "struct shader_output_signature__\n"
@@ -761,8 +747,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                             "\tfloat4 Position__: SV_POSITION;\n";
         input_signature.push_back("InstanceID__");
         in_signature_ss << "struct shader_input_signature__\n"
-                           "{\n"
-                           "\tuint InstanceID__: SV_INSTANCEID;\n";
+                           "{\n";
     }
     size_t target = 0;
     for(auto j = _shader->getBody()->current(); j != _shader->getBody()->end(); ++j)
@@ -786,6 +771,9 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
             auto* var = var_node->extract<Shader::Variable>();
             auto* layout = var->getLayout();
             
+            Shader::VertexAttributeDescription vert_attr;
+            bool vb_attrs = false;
+
             string prefix, suffix;
             if(layout)
             {
@@ -793,15 +781,37 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                 {
                     auto* binop = k->extract<Shader::BinaryOperator>();
                     auto layout_id = binop->getLHSOperand()->extract<Shader::Identifier>()->getValue();
-                    // TODO: support for qualifiers
-                    Log(LogLevel::Error, k->getDeclarationLocation(), ": Unsupported layout qualifier: ", layout_id);
-                    return;
+                    if(layout_id == "vb_offset")
+                    {
+                        vert_attr.Offset = binop->getRHSOperand()->extract<Shader::Value<int>>()->getValue();
+                        vb_attrs = true;
+                    }
+                    else if(layout_id == "vb_format")
+                    {
+                        vert_attr.Format = TranslateDataFormat(binop->getRHSOperand()->extract<Shader::Value<string>>()->getValue());
+                        vb_attrs = true;
+                    }
+                    else
+                    {
+                        Log(LogLevel::Error, k->getDeclarationLocation(), ": Unsupported layout qualifier: ", layout_id);
+                        m_Valid = false;
+                    }
                 }
+            }
+
+            auto* var_type = var->getType();
+            auto storage = var->getStorage();
+
+            if(vb_attrs && storage != Shader::StorageQualifier::In)
+            {
+                Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Vertex buffer format parameters are not supported for variables that are not of input type.");
+                m_Valid = false;
+                return;
             }
 
             std::stringstream* current_ss = &ss;
             ShaderPrinter* current_printer = &common_printer;
-            switch(var->getStorage())
+            switch(storage)
             {
             case Shader::StorageQualifier::StructBuffer:
             {
@@ -825,6 +835,44 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                 in_signature_ss << "\t";
                 current_printer = &in_printer;
                 input_signature.push_back(var->getNodeName());
+                
+                if(shader_type == Shader::ShaderType::VertexShader)
+                {
+                    if(vert_attr.Format == DataFormat::Unknown)
+                    {
+                        Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Valid format must be specified for input attribute: ", var->getNodeName());
+                        m_Valid = false;
+                        return;
+                    }
+                    vert_attr.Name = var->getNodeName();
+                    size_t dims;
+                    switch(var_type->getTypeEnum())
+                    {
+                    case Shader::ElementType::Scalar: dims = 1; break;
+                    case Shader::ElementType::Vector: dims = var_type->extract<Shader::VectorType>()->getDimension(); break;
+                    default:
+                    {
+                        Log(LogLevel::Error, "Unsupported input attribute type");
+                        m_Valid = false;
+                        return;
+                    } break;
+                    }
+
+                    if(DataFormatChannels(vert_attr.Format) != dims)
+                    {
+                        Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Incompatible data format specified for input attribute: ", var->getNodeName());
+                        m_Valid = false;
+                        return;
+                    }
+
+                    m_Effect.addVertexAttribute(vert_attr);
+                }
+                else if(vb_attrs)
+                {
+                    Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Input layout is only supported in vertex shader stage.");
+                    m_Valid = false;
+                }
+
             } break;
             case Shader::StorageQualifier::CentroidIn:
             {
@@ -869,7 +917,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                 *current_ss << prefix << " ";
             var->getType()->accept(current_printer);
             *current_ss << " " << var->getNodeName() << suffix;
-            if(_shader->getType() == Shader::ShaderType::FragmentShader && current_ss == &out_signature_ss)
+            if(shader_type == Shader::ShaderType::FragmentShader && current_ss == &out_signature_ss)
             {
                 *current_ss << ": SV_TARGET" << target++;
             }
@@ -889,13 +937,16 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     }
 
     if(!input_signature.empty())
-        in_signature_ss << "};" << std::endl;
+    {
+        in_signature_ss << "\tuint InstanceID__: SV_INSTANCEID;\n"
+                           "};" << std::endl;
+    }
     if(!output_signature.empty())
         out_signature_ss << "};" << std::endl;
 
     if(entrypoint == nullptr)
     {
-        Log(LogLevel::Error, "Shader must contain valid entrypoint: ", ConvertShaderTypeToText(_shader->getType()));
+        Log(LogLevel::Error, "Shader must contain valid entrypoint: ", ConvertShaderTypeToText(shader_type));
         m_Valid = false;
         return;
     }
@@ -927,10 +978,12 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     ss << "\treturn shader_out__;\n"
        << "}\n";
     
+    shader_desc->setAdditionalOptions(ConvertHLSLVersion(shader_type));
+
     shader_desc->appendContent(ss.str());
-    if(!m_Effect.trySetShader(_shader->getType(), shader_desc.release()))
+    if(!m_Effect.trySetShader(shader_type, shader_desc.release()))
     {
-        Log(LogLevel::Error, "Duplicate shader types: ", ConvertShaderTypeToText(_shader->getType()), "\n"
+        Log(LogLevel::Error, "Duplicate shader types: ", ConvertShaderTypeToText(shader_type), "\n"
                              "Try using \"options\" to eliminate some of the shaders.");
         m_Valid = false;
         return;

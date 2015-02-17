@@ -12,7 +12,7 @@ structbuffer GlobalsDesc Globals;
 
 vertex shader
 {
-    in vec2      VertexData;
+    layout(vb_offset = 0, vb_format = RG32F) in vec2 VertexData;
 
     flat out int DrawIndex;
     out vec2     TexCoord;

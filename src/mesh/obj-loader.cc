@@ -175,20 +175,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
     *batches = new TDrawBatch[groups.size()];
     
     size_t prev_ind_size = 0, prev_vert_size = 0;
-    
-    std::vector<Tempest::VertexAttributeDescription> layout_tex
-    {
-        { 0, "Position", Tempest::DataFormat::RGBA32F, 0 },
-        { sizeof(Tempest::Vector4), "TexCoord", Tempest::DataFormat::RG32F, 0 },
-        { sizeof(Tempest::Vector4) + sizeof(Tempest::Vector2), "Normal", Tempest::DataFormat::RGB32F, 0 }
-    };
-    
-    std::vector<Tempest::VertexAttributeDescription> layout_wo_tex
-    {
-        { 0, "Position", Tempest::DataFormat::RGBA32F, 0 },
-        { sizeof(Tempest::Vector4), "Normal", Tempest::DataFormat::RGB32F, 0 }
-    };
-    
+
     auto rt_fmt = Tempest::DataFormat::RGBA8;
     
     struct StateDescription
@@ -252,26 +239,13 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         case ObjMtlLoader::IlluminationModel::SpecularDiffuseAmbient: model = 2; flags = AmbientAvailable | SpecularAvailable;  break;
         }
 
-        std::vector<Tempest::VertexAttributeDescription>* layout;
-        if(tc_size != 0)
-        {
-            model += 3;
-            layout = &layout_tex;
-            batch.VertexBuffers[0].Stride = sizeof(Vector4) + sizeof(Vector2) + sizeof(Vector3);
-        }
-        else
-        {
-            layout = &layout_wo_tex;
-            batch.VertexBuffers[0].Stride = sizeof(Vector4) + sizeof(Vector3);
-        }
-
         auto begin_state_iter = std::begin(pstates),
              end_state_iter = std::end(pstates);
         auto iter = std::find_if(begin_state_iter, end_state_iter, [&model](const StateDescription& st_desc) { return st_desc.model == model; });
         auto* shader_prog = progs[model];
         if(iter == end_state_iter)
         {
-            auto pipeline_state = backend->createStateObject(&layout->front(), layout->size(), &rt_fmt, 1, shader_prog);
+            auto pipeline_state = backend->createStateObject(&rt_fmt, 1, shader_prog);
             batch.PipelineState = pipeline_state;
             pstates.emplace_back(model, pipeline_state);
         }

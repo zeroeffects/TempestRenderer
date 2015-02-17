@@ -25,10 +25,12 @@
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/graphics/opengl-backend/gl-compiler.hh"
 #include "tempest/graphics/opengl-backend/gl-shader.hh"
+#include "tempest/graphics/opengl-backend/gl-input-layout.hh"
 #include "tempest/graphics/opengl-backend/gl-config.hh"
 #include "tempest/shader/gl-shader-generator.hh"
 #include "tempest/utils/assert.hh"
 #include "tempest/utils/logging.hh"
+#include "tempest/utils/memory.hh"
 
 #define TGE_DEBUG_GLSL_APPEND_SOURCE
 
@@ -151,7 +153,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
             auto cur_end = static_cast<uint32>(uval.Offset + uval.ElementCount*uval.ElementSize);
             res_table->BufferSize = std::max(res_table->BufferSize, cur_end);
         }
-        res_table->BufferSize = (res_table->BufferSize + 4 * sizeof(float) - 1) & ~(4 * sizeof(float) - 1);
+        res_table->BufferSize = AlignAddress(res_table->BufferSize, 4 * sizeof(float));
         res_table->BufferSize -= static_cast<Tempest::uint32>(buffer.getResiablePart());
     }
     
@@ -202,7 +204,9 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         return nullptr;
     }
     
-    return new GLShaderProgram(prog.release(), res_tables.release(), res_table_count);
+    auto* input_layout = CreatePackedData<GLInputLayout>(effect.getVertexAttributeCount(), &effect.getVertexAttribute(0));
+
+    return new GLShaderProgram(prog.release(), input_layout, res_tables.release(), res_table_count);
 }
 
 void GLShaderCompiler::destroyRenderResource(GLShaderProgram* shader_program)

@@ -51,7 +51,7 @@ template<class TBackend> TextureTable<TBackend>::TextureTable(TBackend* backend,
         m_UploadHeap(backend->createStorageBuffer(StorageMode::PixelUnpack, desc.UploadHeapSize)),
         m_IOCommandBuffer(backend->createIOCommandBuffer(IOCommandBufferDescription{ desc.UploadQueueSize })),
         m_UploadHeapSize(desc.UploadHeapSize),
-        m_BakedTable(new typename TextureTable<TBackend>::BakedResourceTableType(backend->getTextureHandleSize()*std::accumulate(std::begin(desc.Slots), std::end(desc.Slots), 0)))
+        m_BakedTable(new BakedResourceTable(backend->getTextureHandleSize()*std::accumulate(std::begin(desc.Slots), std::end(desc.Slots), 0)))
 {
     std::fill(std::begin(m_Fence), std::end(m_Fence), nullptr);
     

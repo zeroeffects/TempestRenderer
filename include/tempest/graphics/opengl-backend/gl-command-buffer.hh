@@ -39,9 +39,8 @@
 
 namespace Tempest
 {
-class GLBakedResourceTable;
+class BakedResourceTable;
 class GLRenderingBackend;
-class GLLinkedShaderProgram;
 class GLStateObject;
 class GLBuffer;
 
@@ -59,7 +58,7 @@ struct GLDrawBatch
     uint32                    VertexCount = 0;
     uint32                    BaseVertex = 0;
     uint32                    BaseIndex = 0;
-    GLBakedResourceTable*     ResourceTable = nullptr;
+    BakedResourceTable*       ResourceTable = nullptr;
     GLStateObject*            PipelineState = nullptr;
     GLBuffer*                 IndexBuffer = nullptr;
     GLVertexBufferDescription VertexBuffers[MAX_VERTEX_BUFFERS];
@@ -83,7 +82,7 @@ class GLCommandBuffer
     GLuint                         m_GPUCommandBuffer      = 0;
     GLvoid*                        m_GPUCommandBufferPtr   = nullptr;
 
-    GLint                          m_Alignment             = 0;
+    uint32                         m_Alignment             = 0;
 public:
     typedef GLDrawBatch DrawBatchType;
     

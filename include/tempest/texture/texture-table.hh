@@ -37,6 +37,7 @@
 namespace Tempest
 {
 class Texture;
+class BakedResourceTable;
 
 #define TEMPEST_TEXTURE_TABLE_SLOTS \
     TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_128x128, DataFormat::RGBA8UNorm, 128) \
@@ -75,7 +76,6 @@ class TextureTable
     typedef typename TBackend::TextureType TextureType;
     typedef typename TBackend::StorageType StorageType;
     typedef typename TBackend::IOCommandBufferType IOCommandBufferType;
-    typedef typename TBackend::ShaderProgramType::BakedResourceTableType BakedResourceTableType;
 
     TBackend*               m_Backend;
     struct
@@ -104,7 +104,7 @@ class TextureTable
     uint32                  m_ProcessedTextures = 0;
     FenceType*              m_Fence[TEMPTEST_TEXTURE_TABLE_BUFFER_COUNT];
 
-    std::unique_ptr<BakedResourceTableType> m_BakedTable;
+    std::unique_ptr<BakedResourceTable> m_BakedTable;
 public:
     TextureTable(TBackend* backend, const TextureTableDescription& desc = TextureTableDescription());
      ~TextureTable();

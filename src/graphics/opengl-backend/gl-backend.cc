@@ -318,7 +318,7 @@ void GLRenderingBackend::setActiveTextures(uint32 num_textures)
 #endif
 }
 
-void GLRenderingBackend::setTextures(const GLBakedResourceTable* resource_table)
+void GLRenderingBackend::setTextures(const BakedResourceTable* resource_table)
 {
 #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
@@ -372,9 +372,7 @@ void GLRenderingBackend::destroyRenderResource(GLTexture* texture)
     delete texture;
 }
     
-GLStateObject* GLRenderingBackend::createStateObject(const VertexAttributeDescription* va_arr,
-                                                     size_t va_count,
-                                                     DataFormat*,
+GLStateObject* GLRenderingBackend::createStateObject(DataFormat*,
                                                      size_t,
                                                      GLShaderProgram* shader_program,
                                                      DrawModes primitive_type,
@@ -387,7 +385,6 @@ GLStateObject* GLRenderingBackend::createStateObject(const VertexAttributeDescri
     auto* gl_rast_states = &m_DefaultRasterizerStates;
     auto* gl_blend_states = &m_DefaultBlendState;
     auto* gl_depth_stencil_states = &m_DefaultDepthStencilStates;
-    GLInputLayout* layout = nullptr;
     if(rasterizer_states)
     {
         gl_rast_states = new GLRasterizerStates;
@@ -406,13 +403,8 @@ GLStateObject* GLRenderingBackend::createStateObject(const VertexAttributeDescri
         TranslateDepthStencilStates(depth_stencil_states, gl_depth_stencil_states);
         gl_depth_stencil_states = m_DepthStencilStates.emplace(gl_depth_stencil_states).first->get();
     }
-    if(va_count)
-    {
-        layout = CreatePackedData<GLInputLayout>(static_cast<uint32>(va_count), va_arr);
-        layout = m_InputLayoutMap.emplace(layout).first->get();
-    }
 
-    return m_StateObjects.emplace(new GLStateObject(layout, shader_program, primitive_type, gl_rast_states, gl_blend_states, gl_depth_stencil_states)).first->get();
+    return m_StateObjects.emplace(new GLStateObject(shader_program, primitive_type, gl_rast_states, gl_blend_states, gl_depth_stencil_states)).first->get();
 }
 
 GLStorage* GLRenderingBackend::createStorageBuffer(StorageMode storage_type, uint32 size)

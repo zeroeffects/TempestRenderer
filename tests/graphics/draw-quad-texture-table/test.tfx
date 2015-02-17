@@ -20,8 +20,8 @@ structbuffer GlobalsDesc Globals;
 
 vertex shader
 {
-    in vec2      Position;
-    in vec2      TexCoord;
+    layout(vb_offset = 0, vb_format = RG32F) in vec2 Position;
+    layout(vb_offset = 8, vb_format = RG32F) in vec2 TexCoord;
 
     flat out int DrawIndex;
     out vec2     InterpTexCoord;

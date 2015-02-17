@@ -186,7 +186,9 @@ public:
      *  \param blend_states         a pointer to blend state description.
      *  \param depth_stencil_states a pointer to depth stencil state description.
      */
-    virtual StateObject* createStateObject(const RasterizerStates* rasterizer_states, const BlendStates* blend_states, const DepthStencilStates* depth_stencil_states)=0;
+    virtual StateObject* createStateObject(DataFormat* rt_fmt, size_t rt_count, ShaderProgram* shader_program,
+                                           DrawModes primitive_type = DrawModes::TriangleList,
+                                           const RasterizerStates* rasterizer_states = nullptr, const BlendStates* blend_states = nullptr, const DepthStencilStates* depth_stencil_states = nullptr) = 0;
     
     /*! \brief Set up scissor test rectangle.
      *  

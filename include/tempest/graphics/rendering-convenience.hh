@@ -46,6 +46,7 @@ struct BlendStates;
 struct DepthStencilStates;
 struct CommandBufferDescription;
 struct WindowDescription;
+class BakedResourceTable;
 
 #define CONVERT_TEXTURE_FORMAT(T, fmt) template<> struct ConvertTextureFormat<T> { static const DataFormat format = fmt; }
 
@@ -236,21 +237,19 @@ UniqueResource<TShader, typename TShader::ResourceTableType> CreateResourceTable
 }
 
 template<class TTable>
-std::unique_ptr<typename TTable::BakedResourceTableType> ExtractBakedResourceTable(TTable* table)
+std::unique_ptr<BakedResourceTable> ExtractBakedResourceTable(TTable* table)
 {
-    return std::unique_ptr<typename TTable::BakedResourceTableType>(table->extractBakedTable());
+    return std::unique_ptr<BakedResourceTable>(table->extractBakedTable());
 }
 
 template<class TShader>
-std::unique_ptr<typename TShader::LinkedShaderProgram> LinkShaderProgram(TShader* shader, typename TShader::ResourceTableType::BakedResourceTableType* baked_table)
+std::unique_ptr<typename TShader::LinkedShaderProgram> LinkShaderProgram(TShader* shader, BakedResourceTable* baked_table)
 {
     return std::unique_ptr<typename TShader::LinkedShaderProgram>(shader->link(baked_table));
 }
 
 template<class TBackend>
 UniqueResource<TBackend, typename TBackend::StateObjectType> CreateStateObject(TBackend* backend,
-                                                                               const VertexAttributeDescription* va_arr,
-                                                                               size_t va_count,
                                                                                DataFormat* rt_fmt,
                                                                                size_t rt_count,
                                                                                typename TBackend::ShaderProgramType* shader_program,
@@ -259,21 +258,7 @@ UniqueResource<TBackend, typename TBackend::StateObjectType> CreateStateObject(T
                                                                                const BlendStates* blend_states = nullptr,
                                                                                const DepthStencilStates* depth_stencil_state = nullptr)
 {
-    return std::unique_ptr<typename TBackend::StateObjectType>(backend->createStateObject(va_arr, va_count, rt_fmt, rt_count, shader_program, primitive_type, rasterizer_states, blend_states, depth_stencil_state));
-}
-
-template<class TBackend, template <class T, class TAlloc> class TArr, class TAlloc>
-UniqueResource<TBackend, typename TBackend::StateObjectType> CreateStateObject(TBackend* backend,
-                                                                               const TArr<VertexAttributeDescription, TAlloc>& va_arr,
-                                                                               DataFormat* rt_fmt,
-                                                                               size_t rt_count,
-                                                                               typename TBackend::ShaderProgramType* shader_program,
-                                                                               DrawModes primitive_type = DrawModes::TriangleList,
-                                                                               const RasterizerStates* rasterizer_states = nullptr,
-                                                                               const BlendStates* blend_states = nullptr,
-                                                                               const DepthStencilStates* depth_stencil_state = nullptr)
-{
-    return CreateUniqueResource(backend, backend->createStateObject(&va_arr.front(), va_arr.size(), rt_fmt, rt_count, shader_program, primitive_type, rasterizer_states, blend_states, depth_stencil_state));
+    return CreateUniqueResource(backend, backend->createStateObject(rt_fmt, rt_count, shader_program, primitive_type, rasterizer_states, blend_states, depth_stencil_state));
 }
 }
 

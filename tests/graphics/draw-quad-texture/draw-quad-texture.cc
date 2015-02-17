@@ -65,15 +65,9 @@ TGE_TEST("Testing the rendering context")
 
     TGE_ASSERT(shader, "Could not create shader file");
     
-    // Vertex format. Nothing special about it.
-    std::vector<Tempest::VertexAttributeDescription> layout_arr
-    {
-        { 0, "VertexData", Tempest::DataFormat::RG32F, 0 }
-    };
-    
     Tempest::DataFormat rt_fmt = Tempest::DataFormat::RGBA8;
 
-    auto state_obj = Tempest::CreateStateObject(&sys_obj->Backend, layout_arr, &rt_fmt, 1, shader.get(), Tempest::DrawModes::TriangleStrip);
+    auto state_obj = Tempest::CreateStateObject(&sys_obj->Backend, &rt_fmt, 1, shader.get(), Tempest::DrawModes::TriangleStrip);
     
     // That's the actual batch. It describes all the stuff required for sucessful draw call.
     // Also, you should pool allocate graphics device objects, so that you can get away with

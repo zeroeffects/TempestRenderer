@@ -33,6 +33,7 @@
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
 #include "tempest/graphics/opengl-backend/gl-config.hh"
 #include "tempest/utils/assert.hh"
+#include "tempest/utils/memory.hh"
 
 
 
@@ -86,7 +87,9 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
 {
     GLuint cmd_buf_size = desc.CommandCount*sizeof(DrawElementsIndirectCommand);
 
-    glGetIntegerv(GLParameterType::GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &m_Alignment);
+    GLint alignment;
+    glGetIntegerv(GLParameterType::GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
+    m_Alignment = alignment;
 
 #ifndef TEMPEST_DISABLE_MDI
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
@@ -148,7 +151,7 @@ GLCommandBuffer::~GLCommandBuffer()
 
 void GLCommandBuffer::clear()
 {
-    m_ConstantBufferSize = 0;
+    m_ConstantBufferReqSize = 0;
     m_CommandCount = 0;
 }
 
@@ -174,8 +177,7 @@ bool GLCommandBuffer::enqueueBatch(const GLDrawBatch& draw_batch)
             else
         #endif
             {
-                auto align = m_Alignment - 1;
-                m_ConstantBufferReqSize += (static_cast<uint32>(draw_batch.ResourceTable->getSize()) + align) / ~align;
+                m_ConstantBufferReqSize += AlignAddress(static_cast<uint32>(draw_batch.ResourceTable->getSize()), m_Alignment);
             }
     }
 
@@ -456,7 +458,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
     }
 }
 
-static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, GLint alignment, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLuint const_buf_ring)
+static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 alignment, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLuint const_buf_ring)
 {
     auto& first = *cpu_cmd_buf;
     auto* prev_state = first.PipelineState;
@@ -527,9 +529,8 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, GLint alig
         }
         if(cpu_cmd.ResourceTable)
         {
-            auto align = alignment - 1;
             auto real_size = cpu_cmd.ResourceTable->getSize();
-            auto size = (real_size + align) & ~align;
+            auto size = AlignAddress(static_cast<uint32>(real_size), alignment);
             glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring, offset, real_size);
             offset += size;
         }
@@ -585,9 +586,8 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
             auto& cpu_cmd = cpu_cmd_buf[cmd_idx];
             if(cpu_cmd.ResourceTable)
             {
-                auto align = m_Alignment - 1;
                 auto real_size = cpu_cmd.ResourceTable->getSize();
-                auto offset = (cpu_cmd.ResourceTable->getSize() + align) & ~align;
+                auto offset = AlignAddress(cpu_cmd.ResourceTable->getSize(), m_Alignment);
                 std::copy_n(cpu_cmd.ResourceTable->get(), real_size, res_buf);
                 res_buf += offset;
             }

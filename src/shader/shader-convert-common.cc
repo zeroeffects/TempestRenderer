@@ -144,7 +144,7 @@ static void ConvertType(const string* opts, size_t opts_count, const string& bas
     } break;
     case Shader::ElementType::Struct:
     {
-        *offset = (*offset + 4 * sizeof(float)-1) & ~(4 * sizeof(float)-1);
+        *offset = AlignAddress(*offset, 4 * sizeof(float));
         uint32 struct_offset = 0; // members are in relative offset units
         auto* struct_type = _type->extract<Shader::StructType>();
         auto* struct_body = struct_type->getBody();
@@ -242,10 +242,10 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
         else
         {
             array_size = 0; // infinite
-            elem_size = (elem_size + 4 * sizeof(float) - 1) & ~(4 * sizeof(float) - 1);
+            elem_size = AlignAddress(elem_size, 4 * sizeof(float));
             buf_desc->setResizablePart(elem_size);
         }
-        *offset = (*offset + 4 * sizeof(float)-1) & ~(4 * sizeof(float)-1);
+        *offset = AlignAddress(*offset, 4 * sizeof(float));
     } break;
     case Shader::ElementType::Sampler:
     {
@@ -268,13 +268,13 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
     }
 
     auto alignment = GetAlignment(uniform_type);
-    *offset = (*offset + alignment - 1) & ~(alignment - 1);
+    *offset = AlignAddress(*offset, alignment);
 
     buf_desc->addBufferElement(Shader::BufferElement(*offset, uniform_type, base.empty() ? var_name : (base + "." + var_name), elem_size, array_size));
 
     if(array_size > 1 || uniform_type == UniformValueType::Struct)
     {
-        *offset += array_size*((elem_size + 4 * sizeof(float)-1) & ~(4 * sizeof(float)-1));
+        *offset += array_size*AlignAddress(elem_size, 4 * sizeof(float));
     }
     else
     {

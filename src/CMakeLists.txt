@@ -27,6 +27,7 @@ IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/nda-build.cmake)
 	INCLUDE(nda-build.cmake)
     SET(TEMPEST_NDA_CMAKE nda-build.cmake)
     SET(TEMPEST_NDA_APIS on PARENT_SCOPE)
+    SET(TEMPEST_NDA_INCLUDE_DIRS ${TEMPEST_NDA_INCLUDE_DIRS} PARENT_SCOPE)
 ENDIF()
 
 ADD_DEFINITIONS(${PNG_DEFINITIONS})
@@ -39,7 +40,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}
                     ${WINDOW_SYSTEM_INCLUDE_DIR}
-                    ${NDA_INCLUDE_DIRS})
+                    ${TEMPEST_NDA_INCLUDE_DIRS})
 
 SET(TEMPEST_UTILS_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/utils/assert.hh
@@ -96,6 +97,7 @@ SET(TEMPEST_GRAPHICS_SRC
     graphics/opengl-backend/gl-storage.cc
     graphics/opengl-backend/gl-io-command-buffer.cc
     graphics/rendering-convenience.cc
+    graphics/rendering-definitions.cc
     graphics/texture.cc
    )
 
@@ -300,10 +302,10 @@ SET_PROPERTY(SOURCE ${TEMPEST_MESH_SRC} ${TEMPEST_MESH_INC} APPEND PROPERTY COMP
              "-I${CMAKE_CURRENT_BINARY_DIR}/mesh")
 
 ADD_LIBRARY(tempest-static STATIC ${TEMPEST_LIBRARY_FILES})
-TARGET_LINK_LIBRARIES(tempest-static ${EXTRA_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} ${PNG_LIBRARIES} xxhash)
+TARGET_LINK_LIBRARIES(tempest-static ${EXTRA_LIBS} ${TEMPEST_NDA_STATIC_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} ${PNG_LIBRARIES} xxhash)
 
 ADD_LIBRARY(tempest-shared SHARED ${TEMPEST_LIBRARY_FILES})
-TARGET_LINK_LIBRARIES(tempest-shared ${EXTRA_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} ${PNG_LIBRARIES} xxhash)
+TARGET_LINK_LIBRARIES(tempest-shared ${EXTRA_LIBS} ${TEMPEST_NDA_STATIC_LIBS} ${TEMPEST_NDA_LIBS} ${WINDOW_SYSTEM_LIBRARIES} ${PNG_LIBRARIES} xxhash)
 
 IF(UNIX)
     SET_TARGET_PROPERTIES(tempest-static tempest-shared PROPERTIES LINK_FLAGS "-Wl,--no-undefined")

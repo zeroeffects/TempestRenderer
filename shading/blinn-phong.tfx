@@ -73,9 +73,9 @@ structbuffer GlobalsDesc Globals;
 
 vertex shader
 {
-    in vec4 Position;
-    @MaterialTexture in vec2 TexCoord;
-    in vec3 Normal;
+    layout(vb_pack_align = 4, vb_format = RGBA32F) in vec4 Position;
+    @MaterialTexture layout(vb_pack_align = 4, vb_format = RG32F) in vec2 TexCoord;
+    layout(vb_pack_align = 4, vb_format = RGB32F) in vec3 Normal;
     
     out vec2 InterpTexCoord;
     out vec3 InterpNormal;

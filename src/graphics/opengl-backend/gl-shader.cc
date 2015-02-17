@@ -106,13 +106,15 @@ ResourceIndex GLResourceTable::getResourceIndex(const string& name)
     return res_idx;
 }
     
-GLShaderProgram::GLShaderProgram(GLuint prog, ResourceTableDescription* res_tables[], uint32 res_table_count)
+GLShaderProgram::GLShaderProgram(GLuint prog, GLInputLayout* input_layout, ResourceTableDescription* res_tables[], uint32 res_table_count)
     :   m_Program(prog),
+        m_InputLayout(input_layout),
         m_ResourceTableCount(res_table_count),
         m_ResourceTables(res_tables) {}
 
 GLShaderProgram::~GLShaderProgram()
 {
+    DestroyPackedData(m_InputLayout);
     for(uint32 i = 0; i < m_ResourceTableCount; ++i)
     {
         DestroyPackedData(m_ResourceTables[i]);
@@ -132,8 +134,9 @@ void GLShaderProgram::destroyRenderResource(GLResourceTable* buffer)
     delete buffer;
 }
 
-void GLShaderProgram::bind() const
+void GLShaderProgram::bind(GLBufferTableEntry* table_entry) const
 {
     glUseProgram(m_Program);
+    m_InputLayout->bind(table_entry);
 }
 }

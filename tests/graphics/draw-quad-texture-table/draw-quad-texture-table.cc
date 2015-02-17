@@ -46,16 +46,10 @@ TGE_TEST("Testing texture tables")
         Tempest::Vector2         TexCoord;
     };
 
-    std::vector<Tempest::VertexAttributeDescription> attr
-    {
-        { 0, "Position", Tempest::DataFormat::RG32F, 0 },
-        { 0, "TexCoord", Tempest::DataFormat::RG32F, sizeof(Tempest::Vector2) }
-    };
-
     auto shader = Tempest::CreateShader(&sys_obj->ShaderCompiler, CURRENT_SOURCE_DIR "/test.tfx");
     
     auto rt_fmt = Tempest::DataFormat::RGBA8UNorm;
-    auto state = Tempest::CreateStateObject(&sys_obj->Backend, attr, &rt_fmt, 1, shader.get());
+    auto state = Tempest::CreateStateObject(&sys_obj->Backend, &rt_fmt, 1, shader.get());
 
     Tempest::TextureTableDescription tex_desc;
     Tempest::TextureTable<BackendType> texture_table(&sys_obj->Backend, tex_desc);
@@ -65,9 +59,7 @@ TGE_TEST("Testing texture tables")
     std::array<Tempest::uint16, 6*batch_count> indices;
     std::array<VertexFormat, 4*batch_count> data;
 
-    typedef BackendType::ShaderProgramType::ResourceTableType::BakedResourceTableType BakedResourceTableType;
-
-    std::vector<std::unique_ptr<BakedResourceTableType>> tables;
+    std::vector<std::unique_ptr<Tempest::BakedResourceTable>> tables;
     
     size_t ind = 0;
     Tempest::uint16 vert = 0;

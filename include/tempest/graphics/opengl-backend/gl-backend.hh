@@ -58,11 +58,11 @@ class GLWindow;
 class GLStorage;
 class GLFence;
 class GLIOCommandBuffer;
+class BakedResourceTable;
 
 struct GLBlendStates;
 struct GLRasterizerStates;
 struct GLDepthStencilStates;
-class GLBakedResourceTable;
 
 #ifdef LINUX
 typedef std::shared_ptr<GLXFBConfig> GLXFBConfigPtr;
@@ -248,7 +248,7 @@ public:
      *
      *  \param resource_table   packed texture handles.
      */
-    void setTextures(const GLBakedResourceTable* resource_table);
+    void setTextures(const BakedResourceTable* resource_table);
 
     /*! \brief Set the number of active textures.
      *
@@ -297,9 +297,7 @@ public:
      *  \param blend_states         a pointer to blend state description.
      *  \param depth_stencil_states a pointer to depth stencil state description.
      */
-    GLStateObject* createStateObject(const VertexAttributeDescription* va_arr,
-                                     size_t va_count,
-                                     DataFormat*,
+    GLStateObject* createStateObject(DataFormat*,
                                      size_t,
                                      GLShaderProgram* shader_program,
                                      DrawModes primitive_type = DrawModes::TriangleList,

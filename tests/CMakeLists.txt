@@ -25,7 +25,8 @@
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_BINARY_DIR}/include
-                    ${CMAKE_SOURCE_DIR}/external)
+                    ${CMAKE_SOURCE_DIR}/external
+                    ${TEMPEST_NDA_INCLUDE_DIRS})
 
 ADD_DEFINITIONS("-DTempest_TESTS_DIR=\"${CMAKE_BINARY_DIR}\"")
 

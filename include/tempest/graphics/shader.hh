@@ -65,6 +65,50 @@ struct ResourceIndex
     uint32 BaseOffset = 0;
 };
 
+class BakedResourceTable
+{
+    char*                   m_Table;
+    size_t                  m_Size;
+public:
+    BakedResourceTable(size_t size)
+        : m_Table(new char[size]),
+        m_Size(size) {}
+    ~BakedResourceTable() { delete m_Table; }
+
+    void reset()
+    {
+        if(m_Table == nullptr)
+            m_Table = new char[m_Size];
+    }
+
+    BakedResourceTable(BakedResourceTable&& table)
+    {
+        m_Table = table.m_Table;
+        m_Size = table.m_Size;
+        table.m_Table = nullptr;
+    }
+
+    BakedResourceTable& operator=(BakedResourceTable&& table)
+    {
+        m_Table = table.m_Table;
+        m_Size = table.m_Size;
+        table.m_Table = nullptr;
+    }
+
+    template<class T>
+    void setValue(size_t offset, const T& val)
+    {
+        *reinterpret_cast<T*>(m_Table + offset) = val;
+    }
+
+    operator bool() const { return m_Table != nullptr; }
+
+    const char* get() const { return m_Table; }
+    char* get() { return m_Table; }
+
+    size_t getSize() const { return m_Table ? m_Size : 0; }
+};
+
 const uint32 InvalidResourceIndex = std::numeric_limits<uint32>::max();
 }
 

@@ -483,7 +483,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     ShaderPrinter shader_printer(ss, m_Options, m_OptionCount, m_SSBOBindingCounter, m_UBOBindingCounter, m_Settings, AST::TGE_AST_PRINT_LINE_LOCATION);
     shader_printer.setShaderType(shader_type);
     
-    switch(_shader->getType())
+    switch(shader_type)
     {
     case Shader::ShaderType::VertexShader:
     {
@@ -518,6 +518,9 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
             auto* var = var_node->extract<Shader::Variable>();
             auto* layout = var->getLayout();
 
+            Shader::VertexAttributeDescription vert_attr;
+            bool vb_attrs = false;
+
             // The point here is that we want to remove everything that is not valid
             // GLSL code.
             if(layout)
@@ -527,20 +530,45 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                 {
                     auto* binop = k->extract<Shader::BinaryOperator>();
                     auto layout_id = binop->getLHSOperand()->extract<Shader::Identifier>()->getValue();
-                    if(!layout_started)
+                    if(layout_id == "vb_offset")
                     {
-                        layout_started = true;
-                        shader_printer.stream() << "layout(";
+                        vert_attr.Offset = binop->getRHSOperand()->extract<Shader::Value<int>>()->getValue();
+                        vb_attrs = true;
+                    }
+                    else if(layout_id == "vb_format")
+                    {
+                        vert_attr.Format = TranslateDataFormat(binop->getRHSOperand()->extract<Shader::Value<string>>()->getValue());
+                        vb_attrs = true;
                     }
                     else
-                        shader_printer.stream() << ", ";
-                    shader_printer.visit(binop);
+                    {
+                        if(!layout_started)
+                        {
+                            layout_started = true;
+                            shader_printer.stream() << "layout(";
+                        }
+                        else
+                        {
+                            shader_printer.stream() << ", ";
+                        }
+                        shader_printer.visit(binop);
+                    }
                 }
                 if(layout_started)
                     shader_printer.stream() << ") ";
             }
             
-            if(var->getStorage() == Shader::StorageQualifier::StructBuffer)
+            auto* var_type = var->getType();
+            auto storage = var->getStorage();
+
+            if(vb_attrs && storage != Shader::StorageQualifier::In)
+            {
+                Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Vertex buffer format parameters are not supported for variables that are not of input type.");
+                m_Valid = false;
+                return;
+            }
+
+            if(storage == Shader::StorageQualifier::StructBuffer)
             {
                 ProcessStructBuffer(&shader_printer, m_Options, m_OptionCount, m_Settings, var, &m_SSBOBindingCounter, &m_UBOBindingCounter, &m_Effect);
             }
@@ -559,7 +587,46 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                 {
                 case Shader::StorageQualifier::Default: break;
                 case Shader::StorageQualifier::Const: shader_printer.stream() << "const "; break;
-                case Shader::StorageQualifier::In: shader_printer.stream() << "in "; break;
+                case Shader::StorageQualifier::In:
+                {
+                    shader_printer.stream() << "in ";
+                    if(shader_type == Shader::ShaderType::VertexShader)
+                    {
+                        if(vert_attr.Format == DataFormat::Unknown)
+                        {
+                            Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Valid format must be specified for input attribute: ", var->getNodeName());
+                            m_Valid = false;
+                            return;
+                        }
+                        vert_attr.Name = var->getNodeName();
+                        size_t dims;
+                        switch(var_type->getTypeEnum())
+                        {
+                        case Shader::ElementType::Scalar: dims = 1; break;
+                        case Shader::ElementType::Vector: dims = var_type->extract<Shader::VectorType>()->getDimension(); break;
+                        default:
+                        {
+                            Log(LogLevel::Error, "Unsupported input attribute type");
+                            m_Valid = false;
+                            return;
+                        } break;
+                        }
+
+                        if(DataFormatChannels(vert_attr.Format) != dims)
+                        {
+                            Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Incompatible data format specified for input attribute: ", var->getNodeName());
+                            m_Valid = false;
+                            return;
+                        }
+
+                        m_Effect.addVertexAttribute(vert_attr);
+                    }
+                    else if(vb_attrs)
+                    {
+                        Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Input layout is only supported in vertex shader stage.");
+                        m_Valid = false;
+                    }
+                } break;
                 case Shader::StorageQualifier::CentroidIn: shader_printer.stream() << "centroid in "; break;
                 case Shader::StorageQualifier::SampleIn: TGE_ASSERT(false, "sample out "); break;
                 case Shader::StorageQualifier::Out: shader_printer.stream() << "out "; break;
@@ -570,7 +637,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                     TGE_ASSERT(false, "Unsupported storage type.");
                 }
 
-                var->getType()->accept(&shader_printer);
+                var_type->accept(&shader_printer);
                 shader_printer.stream() << " " << var->getNodeName();
             }
         }

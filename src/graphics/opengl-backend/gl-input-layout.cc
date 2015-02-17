@@ -27,6 +27,7 @@
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
 #include "tempest/graphics/rendering-definitions.hh"
+#include "tempest/shader/shader-common.hh"
 #include "tempest/utils/assert.hh"
 
 namespace Tempest
@@ -92,7 +93,7 @@ static void TranslateDataFormat(DataFormat vtype, GLsizei* elements, GLType* typ
     }
 }
 
-GLInputLayout::GLInputLayout(uint32 count, const VertexAttributeDescription* arr)
+GLInputLayout::GLInputLayout(uint32 count, const Shader::VertexAttributeDescription* arr)
     :   m_Attributes(count)
 {
     for(size_t i = 0; i < count; ++i)

@@ -180,6 +180,74 @@ enum class DataFormat
     uR10G10B10A2
 };
 
+DataFormat TranslateDataFormat(const string& str);
+
+inline uint32 DataFormatChannels(DataFormat format)
+{
+    switch(format)
+    {
+    case DataFormat::R32F:
+    case DataFormat::R16F:
+    case DataFormat::R32:
+    case DataFormat::R16:
+    case DataFormat::R8:
+    case DataFormat::uR8:
+    case DataFormat::uR16:
+    case DataFormat::R16SNorm:
+    case DataFormat::D16:
+    case DataFormat::D32:
+    case DataFormat::R8UNorm:
+    case DataFormat::R16UNorm:
+    case DataFormat::R8SNorm:
+    case DataFormat::uR32:
+        return 1;
+    case DataFormat::RG32F:
+    case DataFormat::RG16F:
+    case DataFormat::RG32:
+    case DataFormat::RG16:
+    case DataFormat::RG8:
+    case DataFormat::uRG32:
+    case DataFormat::uRG16:
+    case DataFormat::uRG8:
+    case DataFormat::RG16UNorm:
+    case DataFormat::RG8SNorm:
+    case DataFormat::RG16SNorm:
+    case DataFormat::RG8UNorm:
+    case DataFormat::D24S8:
+    //  RGB8,
+        return 2;
+    case DataFormat::RGB32F:
+    //  RGB16F,
+    case DataFormat::RGB32:
+    //  RGB16,
+    case DataFormat::uRGB32:
+    //  uRGB16,
+    //  uRGB8,
+    //  RGB16SNorm,
+    //  RGB8SNorm,
+    //  RGB16UNorm,
+    //  RGB8UNorm,
+        return 3;
+    case DataFormat::RGBA8:
+    case DataFormat::RGBA32F:
+    case DataFormat::RGBA16F:
+    case DataFormat::RGBA32:
+    case DataFormat::RGBA16:
+    case DataFormat::uRGBA32:
+    case DataFormat::uRGBA16:
+    case DataFormat::uRGBA8:
+    case DataFormat::RGBA16SNorm:
+    case DataFormat::RGBA8SNorm:
+    case DataFormat::RGBA16UNorm:
+    case DataFormat::RGBA8UNorm:
+    case DataFormat::R10G10B10A2:
+    case DataFormat::uR10G10B10A2:
+        return 4;
+    default: TGE_ASSERT(false, "Unknown format");
+    }
+    return 0;
+}
+
 inline uint32 DataFormatElementSize(DataFormat format)
 {
     switch(format)
@@ -333,14 +401,6 @@ enum
     TEMPEST_DISABLE_SSBO             = 1 << 0,
     TEMPEST_DISABLE_MULTI_DRAW       = 1 << 1,
     TEMPEST_DISABLE_TEXTURE_BINDLESS = 1 << 2
-};
-
-struct VertexAttributeDescription
-{
-    uint32      BufferId;
-    string      Name; // For annoying validation purposes.
-    DataFormat  Format;
-    uint32      Offset;
 };
 
 struct CommandBufferDescription
