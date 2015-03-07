@@ -49,7 +49,7 @@ TGE_TEST("Testing texture tables")
     auto shader = Tempest::CreateShader(&sys_obj->ShaderCompiler, CURRENT_SOURCE_DIR "/test.tfx");
     
     auto rt_fmt = Tempest::DataFormat::RGBA8UNorm;
-    auto state = Tempest::CreateStateObject(&sys_obj->Backend, &rt_fmt, 1, shader.get());
+    auto state = Tempest::CreateStateObject(&sys_obj->Backend, &rt_fmt, 1, Tempest::DataFormat::D24S8, shader.get());
 
     Tempest::TextureTableDescription tex_desc;
     Tempest::TextureTable<BackendType> texture_table(&sys_obj->Backend, tex_desc);

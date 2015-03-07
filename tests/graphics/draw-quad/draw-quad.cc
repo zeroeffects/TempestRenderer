@@ -45,7 +45,7 @@ TGE_TEST("Testing the rendering context")
     
     Tempest::DataFormat rt_fmt = Tempest::DataFormat::RGBA8UNorm;
     
-    auto pipeline_state = Tempest::CreateStateObject(&sys_obj->Backend, &rt_fmt, 1, shader.get(), Tempest::DrawModes::TriangleStrip);
+    auto pipeline_state = Tempest::CreateStateObject(&sys_obj->Backend, &rt_fmt, 1, Tempest::DataFormat::Unknown, shader.get(), Tempest::DrawModes::TriangleStrip);
     
     typedef decltype(sys_obj->Backend) BackendType;
     BackendType::CommandBufferType::DrawBatchType batch;

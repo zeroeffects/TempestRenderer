@@ -28,13 +28,15 @@
 
 namespace Tempest
 {
+LRESULT CALLBACK TempestWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+    
 OSWindowSystem::OSWindowSystem()
 {
     WNDCLASSEX  wclass;
 
     wclass.cbSize = sizeof(WNDCLASSEX);
     wclass.style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC;
-	wclass.lpfnWndProc = &DefWindowProc;
+    wclass.lpfnWndProc = &TempestWindowProc;
     wclass.cbClsExtra = 0;
     wclass.cbWndExtra = 0;
     wclass.hInstance = (HINSTANCE)GetModuleHandle(nullptr);
@@ -51,4 +53,25 @@ OSWindowSystem::OSWindowSystem()
         return;
     }
 }
+
+LRESULT CALLBACK TempestWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    WindowInformation* info = reinterpret_cast<WindowInformation*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    if(info)
+    {
+        switch(message)
+        {
+        case WM_SIZE:
+        {
+            info->Width = LOWORD(lParam),
+            info->Height = HIWORD(lParam);
+            return 0;
+        } break;
+        }
+    }
+
+    return DefWindowProc(hwnd, message, wParam, lParam);
+}
+
+
 }

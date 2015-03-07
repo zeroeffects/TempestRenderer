@@ -252,13 +252,14 @@ template<class TBackend>
 UniqueResource<TBackend, typename TBackend::StateObjectType> CreateStateObject(TBackend* backend,
                                                                                DataFormat* rt_fmt,
                                                                                size_t rt_count,
+                                                                               DataFormat ds_fmt,
                                                                                typename TBackend::ShaderProgramType* shader_program,
                                                                                DrawModes primitive_type = DrawModes::TriangleList,
                                                                                const RasterizerStates* rasterizer_states = nullptr,
                                                                                const BlendStates* blend_states = nullptr,
                                                                                const DepthStencilStates* depth_stencil_state = nullptr)
 {
-    return CreateUniqueResource(backend, backend->createStateObject(rt_fmt, rt_count, shader_program, primitive_type, rasterizer_states, blend_states, depth_stencil_state));
+    return CreateUniqueResource(backend, backend->createStateObject(rt_fmt, rt_count, ds_fmt, shader_program, primitive_type, rasterizer_states, blend_states, depth_stencil_state));
 }
 }
 

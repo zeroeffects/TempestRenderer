@@ -374,6 +374,7 @@ void GLRenderingBackend::destroyRenderResource(GLTexture* texture)
     
 GLStateObject* GLRenderingBackend::createStateObject(DataFormat*,
                                                      size_t,
+                                                     DataFormat,
                                                      GLShaderProgram* shader_program,
                                                      DrawModes primitive_type,
                                                      const RasterizerStates* rasterizer_states,

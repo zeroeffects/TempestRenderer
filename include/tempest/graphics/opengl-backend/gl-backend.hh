@@ -299,6 +299,7 @@ public:
      */
     GLStateObject* createStateObject(DataFormat*,
                                      size_t,
+                                     DataFormat,
                                      GLShaderProgram* shader_program,
                                      DrawModes primitive_type = DrawModes::TriangleList,
                                      const RasterizerStates* rasterizer_states = nullptr,

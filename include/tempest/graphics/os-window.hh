@@ -54,6 +54,12 @@ typedef Window OSWindow;
 
 namespace Tempest
 {
+struct WindowInformation
+{
+    size_t Width = 0,
+           Height = 0;
+};
+
 class OSWindowSystem
 {
 public:

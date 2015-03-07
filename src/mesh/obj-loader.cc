@@ -245,7 +245,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         auto* shader_prog = progs[model];
         if(iter == end_state_iter)
         {
-            auto pipeline_state = backend->createStateObject(&rt_fmt, 1, shader_prog);
+            auto pipeline_state = backend->createStateObject(&rt_fmt, 1, DataFormat::D24S8, shader_prog);
             batch.PipelineState = pipeline_state;
             pstates.emplace_back(model, pipeline_state);
         }

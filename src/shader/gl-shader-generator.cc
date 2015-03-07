@@ -235,6 +235,9 @@ public:
     virtual void visit(const Shader::Value<Shader::ShaderType>*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
 
     bool isValid() const { return m_Valid & m_RawImport.isValid(); }
+
+private:
+    void generateTopLevel(Shader::ShaderType shader_type, const AST::Node* node, ShaderPrinter& shader_printer, uint32* vb_offset);
 };
 
 Generator::Generator(Shader::EffectDescription& effect, const string* opts, size_t opts_count, FileLoader* include_loader, uint32 settings)
@@ -474,6 +477,181 @@ void Generator::visit(const Shader::Type* type_stmt)
     type_stmt->accept(this);
 }
 
+void Generator::generateTopLevel(Shader::ShaderType shader_type, const AST::Node* node, ShaderPrinter& shader_printer, uint32* vb_offset)
+{
+    shader_printer.visit(node->getDeclarationLocation());
+
+    TGE_ASSERT(node, "Valid node expected. Bad parsing beforehand.");
+    auto node_type = node->getNodeType();
+
+    if(node_type == Shader::TGE_EFFECT_OPTIONAL)
+    {
+        auto* _opt = node->extract<Shader::Optional>();
+        auto* opts_end = m_Options + m_OptionCount;
+        if(std::find(m_Options, opts_end, _opt->getNodeName()) == opts_end)
+            return;
+        node = _opt->getContent();
+        node_type = node->getNodeType();
+        if(node->getNodeType() == Shader::TGE_AST_BLOCK)
+        {
+            auto body = node->extract<Shader::Block>()->getBody();
+            for(auto iter = body->current(), iter_end = body->end();
+                iter != iter_end; ++iter)
+            {
+                generateTopLevel(shader_type, iter.getNode(), shader_printer, vb_offset);
+            }
+            return;
+        }
+    }
+    if(node_type == Shader::TGE_EFFECT_DECLARATION)
+    {
+        auto* var_node = node->extract<Shader::Declaration>()->getVariables();
+        if(var_node->getNodeType() != Shader::TGE_EFFECT_VARIABLE)
+        {
+            Log(LogLevel::Error, "Unsupported global declaration type");
+            m_Valid = false;
+            return;
+        }
+        auto* var = var_node->extract<Shader::Variable>();
+        auto* layout = var->getLayout();
+
+        Shader::VertexAttributeDescription vert_attr;
+        bool vb_attrs = false;
+
+        // The point here is that we want to remove everything that is not valid
+        // GLSL code.
+        if(layout)
+        {
+            bool layout_started = false;
+            uint32 cur_offset = *vb_offset;
+            for(auto k = layout->current(); k != layout->end(); ++k)
+            {
+                auto* binop = k->extract<Shader::BinaryOperator>();
+                auto layout_id = binop->getLHSOperand()->extract<Shader::Identifier>()->getValue();
+                if(layout_id == "vb_offset")
+                {
+                    cur_offset = vert_attr.Offset = binop->getRHSOperand()->extract<Shader::Value<int>>()->getValue();
+                    vb_attrs = true;
+                }
+                else if(layout_id == "vb_pack_align")
+                {
+                    vert_attr.Offset = AlignAddress(cur_offset, (uint32)binop->getRHSOperand()->extract<Shader::Value<int>>()->getValue());
+                }
+                else if(layout_id == "vb_format")
+                {
+                    vert_attr.Format = TranslateDataFormat(binop->getRHSOperand()->extract<Shader::Value<string>>()->getValue());
+                    vb_attrs = true;
+                }
+                else
+                {
+                    if(!layout_started)
+                    {
+                        layout_started = true;
+                        shader_printer.stream() << "layout(";
+                    }
+                    else
+                    {
+                        shader_printer.stream() << ", ";
+                    }
+                    shader_printer.visit(binop);
+                }
+            }
+            if(layout_started)
+                shader_printer.stream() << ") ";
+            *vb_offset = cur_offset + DataFormatElementSize(vert_attr.Format);
+        }
+
+        auto* var_type = var->getType();
+        auto storage = var->getStorage();
+
+        if(vb_attrs && storage != Shader::StorageQualifier::In)
+        {
+            Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Vertex buffer format parameters are not supported for variables that are not of input type.");
+            m_Valid = false;
+            return;
+        }
+
+        if(storage == Shader::StorageQualifier::StructBuffer)
+        {
+            ProcessStructBuffer(&shader_printer, m_Options, m_OptionCount, m_Settings, var, &m_SSBOBindingCounter, &m_UBOBindingCounter, &m_Effect);
+        }
+        else
+        {
+            switch(var->getInterpolation())
+            {
+            default: TGE_ASSERT(false, "Unknown interpolation type");
+            case Shader::InterpolationQualifier::Default: break;
+            case Shader::InterpolationQualifier::Smooth: shader_printer.stream() << "smooth "; break;
+            case Shader::InterpolationQualifier::Flat: shader_printer.stream() << "flat "; break;
+            case Shader::InterpolationQualifier::Noperspective: shader_printer.stream() << "noperspective "; break;
+            }
+
+            switch(var->getStorage())
+            {
+            case Shader::StorageQualifier::Default: break;
+            case Shader::StorageQualifier::Const: shader_printer.stream() << "const "; break;
+            case Shader::StorageQualifier::In:
+            {
+                shader_printer.stream() << "in ";
+                if(shader_type == Shader::ShaderType::VertexShader)
+                {
+                    if(vert_attr.Format == DataFormat::Unknown)
+                    {
+                        Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Valid format must be specified for input attribute: ", var->getNodeName());
+                        m_Valid = false;
+                        return;
+                    }
+                    vert_attr.Name = var->getNodeName();
+                    size_t dims;
+                    switch(var_type->getTypeEnum())
+                    {
+                    case Shader::ElementType::Scalar: dims = 1; break;
+                    case Shader::ElementType::Vector: dims = var_type->extract<Shader::VectorType>()->getDimension(); break;
+                    default:
+                    {
+                        Log(LogLevel::Error, "Unsupported input attribute type");
+                        m_Valid = false;
+                        return;
+                    } break;
+                    }
+
+                    if(DataFormatChannels(vert_attr.Format) != dims)
+                    {
+                        Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Incompatible data format specified for input attribute: ", var->getNodeName());
+                        m_Valid = false;
+                        return;
+                    }
+
+                    m_Effect.addVertexAttribute(vert_attr);
+                }
+                else if(vb_attrs)
+                {
+                    Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Input layout is only supported in vertex shader stage.");
+                    m_Valid = false;
+                }
+            } break;
+            case Shader::StorageQualifier::CentroidIn: shader_printer.stream() << "centroid in "; break;
+            case Shader::StorageQualifier::SampleIn: TGE_ASSERT(false, "sample out "); break;
+            case Shader::StorageQualifier::Out: shader_printer.stream() << "out "; break;
+            case Shader::StorageQualifier::CentroidOut: shader_printer.stream() << "centroid out "; break;
+            case Shader::StorageQualifier::SampleOut: TGE_ASSERT(false, "sample in "); break;
+            case Shader::StorageQualifier::InOut: TGE_ASSERT(false, "Unexpected storage format.");
+            default:
+                TGE_ASSERT(false, "Unsupported storage type.");
+            }
+
+            var_type->accept(&shader_printer);
+            shader_printer.stream() << " " << var->getNodeName();
+        }
+    }
+    else
+    {
+        node->accept(&shader_printer);
+    }
+    if(!node->isBlockStatement())
+        shader_printer.stream() << ";\n";
+}
+
 void Generator::visit(const Shader::ShaderDeclaration* _shader)
 {
     auto shader_type = _shader->getType();
@@ -495,155 +673,12 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     } break;
     }
     
+    uint32 vb_offset = 0;
+
     for(auto j = _shader->getBody()->current(); j != _shader->getBody()->end(); ++j)
     {
-        shader_printer.visit(j->getDeclarationLocation());
-        
-        TGE_ASSERT(*j, "Valid node expected. Bad parsing beforehand.");
-        auto node_type = j->getNodeType();
-        
-        if(node_type != Shader::TGE_EFFECT_DECLARATION)
-        {
-            j->accept(&shader_printer);
-        }
-        else
-        {
-            auto* var_node = j->extract<Shader::Declaration>()->getVariables();
-            if(var_node->getNodeType() != Shader::TGE_EFFECT_VARIABLE)
-            {
-                Log(LogLevel::Error, "Unsupported global declaration type");
-                m_Valid = false;
-                return;
-            }
-            auto* var = var_node->extract<Shader::Variable>();
-            auto* layout = var->getLayout();
-
-            Shader::VertexAttributeDescription vert_attr;
-            bool vb_attrs = false;
-
-            // The point here is that we want to remove everything that is not valid
-            // GLSL code.
-            if(layout)
-            {
-                bool layout_started = false;
-                for(auto k = layout->current(); k != layout->end(); ++k)
-                {
-                    auto* binop = k->extract<Shader::BinaryOperator>();
-                    auto layout_id = binop->getLHSOperand()->extract<Shader::Identifier>()->getValue();
-                    if(layout_id == "vb_offset")
-                    {
-                        vert_attr.Offset = binop->getRHSOperand()->extract<Shader::Value<int>>()->getValue();
-                        vb_attrs = true;
-                    }
-                    else if(layout_id == "vb_format")
-                    {
-                        vert_attr.Format = TranslateDataFormat(binop->getRHSOperand()->extract<Shader::Value<string>>()->getValue());
-                        vb_attrs = true;
-                    }
-                    else
-                    {
-                        if(!layout_started)
-                        {
-                            layout_started = true;
-                            shader_printer.stream() << "layout(";
-                        }
-                        else
-                        {
-                            shader_printer.stream() << ", ";
-                        }
-                        shader_printer.visit(binop);
-                    }
-                }
-                if(layout_started)
-                    shader_printer.stream() << ") ";
-            }
-            
-            auto* var_type = var->getType();
-            auto storage = var->getStorage();
-
-            if(vb_attrs && storage != Shader::StorageQualifier::In)
-            {
-                Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Vertex buffer format parameters are not supported for variables that are not of input type.");
-                m_Valid = false;
-                return;
-            }
-
-            if(storage == Shader::StorageQualifier::StructBuffer)
-            {
-                ProcessStructBuffer(&shader_printer, m_Options, m_OptionCount, m_Settings, var, &m_SSBOBindingCounter, &m_UBOBindingCounter, &m_Effect);
-            }
-            else
-            {
-                switch(var->getInterpolation())
-                {
-                default: TGE_ASSERT(false, "Unknown interpolation type");
-                case Shader::InterpolationQualifier::Default: break;
-                case Shader::InterpolationQualifier::Smooth: shader_printer.stream() << "smooth "; break;
-                case Shader::InterpolationQualifier::Flat: shader_printer.stream() << "flat "; break;
-                case Shader::InterpolationQualifier::Noperspective: shader_printer.stream() << "noperspective "; break;
-                }
-
-                switch(var->getStorage())
-                {
-                case Shader::StorageQualifier::Default: break;
-                case Shader::StorageQualifier::Const: shader_printer.stream() << "const "; break;
-                case Shader::StorageQualifier::In:
-                {
-                    shader_printer.stream() << "in ";
-                    if(shader_type == Shader::ShaderType::VertexShader)
-                    {
-                        if(vert_attr.Format == DataFormat::Unknown)
-                        {
-                            Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Valid format must be specified for input attribute: ", var->getNodeName());
-                            m_Valid = false;
-                            return;
-                        }
-                        vert_attr.Name = var->getNodeName();
-                        size_t dims;
-                        switch(var_type->getTypeEnum())
-                        {
-                        case Shader::ElementType::Scalar: dims = 1; break;
-                        case Shader::ElementType::Vector: dims = var_type->extract<Shader::VectorType>()->getDimension(); break;
-                        default:
-                        {
-                            Log(LogLevel::Error, "Unsupported input attribute type");
-                            m_Valid = false;
-                            return;
-                        } break;
-                        }
-
-                        if(DataFormatChannels(vert_attr.Format) != dims)
-                        {
-                            Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Incompatible data format specified for input attribute: ", var->getNodeName());
-                            m_Valid = false;
-                            return;
-                        }
-
-                        m_Effect.addVertexAttribute(vert_attr);
-                    }
-                    else if(vb_attrs)
-                    {
-                        Log(LogLevel::Error, var_node->getDeclarationLocation(), ": Input layout is only supported in vertex shader stage.");
-                        m_Valid = false;
-                    }
-                } break;
-                case Shader::StorageQualifier::CentroidIn: shader_printer.stream() << "centroid in "; break;
-                case Shader::StorageQualifier::SampleIn: TGE_ASSERT(false, "sample out "); break;
-                case Shader::StorageQualifier::Out: shader_printer.stream() << "out "; break;
-                case Shader::StorageQualifier::CentroidOut: shader_printer.stream() << "centroid out "; break;
-                case Shader::StorageQualifier::SampleOut: TGE_ASSERT(false, "sample in "); break;
-                case Shader::StorageQualifier::InOut: TGE_ASSERT(false, "Unexpected storage format.");
-                default:
-                    TGE_ASSERT(false, "Unsupported storage type.");
-                }
-
-                var_type->accept(&shader_printer);
-                shader_printer.stream() << " " << var->getNodeName();
-            }
-        }
-        if(!j->isBlockStatement())
-           shader_printer.stream() << ";\n";
-     }
+        generateTopLevel(shader_type, j.getNode(), shader_printer, &vb_offset);
+    }
     
     string source;
     if(shader_printer.isDrawIDInUse() && shader_type != Shader::ShaderType::VertexShader)
