@@ -134,6 +134,8 @@ bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescri
         return false;
     }
     
+    SetWindowLongPtr(m_Window, GWLP_USERDATA, reinterpret_cast<LONG>(&m_WindowInformation));
+
     return true;
 }
 

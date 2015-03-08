@@ -65,6 +65,12 @@ struct ResourceIndex
     uint32 BaseOffset = 0;
 };
 
+inline bool operator==(const ResourceIndex& lhs, const ResourceIndex& rhs)
+{
+    return lhs.ResourceTableIndex == rhs.ResourceTableIndex &&
+           lhs.BaseOffset == rhs.BaseOffset;
+}
+
 class BakedResourceTable
 {
     char*                   m_Table;

@@ -53,9 +53,11 @@ class GLWindow
     Colormap        m_XColormap = Colormap(); //!< Colormap used for gamma correction.
     GLXFBConfigPtr  m_FBConfig;
 #else
-    HDC             m_DC        = nullptr;
+    HDC               m_DC        = nullptr;
 #endif
-    OSWindowSystem* m_Display   = nullptr;
+    OSWindowSystem*   m_Display   = nullptr;
+
+    WindowInformation m_WindowInformation;
 public:
     explicit GLWindow()=default;
      ~GLWindow();
@@ -73,6 +75,9 @@ public:
 #endif
     OSWindow getWindowId() {  return m_Window; }
     
+    size_t getWidth() const { return m_WindowInformation.Width; }
+    size_t getHeight() const { return m_WindowInformation.Height; }
+
     void show();
     
     void swapBuffers();

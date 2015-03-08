@@ -162,7 +162,6 @@ public:
     const GLInputLayout* getInputLayout() const { return m_InputLayout; }
 
     GLResourceTable* createResourceTable(const string& name, size_t extended = 0);
-    void destroyRenderResource(GLResourceTable* buffer);
 };
 
 }

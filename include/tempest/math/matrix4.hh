@@ -27,6 +27,7 @@
 
 #include "tempest/utils/config.hh"
 #include "tempest/utils/assert.hh"
+#include "tempest/math/functions.hh"
 
 #if defined(HAS_SSE) || defined(HAS_ARM_NEON)
 #   include <xmmintrin.h>
@@ -390,6 +391,23 @@ public:
     Vector3 scaling() const;
     void decompose(Vector3& translation, Vector3& scaling, Vector3& euler);
 };
+
+inline Matrix4 PerspectiveMatrix(float fovy, float aspect, float zNear, float zFar)
+{
+    float f = 1.0f / tan((fovy / 360.0f) * math_pi);
+    return Matrix4(f / aspect, 0.0f, 0.0f, 0.0f,
+                   0.0f, f, 0.0f, 0.0f,
+                   0.0f, 0.0f, (zNear + zFar) / (zNear - zFar), -1.0f,
+                   0.0f, 0.0f, (2 * zNear*zFar) / (zNear - zFar), 0.0f);
+}
+
+inline Matrix4 OrthoMatrix(float left, float right, float bottom, float top, float _near, float _far)
+{
+    return Matrix4(2.0f / (right - left), 0.0f, 0.0f, 0.0f,
+                   0.0f, 2.0f / (top - bottom), 0.0f, 0.0f,
+                   0.0f, 0.0f, -2.0f / (_far - _near), 0.0f,
+                   (right + left) / (left - right), (top + bottom) / (bottom - top), (_far + _near) / (_near - _far), 1.0f);
+}
 }
 
 #endif // _TEMPEST_MATRIX_HH_

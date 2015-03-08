@@ -27,26 +27,34 @@
 namespace Tempest
 {
 // Kind of horrible. TODO: Create some not horrible material cache and use it while loading
-template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObject>
+template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObject, class TResourceTable>
 bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                TShaderProgram** progs, TBackend* backend,
                                size_t* batch_count, TDrawBatch** batches,
-                               size_t* num_states, TStateObject*** states);
+                               size_t* num_states, TStateObject*** states,
+                               TResourceTable*** res_tbls);
 
 template<class TBackend>
 struct MeshBlob
 {
-    typedef  typename TBackend::CommandBufferType::DrawBatchType DrawBatchType;
+    typedef typename TBackend::CommandBufferType::DrawBatchType DrawBatchType;
+    typedef typename TBackend::ShaderProgramType::ResourceTableType ResourceTableType;
     TBackend*                            Backend;
     DrawBatchType*                       DrawBatches;
     typename TBackend::StateObjectType** StateObjects;
     size_t                               DrawBatchCount;
     size_t                               StateCount;
+    ResourceTableType**                  ResourceTables;
 
     ~MeshBlob()
     {
         Backend->destroyRenderResource(DrawBatches[0].VertexBuffers[0].VertexBuffer);
         Backend->destroyRenderResource(DrawBatches[0].IndexBuffer);
+        for(size_t i = 0, iend = DrawBatchCount; i < iend; ++i)
+        {
+            delete ResourceTables[i];
+        }
+        delete[] ResourceTables;
         delete[] DrawBatches;
         for(size_t i = 0, iend = StateCount; i < iend; ++i)
         {
@@ -64,7 +72,8 @@ std::unique_ptr<MeshBlob<TBackend>> LoadObjFileStaticGeometryBlob(const string& 
     result->Backend = backend;
     auto status = LoadObjFileStaticGeometry(filename, loader, progs, backend,
                                             &result->DrawBatchCount, &result->DrawBatches,
-                                            &result->StateCount, &result->StateObjects);
+                                            &result->StateCount, &result->StateObjects,
+                                            &result->ResourceTables);
     return status ? std::move(result) : std::unique_ptr<MeshBlob<TBackend>>();
 }
 }

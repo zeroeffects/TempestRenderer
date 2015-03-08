@@ -141,11 +141,12 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     }
 }
 
-template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObject>
+template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObject, class TResourceTable>
 bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                TShaderProgram** progs, TBackend* backend,
                                size_t* batch_count, TDrawBatch** batches,
-                               size_t* state_count, TStateObject*** states)
+                               size_t* state_count, TStateObject*** states,
+                               TResourceTable*** res_tbl)
 {
     ObjLoader::Driver obj_loader_driver(Path(filename).directoryPath(), loader);
     if(loader)
@@ -196,7 +197,19 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
     auto& tc_ind = obj_loader_driver.getTexCoordIndices();
     auto& norm_ind = obj_loader_driver.getNormalIndices();
     
-    for(size_t i = 0, iend = groups.size(); i < iend; ++i)
+    size_t group_count = groups.size();
+
+    auto gen_res_tbl = CreateScoped<TResourceTable**>(new TResourceTable*[group_count]{}, [group_count](TResourceTable** res_tbl)
+    {
+        if(res_tbl)
+        {
+            for(size_t i = 0, iend = group_count; i < iend; ++i)
+                delete res_tbl[i];
+            delete[] res_tbl;
+        }
+    });
+
+    for(size_t i = 0, iend = group_count; i < iend; ++i)
     {
         size_t pos_size,
                tc_size,
@@ -285,8 +298,9 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
             globals_res_table->setResource("Globals.Specular", Vector4(specular.x(), specular.y(), specular.z(), material.SpecularExponent));
         }
         
-        batch.ResourceTable = globals_res_table->extractBakedTable();        
-       
+        batch.ResourceTable = globals_res_table->getBakedTable();        
+        gen_res_tbl[i] = globals_res_table.release();
+
         prev_ind_size = res_inds.size();
         prev_vert_size = res_data.size()*batch.VertexBuffers[0].Stride;
     }
@@ -310,11 +324,15 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
     // Basically, stop the deletion process
     pstates.clear();
 
+    *res_tbl = gen_res_tbl;
+    gen_res_tbl = nullptr;
+
     return true;
 }
 
 template bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                         GLShaderProgram** progs, GLRenderingBackend* backend,
                                         size_t* batch_count, GLDrawBatch** batches,
-                                        size_t* num_states, GLStateObject*** states);
+                                        size_t* num_states, GLStateObject*** states,
+                                        GLResourceTable*** res_tbl);
 }

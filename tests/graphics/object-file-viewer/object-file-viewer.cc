@@ -2,6 +2,9 @@
 #include "tempest/graphics/rendering-convenience.hh"
 #include "tempest/graphics/api-all.hh"
 #include "tempest/mesh/obj-loader.hh"
+#include "tempest/math/matrix4.hh"
+
+#include <chrono>
 
 TGE_TEST("Testing loading object files directly into the engine for testing purposes")
 {
@@ -41,19 +44,36 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
     auto mesh_blob = Tempest::LoadObjFileStaticGeometryBlob(TEST_ASSETS_DIR "/cube/cube.obj", nullptr, shader_ptr_table, &sys_obj->Backend);
     TGE_ASSERT(mesh_blob, "Failed to load test assets");
 
+    // Transform is always first
+    auto trans_idx = mesh_blob->ResourceTables[0]->getResourceIndex("Globals.Transform");
+    
     for(size_t i = 0; i < mesh_blob->DrawBatchCount; ++i)
     {
         command_buf->enqueueBatch(mesh_blob->DrawBatches[i]);
+        TGE_ASSERT(mesh_blob->ResourceTables[i]->getResourceIndex("Globals.Transform") == trans_idx, "Transform is not first!");
     }
 
     command_buf->prepareCommandBuffer();
     
     sys_obj->Window.show();
     
+    size_t period = 5;
+
     for(;;)
     {
         sys_obj->Backend.clearColorBuffer(0, Tempest::Vector4(0, 0, 0, 0));
         sys_obj->Backend.clearDepthStencilBuffer();
+
+        for(size_t i = 0; i < mesh_blob->DrawBatchCount; ++i)
+        {
+            auto now = std::chrono::system_clock::now();
+
+            Tempest::Matrix4 mat = Tempest::PerspectiveMatrix(90.0f, (float)sys_obj->Window.getWidth() / sys_obj->Window.getHeight(), 0.1f, 10.0f);
+            mat.translate(Tempest::Vector3(0.0f, 0.0f, -2.0f));
+            mat.rotateY(2.0f * Tempest::math_pi * (std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 5000) / 5000.0f);
+
+            mesh_blob->ResourceTables[i]->setResource(trans_idx, mat);
+        }
 
         sys_obj->Backend.submitCommandBuffer(command_buf.get());
         

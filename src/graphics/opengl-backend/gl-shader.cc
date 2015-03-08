@@ -129,11 +129,6 @@ GLResourceTable* GLShaderProgram::createResourceTable(const string& name, size_t
     return iter != m_ResourceTables.get() + m_ResourceTableCount ? new GLResourceTable(*iter, extended) : nullptr;
 }
 
-void GLShaderProgram::destroyRenderResource(GLResourceTable* buffer)
-{
-    delete buffer;
-}
-
 void GLShaderProgram::bind(GLBufferTableEntry* table_entry) const
 {
     glUseProgram(m_Program);

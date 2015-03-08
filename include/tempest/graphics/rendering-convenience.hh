@@ -231,9 +231,9 @@ UniqueResource<TCompiler, typename TCompiler::ShaderProgramType> CreateShader(TC
 }
 
 template<class TShader>
-UniqueResource<TShader, typename TShader::ResourceTableType> CreateResourceTable(TShader* shader, const string& table, size_t extended = 0)
+std::unique_ptr<typename TShader::ResourceTableType> CreateResourceTable(TShader* shader, const string& table, size_t extended = 0)
 {
-    return CreateUniqueResource(shader, shader->createResourceTable(table, extended));
+    return std::unique_ptr<typename TShader::ResourceTableType>(shader->createResourceTable(table, extended));
 }
 
 template<class TTable>
