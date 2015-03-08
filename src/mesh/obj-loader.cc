@@ -126,8 +126,9 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     {
         size_t i = 0;
         res_inds->resize(interm_indices.size());
-        for(auto ind : interm_indices)
+        for(size_t i = 0, iend = interm_indices.size(); i < iend; ++i)
         {
+            auto ind = interm_indices[i];
             TGE_ASSERT(ind < std::numeric_limits<uint16>::max(), "Invalid index");
             (*res_inds)[i] = static_cast<uint16>(ind);
         }
