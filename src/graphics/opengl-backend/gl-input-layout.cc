@@ -120,8 +120,8 @@ void GLInputLayout::bind(GLBufferTableEntry* buffer_table) const
         {
             // GL 2.0 style - should work everywhere.
             glVertexAttribPointer(i, vert_attr.Size, vert_attr.Type, vert_attr.Normalized,
-                                 buffer_table[i].Stride,
-                                 reinterpret_cast<GLvoid*>(reinterpret_cast<GLchar*>(nullptr) + vert_attr.Offset + buffer_table[i].Offset));
+                                  buffer_table[vert_attr.Binding].Stride,
+                                  reinterpret_cast<GLvoid*>(reinterpret_cast<GLchar*>(nullptr) + vert_attr.Offset + buffer_table[vert_attr.Binding].Offset));
         }
         else
         {

@@ -135,7 +135,7 @@ command
     | "v" number number number number           { driver.pushPosition($2, $3, $4, $5); }
     | "vn" number number number                 { driver.pushNormal($2, $3, $4); }
     | "vt" number number                        { driver.pushTexCoord($2, $3); }
-    | "vt" number number number                 { driver.pushTexCoord($2, $3, $4); } // 3d textures.
+    | "vt" number number number                 { TGE_ASSERT($4 == 0, "3D textures are unsupported"); driver.pushTexCoord($2, $3); } // Discard z because 3D textures are useless.
     | "g" "string"                              { driver.pushGroup($2); }
     | "f" face_indices
     | "usemtl" "string"                         { driver.pushMaterial(ToLocation(@$), $2); }

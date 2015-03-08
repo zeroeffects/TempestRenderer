@@ -40,13 +40,21 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
 
     auto mesh_blob = Tempest::LoadObjFileStaticGeometryBlob(TEST_ASSETS_DIR "/cube/cube.obj", nullptr, shader_ptr_table, &sys_obj->Backend);
     TGE_ASSERT(mesh_blob, "Failed to load test assets");
-    
+
+    for(size_t i = 0; i < mesh_blob->DrawBatchCount; ++i)
+    {
+        command_buf->enqueueBatch(mesh_blob->DrawBatches[i]);
+    }
+
     command_buf->prepareCommandBuffer();
     
     sys_obj->Window.show();
     
     for(;;)
     {
+        sys_obj->Backend.clearColorBuffer(0, Tempest::Vector4(0, 0, 0, 0));
+        sys_obj->Backend.clearDepthStencilBuffer();
+
         sys_obj->Backend.submitCommandBuffer(command_buf.get());
         
         sys_obj->Window.swapBuffers();

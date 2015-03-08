@@ -59,7 +59,7 @@ protected:
                              m_WarningCount = 0;
                             
     std::vector<Vector4>     m_Position;
-    std::vector<Vector3>     m_TexCoord;
+    std::vector<Vector2>     m_TexCoord;
     std::vector<Vector3>     m_Normal;
     
     std::vector<int32>       m_PositionIndices;
@@ -83,7 +83,7 @@ public:
     FileLoader* getFileLoader() { return m_FileLoader; }
      
     void pushPosition(float px, float py, float pz, float pw = 1.0f) { m_Position.push_back(Tempest::Vector4(px, py, pz, pw)); }
-    void pushTexCoord(float tx, float ty, float tz = 0.0f) { m_TexCoord.push_back(Tempest::Vector3(tx, ty, tz)); }
+    void pushTexCoord(float tx, float ty) { m_TexCoord.push_back(Tempest::Vector2(tx, ty)); }
     void pushNormal(float nx, float ny, float nz) { m_Normal.push_back(Tempest::Vector3(nx, ny, nz)); }
     
     void pushMaterial(const Location& loc, const string& name);
@@ -93,7 +93,7 @@ public:
     void pushNormalIndex(int32 idx) { m_NormalIndices.push_back(idx); }
     
     const std::vector<Vector4>& getPositions() const { return m_Position; }
-    const std::vector<Vector3>& getTexCoords() const { return m_TexCoord; }
+    const std::vector<Vector2>& getTexCoords() const { return m_TexCoord; }
     const std::vector<Vector3>& getNormals() const { return m_Normal; }
     
     const std::vector<int32>& getPositionIndices() const { return m_PositionIndices; }

@@ -41,7 +41,7 @@ namespace Tempest
 class FileLoader;
 
 static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoader::GroupHeader& hdr, size_t pos_size, size_t tc_size, size_t norm_size,
-                             std::vector<uint16>* res_inds, std::vector<char>* res_data)
+                             std::vector<uint16>* res_inds, std::vector<char>* res_data, uint32* stride)
 {
     int32        strides[3];
     const int32* inds[3];
@@ -49,6 +49,8 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
 
     std::vector<Vector3> gen_norms;
     
+    *stride = 0;
+
     size_t num = 0, ind_count = 0;
     auto& pos = obj_loader_driver.getPositions();
     auto& tc = obj_loader_driver.getTexCoords();
@@ -61,7 +63,7 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     {
         verts[num] = reinterpret_cast<const char*>(&pos.front());
         inds[num] = &pos_ind.front();
-        strides[num++] = sizeof(pos.front());
+        *stride += strides[num++] = sizeof(pos.front());
         ind_count = pos_size;
     }
     
@@ -69,7 +71,7 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     {
         verts[num] = reinterpret_cast<const char*>(&tc.front());
         inds[num] = &tc_ind.front();
-        strides[num++] = sizeof(tc.front());
+        *stride += strides[num++] = sizeof(tc.front());
         TGE_ASSERT(ind_count == 0 || ind_count == tc_size, "Indices should be the same"); ind_count = tc_size;
     }
     
@@ -77,7 +79,7 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     {
         verts[num] = reinterpret_cast<const char*>(&norm.front());
         inds[num] = &norm_ind.front();
-        strides[num++] = sizeof(norm.front());
+        *stride += strides[num++] = sizeof(norm.front());
         TGE_ASSERT(ind_count == 0 || ind_count == norm_size, "Indices should be the same"); ind_count = norm_size;
     }
     else if(pos_size == 0)
@@ -113,7 +115,7 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
         
         verts[num] = reinterpret_cast<const char*>(&gen_norms.front());
         inds[num] = &pos_ind.front();
-        strides[num++] = sizeof(gen_norms.front());
+        *stride += strides[num++] = sizeof(gen_norms.front());
     }
     
     std::vector<int32> interm_indices;
@@ -212,7 +214,9 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
             norm_size = groups[i + 1].NormalStart - groups[i].NormalStart;
         }
         
-        InterleaveInterm(obj_loader_driver, groups[i], pos_size, tc_size, norm_size, &res_inds, &res_data);
+        uint32 vb_stride;
+
+        InterleaveInterm(obj_loader_driver, groups[i], pos_size, tc_size, norm_size, &res_inds, &res_data, &vb_stride);
         
         auto& batch = (*batches)[i];
         batch.VertexCount   = static_cast<uint32>(res_inds.size() - prev_ind_size);
@@ -220,6 +224,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         batch.BaseVertex    = 0;
         batch.SortKey       = 0; // This could be regenerated on the fly
         batch.VertexBuffers[0].Offset = static_cast<uint32>(prev_vert_size);
+        batch.VertexBuffers[0].Stride = vb_stride;
 
         auto& material = obj_loader_driver.getMaterials().at(groups[i].MaterialIndex);
 
@@ -238,6 +243,11 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         case ObjMtlLoader::IlluminationModel::Diffuse: model = 0; break;
         case ObjMtlLoader::IlluminationModel::DiffuseAndAmbient: model = 1; flags = AmbientAvailable; break;
         case ObjMtlLoader::IlluminationModel::SpecularDiffuseAmbient: model = 2; flags = AmbientAvailable | SpecularAvailable;  break;
+        }
+
+        if(tc_size)
+        {
+            model += 3;
         }
 
         auto begin_state_iter = std::begin(pstates),
@@ -282,7 +292,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
     }
     
     auto *vbo = backend->createBuffer(res_data.size(), VBType::VertexBuffer, RESOURCE_STATIC_DRAW, &res_data.front());
-    auto *ibo = backend->createBuffer(res_inds.size(), VBType::IndexBuffer, RESOURCE_STATIC_DRAW, &res_inds.front());
+    auto *ibo = backend->createBuffer(res_inds.size()*sizeof(uint16), VBType::IndexBuffer, RESOURCE_STATIC_DRAW, &res_inds.front());
     
     for(size_t i = 0; i < *batch_count; ++i)
     {
