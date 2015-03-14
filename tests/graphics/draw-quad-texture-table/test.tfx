@@ -4,12 +4,6 @@ struct GlobalsDesc
     vec4 TextureID;
 };
 
-void GetResourceIndex(in uint packed_res_idx, out uint tex_slot, out uint tex_slice)
-{
-    tex_slot  = packed_res_idx >> 16;
-    tex_slice = packed_res_idx & 0xFFFFu;
-}
-
 // The main reason is APIs that support some non-bindless weirdness for the old hardware sake.
 resource buffer ResourcesTable
 {
