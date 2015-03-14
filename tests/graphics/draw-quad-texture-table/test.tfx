@@ -46,7 +46,7 @@ fragment shader
     {
         uint tex_slot, tex_slice;
         GetResourceIndex(Globals[DrawIndex].TextureID, tex_slot, tex_slice);
-        vec3 color = texture(Textures[tex_slot], vec3(InterpTexCoord, float(tex_slice))).xyz;
+        vec3 color = textureLod(Textures[tex_slot], vec3(InterpTexCoord, float(tex_slice)), 0.0).xyz;
         FragmentColor = vec4(color + 0.5, 1.0);
     }
 }

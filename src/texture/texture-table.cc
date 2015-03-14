@@ -123,8 +123,8 @@ static bool InsertIntoStorage(Texture* tex, uint32 tex_size, uint32 heap_size, u
     cmd.Source.Storage = upload_heap;
     cmd.Destination.Texture = tex_array;
     cmd.CommandType = IOCommandMode::CopyStorageToTexture;
-    cmd.SourceX = start_offset;
-    cmd.DestinationZ = slot;
+    cmd.SourceOffset = start_offset;
+    cmd.DestinationSlice = slot;
     cmd.Width = hdr.Width;
     cmd.Height = hdr.Height;
     // So if we can't enqueue more commands. We should perform a full on flush to proceed.

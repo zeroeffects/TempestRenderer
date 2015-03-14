@@ -42,6 +42,11 @@ GLIOCommandBuffer::~GLIOCommandBuffer()
     glDeleteFramebuffers(1, &m_FBO);
 }
 
+void GLIOCommandBuffer::clear()
+{
+    m_IOCurrentCommand = 0;
+}
+
 void GLIOCommandBuffer::_executeCommandBuffer()
 {
     for(uint32 i = 0, iend = m_IOCurrentCommand; i < iend; ++i)
@@ -53,7 +58,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
         {
             cmd.Source.Buffer->bindToTarget(GLBufferTarget::GL_COPY_READ_BUFFER);
             cmd.Destination.Buffer->bindToTarget(GLBufferTarget::GL_COPY_WRITE_BUFFER);
-            glCopyBufferSubData(GLBufferTarget::GL_COPY_READ_BUFFER, GLBufferTarget::GL_COPY_WRITE_BUFFER, cmd.SourceX, cmd.DestinationX, cmd.Width);
+            glCopyBufferSubData(GLBufferTarget::GL_COPY_READ_BUFFER, GLBufferTarget::GL_COPY_WRITE_BUFFER, cmd.SourceOffset, cmd.DestinationOffset, cmd.Width);
         } break;
         case IOCommandMode::CopyTexture:
         {
@@ -62,31 +67,32 @@ void GLIOCommandBuffer::_executeCommandBuffer()
             glBindFramebuffer(GLFramebufferTarget::GL_READ_FRAMEBUFFER, m_FBO);
             if(dst_desc.Depth > 1)
             {
-                TGE_ASSERT(cmd.SourceX + cmd.Width <= src_desc.Width &&
-                           cmd.SourceY + cmd.Height <= src_desc.Height &&
-                           cmd.SourceZ + cmd.Depth <= src_desc.Depth &&
-                           cmd.DestinationX + cmd.Width <= dst_desc.Width &&
-                           cmd.DestinationY + cmd.Height <= dst_desc.Height &&
-                           cmd.DestinationZ + cmd.Depth <= dst_desc.Depth,
+                TGE_ASSERT(cmd.SourceCoordinate.X + cmd.Width <= src_desc.Width &&
+                           cmd.SourceCoordinate.Y + cmd.Height <= src_desc.Height &&
+                           cmd.SourceSlice + cmd.Depth <= src_desc.Depth &&
+                           cmd.DestinationCoordinate.X + cmd.Width <= dst_desc.Width &&
+                           cmd.DestinationCoordinate.Y + cmd.Height <= dst_desc.Height &&
+                           cmd.DestinationSlice + cmd.Depth <= dst_desc.Depth,
                            "Invalid coordinates specified");
                 GLTextureTarget dst_target = dst_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_2D_ARRAY : GLTextureTarget::GL_TEXTURE_3D;
                 GLTextureTarget src_target = src_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_2D_ARRAY : GLTextureTarget::GL_TEXTURE_3D;
                 for(uint16 cur_depth = 0, end_depth = cmd.Depth; cur_depth < end_depth; ++cur_depth)
                 {
-                    glFramebufferTexture3D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), src_target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip, cmd.SourceZ + cur_depth);
+                    glFramebufferTexture3D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), src_target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip, cmd.SourceSlice + cur_depth);
 #ifndef NDEBUG
                     auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
                     TGE_ASSERT(status == GLFramebufferStatus::GL_FRAMEBUFFER_COMPLETE, "Framebuffer is broken");
 #endif
-                    glCopyTexSubImage3D(dst_target, cmd.DestinationMip, cmd.DestinationX, cmd.DestinationY, cmd.DestinationZ + cur_depth, cmd.SourceX, cmd.SourceY, cmd.Width, cmd.Height);
+                    glBindTexture(dst_target, cmd.Destination.Texture->getCPUHandle());
+                    glCopyTexSubImage3D(dst_target, cmd.DestinationMip, cmd.DestinationCoordinate.X, cmd.DestinationCoordinate.Y, cmd.DestinationSlice + cur_depth, cmd.SourceCoordinate.X, cmd.SourceCoordinate.Y, cmd.Width, cmd.Height);
                 }
             }
             else if(dst_desc.Height > 1)
             {
-                TGE_ASSERT(cmd.SourceX + cmd.Width <= src_desc.Width && 
-                           cmd.SourceY + cmd.Height <= src_desc.Height &&
-                           cmd.DestinationX + cmd.Width <= dst_desc.Width &&
-                           cmd.DestinationY + cmd.Height <= dst_desc.Height,
+                TGE_ASSERT(cmd.SourceCoordinate.X + cmd.Width <= src_desc.Width && 
+                           cmd.SourceCoordinate.Y + cmd.Height <= src_desc.Height &&
+                           cmd.DestinationCoordinate.X + cmd.Width <= dst_desc.Width &&
+                           cmd.DestinationCoordinate.Y + cmd.Height <= dst_desc.Height,
                            "Invalid coordinates specified");
                 GLTextureTarget dst_target = dst_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_1D_ARRAY : GLTextureTarget::GL_TEXTURE_2D;
                 GLTextureTarget src_target = src_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_1D_ARRAY : GLTextureTarget::GL_TEXTURE_2D;
@@ -95,19 +101,21 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                 auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
                 TGE_ASSERT(status == GLFramebufferStatus::GL_FRAMEBUFFER_COMPLETE, "Framebuffer is broken");
 #endif
-                glCopyTexSubImage2D(dst_target, cmd.DestinationMip, cmd.DestinationX, cmd.DestinationY, cmd.SourceX, cmd.SourceY, cmd.Width, cmd.Height);
+                glBindTexture(dst_target, cmd.Destination.Texture->getCPUHandle());
+                glCopyTexSubImage2D(dst_target, cmd.DestinationMip, cmd.DestinationCoordinate.X, cmd.DestinationCoordinate.Y, cmd.SourceCoordinate.X, cmd.SourceCoordinate.Y, cmd.Width, cmd.Height);
             }
             else
             {
-                TGE_ASSERT(cmd.SourceX + cmd.Width <= src_desc.Width &&
-                           cmd.DestinationX + cmd.Width <= dst_desc.Width,
+                TGE_ASSERT(cmd.SourceCoordinate.X + cmd.Width <= src_desc.Width &&
+                           cmd.DestinationCoordinate.X + cmd.Width <= dst_desc.Width,
                            "Invalid coordinates specified");
                 glFramebufferTexture1D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), GLTextureTarget::GL_TEXTURE_1D, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip);
 #ifndef NDEBUG
                 auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
                 TGE_ASSERT(status == GLFramebufferStatus::GL_FRAMEBUFFER_COMPLETE, "Framebuffer is broken");
 #endif
-                glCopyTexSubImage1D(GLTextureTarget::GL_TEXTURE_1D, cmd.DestinationMip, cmd.DestinationX, cmd.SourceX, cmd.SourceY, cmd.Width);
+                glBindTexture(GLTextureTarget::GL_TEXTURE_1D, cmd.Destination.Texture->getCPUHandle());
+                glCopyTexSubImage1D(GLTextureTarget::GL_TEXTURE_1D, cmd.DestinationMip, cmd.DestinationCoordinate.X, cmd.SourceCoordinate.X, cmd.SourceCoordinate.Y, cmd.Width);
             }
             glBindFramebuffer(GLFramebufferTarget::GL_READ_FRAMEBUFFER, 0);
         } break;
@@ -115,7 +123,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
         {
             cmd.Source.Storage->bindToTarget(GLBufferTarget::GL_COPY_READ_BUFFER);
             cmd.Destination.Buffer->bindToTarget(GLBufferTarget::GL_COPY_WRITE_BUFFER);
-            glCopyBufferSubData(GLBufferTarget::GL_COPY_READ_BUFFER, GLBufferTarget::GL_COPY_WRITE_BUFFER, cmd.SourceX, cmd.DestinationX, cmd.Width);
+            glCopyBufferSubData(GLBufferTarget::GL_COPY_READ_BUFFER, GLBufferTarget::GL_COPY_WRITE_BUFFER, cmd.SourceOffset, cmd.DestinationOffset, cmd.Width);
         } break;
         case IOCommandMode::CopyStorageToTexture:
         {
@@ -131,29 +139,32 @@ void GLIOCommandBuffer::_executeCommandBuffer()
             if(dst_desc.Depth > 1)
             {
                 // TODO: check whether it works
-                TGE_ASSERT(cmd.SourceX + cmd.Height*cmd.Depth*line_size <= cmd.Source.Storage->getSize() &&
-                           cmd.DestinationX + cmd.Width <= dst_desc.Width &&
-                           cmd.DestinationY + cmd.Height <= dst_desc.Height &&
-                           cmd.DestinationZ + cmd.Depth <= dst_desc.Depth,
+                TGE_ASSERT(cmd.SourceOffset + cmd.Height*cmd.Depth*line_size <= cmd.Source.Storage->getSize() &&
+                           cmd.DestinationCoordinate.X + cmd.Width <= dst_desc.Width &&
+                           cmd.DestinationCoordinate.Y + cmd.Height <= dst_desc.Height &&
+                           cmd.DestinationSlice + cmd.Depth <= dst_desc.Depth,
                            "Invalid coordinates specified");
                 GLTextureTarget target = dst_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_2D_ARRAY : GLTextureTarget::GL_TEXTURE_3D;
-                glTexSubImage3D(target, cmd.DestinationMip, cmd.DestinationX, cmd.DestinationY, cmd.DestinationZ, cmd.Width, cmd.Height, cmd.Depth, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.SourceX);
+                glBindTexture(target, cmd.Destination.Texture->getCPUHandle());
+                glTexSubImage3D(target, cmd.DestinationMip, cmd.DestinationCoordinate.X, cmd.DestinationCoordinate.Y, cmd.DestinationSlice, cmd.Width, cmd.Height, cmd.Depth, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.SourceOffset);
             }
             else if(dst_desc.Height > 1)
             {
-                TGE_ASSERT(cmd.SourceX + cmd.Height*line_size <= cmd.Source.Storage->getSize() &&
-                           cmd.DestinationX + cmd.Width <= dst_desc.Width &&
-                           cmd.DestinationY + cmd.Height <= dst_desc.Height,
+                TGE_ASSERT(cmd.SourceOffset + cmd.Height*line_size <= cmd.Source.Storage->getSize() &&
+                           cmd.DestinationCoordinate.X + cmd.Width <= dst_desc.Width &&
+                           cmd.DestinationCoordinate.Y + cmd.Height <= dst_desc.Height,
                            "Invalid coordinates specified");
                 GLTextureTarget target = dst_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_1D_ARRAY : GLTextureTarget::GL_TEXTURE_2D;
-                glTexSubImage2D(target, cmd.DestinationMip, cmd.DestinationX, cmd.DestinationY, cmd.Width, cmd.Height, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.SourceX);
+                glBindTexture(target, cmd.Destination.Texture->getCPUHandle());
+                glTexSubImage2D(target, cmd.DestinationMip, cmd.DestinationCoordinate.X, cmd.DestinationCoordinate.Y, cmd.Width, cmd.Height, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.SourceOffset);
             }
             else
             {
-                TGE_ASSERT(cmd.SourceX + line_size <= cmd.Source.Storage->getSize() &&
-                           cmd.DestinationX + cmd.Width <= dst_desc.Width,
+                TGE_ASSERT(cmd.SourceOffset + line_size <= cmd.Source.Storage->getSize() &&
+                           cmd.DestinationCoordinate.X + cmd.Width <= dst_desc.Width,
                            "Invalid coordinates specified");
-                glTexSubImage1D(GLTextureTarget::GL_TEXTURE_1D, cmd.DestinationMip, cmd.DestinationX, cmd.Width, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.SourceX);
+                glBindTexture(GLTextureTarget::GL_TEXTURE_1D, cmd.Destination.Texture->getCPUHandle());
+                glTexSubImage1D(GLTextureTarget::GL_TEXTURE_1D, cmd.DestinationMip, cmd.DestinationCoordinate.X, cmd.Width, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.SourceOffset);
             }
             glBindBuffer(GLBufferTarget::GL_PIXEL_UNPACK_BUFFER, 0);
         } break;
@@ -161,7 +172,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
         {
             cmd.Source.Buffer->bindToTarget(GLBufferTarget::GL_COPY_READ_BUFFER);
             cmd.Destination.Storage->bindToTarget(GLBufferTarget::GL_COPY_WRITE_BUFFER);
-            glCopyBufferSubData(GLBufferTarget::GL_COPY_READ_BUFFER, GLBufferTarget::GL_COPY_WRITE_BUFFER, cmd.SourceX, cmd.DestinationX, cmd.Width);
+            glCopyBufferSubData(GLBufferTarget::GL_COPY_READ_BUFFER, GLBufferTarget::GL_COPY_WRITE_BUFFER, cmd.SourceCoordinate.X, cmd.DestinationCoordinate.X, cmd.Width);
         } break;
         case IOCommandMode::CopyTextureToStorage:
         {
@@ -176,28 +187,28 @@ void GLIOCommandBuffer::_executeCommandBuffer()
             glBindFramebuffer(GLFramebufferTarget::GL_READ_FRAMEBUFFER, m_FBO);
             if(src_desc.Depth > 1)
             {
-                TGE_ASSERT(cmd.SourceX + cmd.Width <= src_desc.Width &&
-                           cmd.SourceY + cmd.Height <= src_desc.Height &&
-                           cmd.SourceZ + cmd.Depth <= src_desc.Depth &&
-                           cmd.DestinationX + cmd.Height*cmd.Depth*line_size <= cmd.Destination.Storage->getSize(),
+                TGE_ASSERT(cmd.SourceCoordinate.X + cmd.Width <= src_desc.Width &&
+                           cmd.SourceCoordinate.Y + cmd.Height <= src_desc.Height &&
+                           cmd.SourceSlice + cmd.Depth <= src_desc.Depth &&
+                           cmd.DestinationOffset + cmd.Height*cmd.Depth*line_size <= cmd.Destination.Storage->getSize(),
                            "Invalid coordinates specified");
                 GLTextureTarget target = src_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_2D_ARRAY : GLTextureTarget::GL_TEXTURE_3D;
                 for(uint16 cur_depth = 0, end_depth = cmd.Depth; cur_depth < end_depth; ++cur_depth)
                 {
-                    glFramebufferTexture3D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip, cmd.SourceZ + cur_depth);
+                    glFramebufferTexture3D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip, cmd.SourceSlice + cur_depth);
                     glReadBuffer(UINT_TO_GL_BUFFER_COLOR_ATTACHMENT(0));
 #ifndef NDEBUG
                     auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
                     TGE_ASSERT(status == GLFramebufferStatus::GL_FRAMEBUFFER_COMPLETE, "Framebuffer is broken");
 #endif
-                    glReadPixels(cmd.SourceX, cmd.SourceY, cmd.Width, cmd.Height, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.DestinationX + cur_depth*cmd.Height*cur_depth);
+                    glReadPixels(cmd.SourceCoordinate.X, cmd.SourceCoordinate.Y, cmd.Width, cmd.Height, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.DestinationOffset + cur_depth*cmd.Height*cur_depth);
                 }
             }
             else if(src_desc.Height > 1)
             {
-                TGE_ASSERT(cmd.SourceX + cmd.Width <= src_desc.Width &&
-                           cmd.SourceY + cmd.Height <= src_desc.Height &&
-                           cmd.DestinationX + cmd.Height*line_size <= cmd.Destination.Storage->getSize(),
+                TGE_ASSERT(cmd.SourceCoordinate.X + cmd.Width <= src_desc.Width &&
+                           cmd.SourceCoordinate.Y + cmd.Height <= src_desc.Height &&
+                           cmd.DestinationOffset + cmd.Height*line_size <= cmd.Destination.Storage->getSize(),
                            "Invalid coordinates specified");
                 GLTextureTarget target = src_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_1D_ARRAY : GLTextureTarget::GL_TEXTURE_2D;
                 glFramebufferTexture2D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip);
@@ -206,13 +217,13 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                 auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
                 TGE_ASSERT(status == GLFramebufferStatus::GL_FRAMEBUFFER_COMPLETE, "Framebuffer is broken");
 #endif
-                glReadPixels(cmd.SourceX, cmd.SourceY, cmd.Width, cmd.Height, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.DestinationX);
+                glReadPixels(cmd.SourceCoordinate.X, cmd.SourceCoordinate.Y, cmd.Width, cmd.Height, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.DestinationOffset);
                 CheckOpenGL();
             }
             else
             {
-                TGE_ASSERT(cmd.SourceX + cmd.Width <= src_desc.Width &&
-                           cmd.DestinationX + line_size <= cmd.Destination.Storage->getSize(),
+                TGE_ASSERT(cmd.SourceCoordinate.X + cmd.Width <= src_desc.Width &&
+                           cmd.DestinationOffset + line_size <= cmd.Destination.Storage->getSize(),
                            "Invalid coordinates specified");
                 glFramebufferTexture1D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), GLTextureTarget::GL_TEXTURE_1D, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip);
                 glReadBuffer(UINT_TO_GL_BUFFER_COLOR_ATTACHMENT(0));
@@ -220,7 +231,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                 auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
                 TGE_ASSERT(status == GLFramebufferStatus::GL_FRAMEBUFFER_COMPLETE, "Framebuffer is broken");
 #endif
-                glReadPixels(cmd.SourceX, cmd.SourceY, cmd.Width, cmd.Height, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.DestinationX);
+                glReadPixels(cmd.SourceCoordinate.X, cmd.SourceCoordinate.Y, cmd.Width, cmd.Height, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.DestinationOffset);
             }
             glBindFramebuffer(GLFramebufferTarget::GL_READ_FRAMEBUFFER, 0);
             glBindBuffer(GLBufferTarget::GL_PIXEL_PACK_BUFFER, 0);

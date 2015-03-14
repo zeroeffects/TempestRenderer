@@ -32,6 +32,7 @@
 #define DECLARE_SYS_GL_FUNCTION(return_type, name, ...) typedef return_type (APIENTRY* PFN##name##PROC)(__VA_ARGS__); \
                                                         PFN##name##PROC name = nullptr;
 #include "tempest/graphics/opengl-backend/gl-library.hh"
+#include "tempest/graphics/opengl-backend/gl-utils.hh"
 #undef DECLARE_GL_FUNCTION
 #undef DECLARE_GL_FUNCTION_OPTIONAL
 #undef DECLARE_SYS_FUNCTION

@@ -57,13 +57,29 @@ struct GLIOCommand
 {
     GLResourceUnion Source;
     GLResourceUnion Destination;
-    uint16          SourceX = 0,
-                    SourceY = 0,
-                    SourceZ = 0,
+    union
+    {
+        struct
+        {
+            uint16 X,
+                   Y;
+        } SourceCoordinate;
+        uint32 SourceOffset = 0;
+    };
+
+    union
+    {
+        struct
+        {
+            uint16 X,
+                   Y;
+        } DestinationCoordinate;
+        uint32 DestinationOffset = 0;
+    };
+
+    uint16          SourceSlice = 0,
                     SourceMip = 0,
-                    DestinationX = 0,
-                    DestinationY = 0,
-                    DestinationZ = 0,
+                    DestinationSlice = 0,
                     DestinationMip = 0,
                     Width = 1,
                     Height = 1,
@@ -82,6 +98,8 @@ public:
 
     GLIOCommandBuffer(const IOCommandBufferDescription& cmd_desc);
     ~GLIOCommandBuffer();
+
+    void clear();
 
     bool enqueueCommand(GLIOCommand command)
     {

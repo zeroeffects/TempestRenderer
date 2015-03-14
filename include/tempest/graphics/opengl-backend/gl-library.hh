@@ -421,7 +421,7 @@ enum class GLTextureIndex: GLuint
     GL_TEXTURE31                       = 0x84DF
 };
 
-#define UINT_TO_GL_TEXTURE(num) static_cast<GLTextureIndex>(static_cast<GLuint>(GL_TEXTURE0) + num)
+#define UINT_TO_GL_TEXTURE(num) static_cast<GLTextureIndex>(static_cast<GLuint>(GLTextureIndex::GL_TEXTURE0) + num)
 
 enum class GLType
 {
