@@ -57,13 +57,13 @@ GLShaderCompiler::GLShaderCompiler(uint32 settings)
     if(!IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
 #endif
     {
-        m_Settings |= TEMPEST_DISABLE_MULTI_DRAW|TEMPEST_DISABLE_SSBO;
+        m_Settings |= TEMPEST_SETTING_DISABLE_MULTI_DRAW|TEMPEST_SETTING_DISABLE_SSBO;
     }
 #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     if(!IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
 #endif
     {
-        m_Settings |= TEMPEST_DISABLE_TEXTURE_BINDLESS;
+        m_Settings |= TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS;
     }
 }
 
@@ -139,6 +139,8 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         auto type = buffer.getBufferType();
         uint32 elem_count = buffer.getElementCount();
         
+        bool is_resource = false;
+
         res_table = CreatePackedData<ResourceTableDescription>(elem_count, buffer.getResiablePart(), buffer.getBufferName(), buffer_idx);
         res_table->BufferSize = 0;
         for(uint32 el_idx = 0; el_idx < elem_count; ++el_idx)
@@ -152,8 +154,20 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
             uval.Offset = static_cast<Tempest::uint32>(elem_desc.getBufferOffset());
             auto cur_end = static_cast<uint32>(uval.Offset + uval.ElementCount*uval.ElementSize);
             res_table->BufferSize = std::max(res_table->BufferSize, cur_end);
+            if(uval.Type == UniformValueType::Texture)
+            {
+                is_resource = true;
+            }
         }
-        res_table->BufferSize = AlignAddress(res_table->BufferSize, 4 * sizeof(float));
+
+        if(is_resource && (m_Settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS))
+        {
+            res_table->BufferSize = res_table->BufferSize;
+        }
+        else
+        {
+            res_table->BufferSize = AlignAddress(res_table->BufferSize, 4 * sizeof(float));
+        }
         res_table->BufferSize -= static_cast<Tempest::uint32>(buffer.getResiablePart());
     }
     

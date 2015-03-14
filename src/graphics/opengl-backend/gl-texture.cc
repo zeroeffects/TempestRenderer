@@ -30,8 +30,10 @@ namespace Tempest
 {
 GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* data)
     :   m_Description(desc),
-        m_Flags(flags),
-        m_GPUHandle(0)
+        m_Flags(flags)
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
+        , m_GPUHandle(0)
+#endif
 {
     glGenTextures(1, &m_Texture);
     auto tex_info = TranslateTextureInfo(desc.Format);
@@ -116,16 +118,20 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
 
 GLTexture::~GLTexture()
 {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     if(m_GPUHandle)
     {
         glMakeTextureHandleNonResidentARB(m_GPUHandle);
     }
+#endif
     glDeleteTextures(1, &m_Texture);
 }
 
 void GLTexture::setFilter(FilterMode min_filter, FilterMode mag_filter, FilterMode mip_filter, SamplerMode sampler_mode)
 {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
+#endif
     GLint gl_min_filter, gl_mag_filter;
     switch(mag_filter)
     {
@@ -161,7 +167,9 @@ static GLint ConvertWrapMode(WrapMode mode)
 
 void GLTexture::setWrapMode(WrapMode x_axis, WrapMode y_axis, WrapMode z_axis)
 {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
+#endif
     glTextureParameteriEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_WRAP_S, ConvertWrapMode(x_axis));
     glTextureParameteriEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_WRAP_T, ConvertWrapMode(y_axis));
     glTextureParameteriEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_WRAP_R, ConvertWrapMode(z_axis));
@@ -169,19 +177,25 @@ void GLTexture::setWrapMode(WrapMode x_axis, WrapMode y_axis, WrapMode z_axis)
 
 void GLTexture::setMipLODBias(float lod_bias)
 {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
+#endif
     glTextureParameterfEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_LOD_BIAS, lod_bias);
 }
 
 void GLTexture::setMaxAnisotrophy(uint32 max_anisotropy)
 {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
+#endif
     glTextureParameteriEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_MAX_ANISOTROPY_EXT, max_anisotropy);
 }
 
 void GLTexture::setCompareFunction(ComparisonFunction compare_func)
 {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
+#endif
     if(compare_func == ComparisonFunction::AlwaysPass)
     {
         glTextureParameteriEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_COMPARE_MODE, GL_NONE);
@@ -196,19 +210,25 @@ void GLTexture::setCompareFunction(ComparisonFunction compare_func)
 
 void GLTexture::setBorderColor(const Vector4& color)
 {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
+#endif
     glTextureParameterfvEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_BORDER_COLOR, reinterpret_cast<const float*>(&color));
 }
 
 void GLTexture::setMinLOD(float min_lod)
 {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
+#endif
     glTextureParameterfEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_MIN_LOD, min_lod);
 }
 
 void GLTexture::setMaxLOD(float max_lod)
 {
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
+#endif
     glTextureParameterfEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_MAX_LOD, max_lod);
 }
 

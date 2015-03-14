@@ -114,7 +114,7 @@ TGE_TEST("Testing texture tables")
 
     sys_obj->Window.show();
 
-    Tempest::uint32 total_slots = std::accumulate(std::begin(tex_desc.Slots), std::end(tex_desc.Slots), 0);
+    Tempest::uint32 total_slots = TGE_FIXED_ARRAY_SIZE(tex_desc.Slots);
     
     sys_obj->Backend.setActiveTextures(total_slots);
 

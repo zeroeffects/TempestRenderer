@@ -1040,7 +1040,7 @@ public:
     ~ShaderDeclaration()=default;
 
     ShaderType getType() const { return m_Type; }
-    bool isBlockStatement() const { return false; }
+    bool isBlockStatement() const { return true; }
     virtual string getNodeName() const { return "shader"; }
 
     List* getBody() { return m_Body.get(); }

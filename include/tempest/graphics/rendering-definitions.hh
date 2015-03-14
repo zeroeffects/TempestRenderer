@@ -348,7 +348,7 @@ enum class StorageMode: uint32
     PixelUnpack
 };
 
-inline uint32 UniformValueTypeSize(UniformValueType uniform_value)
+inline uint32 UniformValueTypeSize(UniformValueType uniform_value, bool tex_ptr64 = true)
 {
     switch(uniform_value)
     {
@@ -380,7 +380,7 @@ inline uint32 UniformValueTypeSize(UniformValueType uniform_value)
     case UniformValueType::Texture:
     {
     #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
-        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS) && tex_ptr64)
         {
             return sizeof(uint64);
         }
@@ -398,9 +398,9 @@ inline uint32 UniformValueTypeSize(UniformValueType uniform_value)
 
 enum
 {
-    TEMPEST_DISABLE_SSBO             = 1 << 0,
-    TEMPEST_DISABLE_MULTI_DRAW       = 1 << 1,
-    TEMPEST_DISABLE_TEXTURE_BINDLESS = 1 << 2
+    TEMPEST_SETTING_DISABLE_SSBO             = 1 << 0,
+    TEMPEST_SETTING_DISABLE_MULTI_DRAW       = 1 << 1,
+    TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS = 1 << 2
 };
 
 struct CommandBufferDescription

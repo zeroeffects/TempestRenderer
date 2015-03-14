@@ -625,7 +625,7 @@ void Generator::visit(const Shader::Buffer* _buffer)
 {
     m_RawImport.visit(_buffer);
 
-    ConvertBuffer(m_Options, m_OptionCount, _buffer, &m_Effect);
+    ConvertBuffer(m_Options, m_OptionCount, 0, _buffer, &m_Effect);
 }
 
 void Generator::visit(const Shader::Declaration* decl)
@@ -655,7 +655,7 @@ void Generator::visit(const Shader::Declaration* decl)
 
             m_RawImportStream << "StructuredBuffer<" << elem_type->getNodeName() << "> " << name << ": register(t" << m_StructBufferBinding++ << ")";
 
-            ConvertStructBuffer(m_Options, m_OptionCount, var, &m_Effect);
+            ConvertStructBuffer(m_Options, m_OptionCount, 0, var, &m_Effect);
         }
         else
         {

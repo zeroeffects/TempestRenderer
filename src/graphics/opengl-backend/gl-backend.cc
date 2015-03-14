@@ -152,11 +152,16 @@ bool GLRenderingBackend::attach(OSWindowSystem& wnd_sys, GLWindow& gl_wnd)
 {
 #ifdef _WIN32
     wnd_sys;
+    int flags = WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
+#ifndef NDEBUG
+    flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
+#endif
     static const int ctx_attr_list[] =
     {
         WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
         WGL_CONTEXT_MINOR_VERSION_ARB, 0,
         WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        WGL_CONTEXT_FLAGS_ARB, flags,
         0
     };
 

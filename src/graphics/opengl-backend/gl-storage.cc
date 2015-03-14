@@ -55,20 +55,28 @@ GLbitfield TranslateAccessBit(StorageMode storage_type)
     }
 }
 
-GLStorage::GLStorage(StorageMode storage_type, uint32 size)
-    : m_Size(size)
+GLUsageMode TranslateAccess(StorageMode storage_type)
 {
-    GLBufferTarget target = TranslateStorage(storage_type);
-    GLbitfield access_bit = TranslateAccessBit(storage_type);
+    switch(storage_type)
+    {
+    default: TGE_ASSERT(false, "Unknown storage type");
+    case StorageMode::BufferWrite:
+    case StorageMode::PixelPack: return GLUsageMode::GL_STREAM_READ;
+    case StorageMode::BufferRead:
+    case StorageMode::PixelUnpack: return GLUsageMode::GL_STREAM_DRAW;
+    }
+}
 
+GLStorage::GLStorage(StorageMode storage_type, uint32 size)
+    :   m_Size(size),
+        m_Target(TranslateStorage(storage_type)),
+        m_Access(TranslateAccessBit(storage_type))
+{
     glGenBuffers(1, &m_Storage);
-    glBindBuffer(target, m_Storage);
-    glBufferStorage(target, size, 0,
-                    access_bit | GL_MAP_PERSISTENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-    m_DataPtr = static_cast<uint8*>(glMapBufferRange(target, 0, size,
-                                                     access_bit | GL_MAP_COHERENT_BIT));
+    glBindBuffer(m_Target, m_Storage);
+    glBufferData(m_Target, size, 0, TranslateAccess(storage_type));
     CheckOpenGL();
-    glBindBuffer(target, 0);
+    glBindBuffer(m_Target, 0);
 }
 
 GLStorage::~GLStorage()
@@ -78,21 +86,43 @@ GLStorage::~GLStorage()
 
 void GLStorage::storeLinearBuffer(uint32 offset, uint32 size, const void* data)
 {
-    memcpy(m_DataPtr + offset, data, size);
+    glBindBuffer(m_Target, m_Storage);
+    auto* data_ptr = static_cast<uint8*>(glMapBufferRange(m_Target, offset, size,
+                                                          m_Access));
+        memcpy(data_ptr, data, size);
+    glUnmapBuffer(m_Target);
+    glBindBuffer(m_Target, 0);
 }
 
 void GLStorage::storeTexture(uint32 offset, const TextureDescription& tex_desc, const void* data)
 {
-    memcpy(m_DataPtr + offset, data, tex_desc.Height*tex_desc.Width*tex_desc.Depth*DataFormatElementSize(tex_desc.Format));
+    GLsizeiptr size = tex_desc.Height*tex_desc.Width*tex_desc.Depth*DataFormatElementSize(tex_desc.Format);
+    glBindBuffer(m_Target, m_Storage);
+    auto* data_ptr = static_cast<uint8*>(glMapBufferRange(m_Target, offset, size,
+        m_Access));
+        memcpy(data_ptr, data, size);
+    glUnmapBuffer(m_Target);
+    glBindBuffer(m_Target, 0);
 }
 
 void GLStorage::extractLinearBuffer(uint32 offset, uint32 size, void* data)
 {
-    memcpy(data, m_DataPtr + offset, size);
+    glBindBuffer(m_Target, m_Storage);
+    auto* data_ptr = static_cast<uint8*>(glMapBufferRange(m_Target, offset, size,
+        m_Access));
+        memcpy(data, data_ptr, size);
+    glUnmapBuffer(m_Target);
+    glBindBuffer(m_Target, 0);
 }
 
 void GLStorage::extractTexture(uint32 offset, const TextureDescription& tex_desc, void* data)
 {
-    memcpy(data, m_DataPtr + offset, tex_desc.Height*tex_desc.Width*tex_desc.Depth*DataFormatElementSize(tex_desc.Format));
+    glBindBuffer(m_Target, m_Storage);
+    GLsizeiptr size = tex_desc.Height*tex_desc.Width*tex_desc.Depth*DataFormatElementSize(tex_desc.Format);
+    auto* data_ptr = static_cast<uint8*>(glMapBufferRange(m_Target, offset, size,
+        m_Access));
+        memcpy(data, data_ptr, size);
+    glUnmapBuffer(m_Target);
+    glBindBuffer(m_Target, 0);
 }
 }

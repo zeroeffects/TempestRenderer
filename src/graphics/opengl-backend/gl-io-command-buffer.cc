@@ -34,7 +34,7 @@ GLIOCommandBuffer::GLIOCommandBuffer(const IOCommandBufferDescription& cmd_desc)
     :   m_IOCommandCount(cmd_desc.CommandCount),
         m_IOCommands(new GLIOCommand[cmd_desc.CommandCount])
 {
-    glCreateFramebuffers(1, &m_FBO);
+    glGenFramebuffers(1, &m_FBO);
 }
 
 GLIOCommandBuffer::~GLIOCommandBuffer()
@@ -123,6 +123,9 @@ void GLIOCommandBuffer::_executeCommandBuffer()
             auto& dst_desc = cmd.Destination.Texture->getDescription();
             auto line_size = cmd.Width*DataFormatElementSize(dst_desc.Format);
 
+            glPixelStorei(GLPixelStoreMode::GL_UNPACK_ROW_LENGTH, cmd.Width);
+            glPixelStorei(GLPixelStoreMode::GL_UNPACK_IMAGE_HEIGHT, cmd.Height);
+
             auto tex_info = TranslateTextureInfo(dst_desc.Format);
 
             if(dst_desc.Depth > 1)
@@ -162,7 +165,11 @@ void GLIOCommandBuffer::_executeCommandBuffer()
         } break;
         case IOCommandMode::CopyTextureToStorage:
         {
-            cmd.Source.Storage->bindToTarget(GLBufferTarget::GL_PIXEL_PACK_BUFFER);
+            cmd.Destination.Storage->bindToTarget(GLBufferTarget::GL_PIXEL_PACK_BUFFER);
+
+            glPixelStorei(GLPixelStoreMode::GL_PACK_ROW_LENGTH, cmd.Width);
+            glPixelStorei(GLPixelStoreMode::GL_PACK_IMAGE_HEIGHT, cmd.Height);
+
             auto& src_desc = cmd.Source.Texture->getDescription();
             auto tex_info = TranslateTextureInfo(src_desc.Format);
             auto line_size = cmd.Width*DataFormatElementSize(src_desc.Format);
@@ -178,6 +185,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                 for(uint16 cur_depth = 0, end_depth = cmd.Depth; cur_depth < end_depth; ++cur_depth)
                 {
                     glFramebufferTexture3D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip, cmd.SourceZ + cur_depth);
+                    glReadBuffer(UINT_TO_GL_BUFFER_COLOR_ATTACHMENT(0));
 #ifndef NDEBUG
                     auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
                     TGE_ASSERT(status == GLFramebufferStatus::GL_FRAMEBUFFER_COMPLETE, "Framebuffer is broken");
@@ -193,6 +201,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            "Invalid coordinates specified");
                 GLTextureTarget target = src_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_1D_ARRAY : GLTextureTarget::GL_TEXTURE_2D;
                 glFramebufferTexture2D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip);
+                glReadBuffer(UINT_TO_GL_BUFFER_COLOR_ATTACHMENT(0));
 #ifndef NDEBUG
                 auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
                 TGE_ASSERT(status == GLFramebufferStatus::GL_FRAMEBUFFER_COMPLETE, "Framebuffer is broken");
@@ -206,6 +215,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            cmd.DestinationX + line_size <= cmd.Destination.Storage->getSize(),
                            "Invalid coordinates specified");
                 glFramebufferTexture1D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), GLTextureTarget::GL_TEXTURE_1D, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip);
+                glReadBuffer(UINT_TO_GL_BUFFER_COLOR_ATTACHMENT(0));
 #ifndef NDEBUG
                 auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
                 TGE_ASSERT(status == GLFramebufferStatus::GL_FRAMEBUFFER_COMPLETE, "Framebuffer is broken");

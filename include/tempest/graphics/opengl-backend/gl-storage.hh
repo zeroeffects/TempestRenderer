@@ -34,9 +34,10 @@ struct TextureDescription;
 
 class GLStorage
 {
-    uint32      m_Size;
-    GLuint      m_Storage;
-    uint8*      m_DataPtr;
+    uint32          m_Size;
+    GLuint          m_Storage;
+    GLBufferTarget  m_Target;
+    GLbitfield      m_Access;
 public:
     GLStorage(StorageMode storage_type, uint32 size);
     ~GLStorage();

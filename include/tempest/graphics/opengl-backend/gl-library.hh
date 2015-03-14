@@ -176,8 +176,26 @@ enum class GLBufferMode: GLuint
     GL_BACK                            = 0x0405,
     GL_LEFT                            = 0x0406,
     GL_RIGHT                           = 0x0407,
-    GL_FRONT_AND_BACK                  = 0x0408
+    GL_FRONT_AND_BACK                  = 0x0408,
+    GL_COLOR_ATTACHMENT0               = 0x8CE0,
+    GL_COLOR_ATTACHMENT1               = 0x8CE1,
+    GL_COLOR_ATTACHMENT2               = 0x8CE2,
+    GL_COLOR_ATTACHMENT3               = 0x8CE3,
+    GL_COLOR_ATTACHMENT4               = 0x8CE4,
+    GL_COLOR_ATTACHMENT5               = 0x8CE5,
+    GL_COLOR_ATTACHMENT6               = 0x8CE6,
+    GL_COLOR_ATTACHMENT7               = 0x8CE7,
+    GL_COLOR_ATTACHMENT8               = 0x8CE8,
+    GL_COLOR_ATTACHMENT9               = 0x8CE9,
+    GL_COLOR_ATTACHMENT10              = 0x8CEA,
+    GL_COLOR_ATTACHMENT11              = 0x8CEB,
+    GL_COLOR_ATTACHMENT12              = 0x8CEC,
+    GL_COLOR_ATTACHMENT13              = 0x8CED,
+    GL_COLOR_ATTACHMENT14              = 0x8CEE,
+    GL_COLOR_ATTACHMENT15              = 0x8CEF
 };
+
+#define UINT_TO_GL_BUFFER_COLOR_ATTACHMENT(num) static_cast<GLBufferMode>(static_cast<GLuint>(GLBufferMode::GL_COLOR_ATTACHMENT0) + num)
 
 enum class GLOrderMode: GLuint
 {
@@ -1052,7 +1070,6 @@ DECLARE_GL_FUNCTION(void, glVertexAttribPointer, GLuint index, GLint size, GLTyp
 
 DECLARE_GL_FUNCTION(void, glCopyBufferSubData, GLBufferTarget readTarget, GLBufferTarget writeTarget, GLintptr readOffset, GLintptr writeOffset, GLsizeiptr size);
 
-DECLARE_GL_FUNCTION(void, glCreateFramebuffers, GLsizei n, GLuint *framebuffers);
 DECLARE_GL_FUNCTION(void, glBindFramebuffer, GLFramebufferTarget target, GLuint framebuffer);
 DECLARE_GL_FUNCTION(void, glDeleteFramebuffers, GLsizei n, const GLuint *framebuffers);
 DECLARE_GL_FUNCTION(void, glGenFramebuffers, GLsizei n, GLuint *framebuffers);

@@ -30,10 +30,10 @@ namespace Tempest
 {
 namespace Shader
 {
-static uint32 ConvertVariable(const string* opts, size_t opts_count, const string& base, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc);
-static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const string& base, const List* list, uint32* offset, Shader::BufferDescription* buf_desc);
+static uint32 ConvertVariable(const string* opts, size_t opts_count, const string& base, uint64 settings, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc);
+static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const string& base, uint64 settings, const List* list, uint32* offset, Shader::BufferDescription* buf_desc);
 
-static void ConvertType(const string* opts, size_t opts_count, const string& base, const Shader::Type* _type, UniformValueType* uniform_type, uint32* elem_size, uint32* offset, Shader::BufferDescription* buf_desc)
+static void ConvertType(const string* opts, size_t opts_count, const string& base, uint64 settings, const Shader::Type* _type, UniformValueType* uniform_type, uint32* elem_size, uint32* offset, Shader::BufferDescription* buf_desc)
 {
     switch(_type->getTypeEnum())
     {
@@ -148,7 +148,7 @@ static void ConvertType(const string* opts, size_t opts_count, const string& bas
         uint32 struct_offset = 0; // members are in relative offset units
         auto* struct_type = _type->extract<Shader::StructType>();
         auto* struct_body = struct_type->getBody();
-        RecursiveConvertBuffer(opts, opts_count, base, struct_body, &struct_offset, buf_desc);
+        RecursiveConvertBuffer(opts, opts_count, base, settings, struct_body, &struct_offset, buf_desc);
         *uniform_type = UniformValueType::Struct;
         *elem_size = struct_offset;
     } break;
@@ -156,14 +156,14 @@ static void ConvertType(const string* opts, size_t opts_count, const string& bas
     {
         auto* sampler_type = _type->extract<Shader::SamplerType>();
         *uniform_type = UniformValueType::Texture;
-        *elem_size = UniformValueTypeSize(*uniform_type);
+        *elem_size = UniformValueTypeSize(*uniform_type, (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0);
     } break;
     default: TGE_ASSERT(false, "Unexpected type"); break;
     }
     TGE_ASSERT(*elem_size > 0, "Element size should be greater than one. Otherwise, it is pointless to define it");
 }
 
-static uint32 GetAlignment(UniformValueType _type)
+static uint32 GetAlignment(UniformValueType _type, bool tex_ptr64 = true)
 {
     switch(_type)
     {
@@ -195,7 +195,7 @@ static uint32 GetAlignment(UniformValueType _type)
     case UniformValueType::Texture:
     {
 #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
-        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS) && tex_ptr64)
         {
             return sizeof(uint64);
         }
@@ -211,7 +211,7 @@ static uint32 GetAlignment(UniformValueType _type)
     return 0;
 }
 
-static uint32 ConvertVariable(const string* opts, size_t opts_count, const string& base, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc)
+static uint32 ConvertVariable(const string* opts, size_t opts_count, const string& base, uint64 settings, const Shader::Variable* var, uint32* offset, Shader::BufferDescription* buf_desc)
 {
     UniformValueType uniform_type;
     uint32           elem_size,
@@ -227,12 +227,12 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
     case Shader::ElementType::Vector:
     case Shader::ElementType::Matrix:
     {
-        ConvertType(opts, opts_count, base.empty() ? var_name : (base + "." + var_name), _type, &uniform_type, &elem_size, offset, buf_desc);
+        ConvertType(opts, opts_count, base.empty() ? var_name : (base + "." + var_name), settings, _type, &uniform_type, &elem_size, offset, buf_desc);
     } break;
     case Shader::ElementType::Array:
     {
         auto* array_type = _type->extract<Shader::ArrayType>();
-        ConvertType(opts, opts_count, base.empty() ? var_name : (base + "." + var_name), array_type->getBasicType(), &uniform_type, &elem_size, offset, buf_desc);
+        ConvertType(opts, opts_count, base.empty() ? var_name : (base + "." + var_name), settings, array_type->getBasicType(), &uniform_type, &elem_size, offset, buf_desc);
         TGE_ASSERT(array_size == 1, "Arrays of arrays are unsupported");
         auto* size = array_type->getSize();
         if(*size)
@@ -242,17 +242,24 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
         else
         {
             array_size = 0; // infinite
-            elem_size = AlignAddress(elem_size, 4 * sizeof(float));
+            if(uniform_type != UniformValueType::Texture || (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0)
+            {
+                elem_size = AlignAddress(elem_size, 4 * sizeof(float));
+            }
             buf_desc->setResizablePart(elem_size);
         }
-        *offset = AlignAddress(*offset, 4 * sizeof(float));
+        
+        if(uniform_type != UniformValueType::Texture || (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0)
+        {
+            *offset = AlignAddress(*offset, 4 * sizeof(float));
+        }
     } break;
     case Shader::ElementType::Sampler:
     {
         auto* sampler_type = _type->extract<Shader::SamplerType>();
         uniform_type = UniformValueType::Texture;
 #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
-        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS) && (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0)
         {
             elem_size = sizeof(uint64);
         }
@@ -267,14 +274,17 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
         TGE_ASSERT(false, "Unsupported type"); break;
     }
 
-    auto alignment = GetAlignment(uniform_type);
+    auto alignment = GetAlignment(uniform_type, (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0);
     *offset = AlignAddress(*offset, alignment);
 
     buf_desc->addBufferElement(Shader::BufferElement(*offset, uniform_type, base.empty() ? var_name : (base + "." + var_name), elem_size, array_size));
 
     if(array_size > 1 || uniform_type == UniformValueType::Struct)
     {
-        *offset += array_size*AlignAddress(elem_size, 4 * sizeof(float));
+        if(uniform_type != UniformValueType::Texture || (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0)
+        {
+            *offset += array_size*AlignAddress(elem_size, 4 * sizeof(float));
+        }
     }
     else
     {
@@ -283,7 +293,7 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
     return elem_size;
 }
 
-static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const string& base, const List* list, uint32* offset, Shader::BufferDescription* buf_desc)
+static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const string& base, uint64 settings, const List* list, uint32* offset, Shader::BufferDescription* buf_desc)
 {
     for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
     {
@@ -298,7 +308,7 @@ static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const 
             auto* content = _opt->getContent();
             if(content->getNodeType() == TGE_AST_BLOCK)
             {
-                RecursiveConvertBuffer(opts, opts_count, base, content->extract<Block>()->getBody(), offset, buf_desc);
+                RecursiveConvertBuffer(opts, opts_count, base, settings, content->extract<Block>()->getBody(), offset, buf_desc);
                 continue;
             }
             else if(content->getNodeType() == TGE_EFFECT_DECLARATION)
@@ -323,27 +333,27 @@ static void RecursiveConvertBuffer(const string* opts, size_t opts_count, const 
         auto* var = decl->getVariables()->extract<Shader::Variable>();
 
         auto _type = var->getType();
-        ConvertVariable(opts, opts_count, base, var, offset, buf_desc);
+        ConvertVariable(opts, opts_count, base, settings, var, offset, buf_desc);
     }
 }
 
-void ConvertBuffer(const string* opts, size_t opts_count, const Buffer* buffer, Shader::EffectDescription* fx_desc)
+void ConvertBuffer(const string* opts, size_t opts_count, uint64 settings, const Buffer* buffer, Shader::EffectDescription* fx_desc)
 {
     uint32 offset = 0;
     Shader::BufferDescription buf_desc(buffer->getBufferType(), buffer->getNodeName());
     auto* _list = buffer->getBody();
-    RecursiveConvertBuffer(opts, opts_count, "", _list, &offset, &buf_desc);
+    RecursiveConvertBuffer(opts, opts_count, "", settings, _list, &offset, &buf_desc);
     if(buf_desc.getResiablePart() == std::numeric_limits<uint32>::max())
         buf_desc.setResizablePart(0);
     fx_desc->addBuffer(buf_desc);
 }
 
-uint32 ConvertStructBuffer(const string* opts, size_t opts_count, const Variable* var, Shader::EffectDescription* fx_desc)
+uint32 ConvertStructBuffer(const string* opts, size_t opts_count, uint64 settings, const Variable* var, Shader::EffectDescription* fx_desc)
 {
     TGE_ASSERT(var->getStorage() == Shader::StorageQualifier::StructBuffer, "Input variable should be of StructBuffer type");
     uint32 offset = 0;
     Shader::BufferDescription buf_desc(BufferType::StructBuffer, var->getNodeName());
-    uint32 elem_size = ConvertVariable(opts, opts_count, "", var, &offset, &buf_desc);
+    uint32 elem_size = ConvertVariable(opts, opts_count, "", settings, var, &offset, &buf_desc);
     fx_desc->addBuffer(buf_desc);
     return elem_size;
 }

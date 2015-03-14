@@ -90,20 +90,20 @@ class BufferElement
     UniformValueType        m_Type;
     string                  m_Name;
     uint32                  m_BufferOffset;
-    uint32                  m_ELementSize;
+    uint32                  m_ElementSize;
     uint32                  m_ElementCount;
 public:
     BufferElement(uint32 offset, UniformValueType _type, string name, uint32 elem_size, uint32 elem_count)
         :   m_BufferOffset(offset),
             m_Type(_type),
             m_Name(name),
-            m_ELementSize(elem_size),
+            m_ElementSize(elem_size),
             m_ElementCount(elem_count) {}
     
     uint32 getBufferOffset() const { return m_BufferOffset; }
     string getElementName() const { return m_Name; }
     UniformValueType getElementType() const { return m_Type; }
-    uint32 getElementSize() const { return m_ELementSize; }
+    uint32 getElementSize() const { return m_ElementSize; }
     uint32 getElementCount() const { return m_ElementCount; }
 };
 

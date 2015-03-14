@@ -39,7 +39,7 @@ namespace GLFX
 {
 class ShaderPrinter;
 
-bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, size_t* ssbo_binding_counter, size_t* ubo_binding_counter);
+bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, uint32 settings, size_t* ssbo_binding_counter, size_t* ubo_binding_counter);
 
 class ShaderPrinter: public Shader::VisitorInterface
 {
@@ -118,7 +118,7 @@ public:
     virtual void visit(const Shader::Option* _opt_decl) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::IfStatement* if_stmt) final { Shader::PrintNode(this, &m_Printer, if_stmt); }
     virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
-    virtual void visit(const Shader::Buffer* buffer) final { m_Valid &= PrintBuffer(this, &m_Printer, buffer, &m_SSBOBindingCounter, &m_UBOBindingCounter); }
+    virtual void visit(const Shader::Buffer* buffer) final { m_Valid &= PrintBuffer(this, &m_Printer, buffer, m_Settings, &m_SSBOBindingCounter, &m_UBOBindingCounter); }
     // Some types that should not appear in AST
     virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
@@ -145,7 +145,7 @@ void ShaderPrinter::visit(const Shader::Variable* var)
 {
     if(var->getNodeName() == "tge_DrawID")
     {
-        if(m_Settings & TEMPEST_DISABLE_MULTI_DRAW)
+        if(m_Settings & TEMPEST_SETTING_DISABLE_MULTI_DRAW)
         {
             m_Printer.stream() << "gl_InstanceID";
         }
@@ -250,15 +250,15 @@ Generator::Generator(Shader::EffectDescription& effect, const string* opts, size
         m_Settings(settings)
 {
     uint32 min_version = 420;
-    if((m_Settings & TEMPEST_DISABLE_SSBO) == 0)
+    if((m_Settings & TEMPEST_SETTING_DISABLE_SSBO) == 0)
     {
         min_version = std::max(min_version, 430U);
     }
-    if((m_Settings & TEMPEST_DISABLE_MULTI_DRAW) == 0)
+    if((m_Settings & TEMPEST_SETTING_DISABLE_MULTI_DRAW) == 0)
     {
         m_Version += "#extension GL_ARB_shader_draw_parameters : require\n";
     }
-    if((m_Settings & TEMPEST_DISABLE_TEXTURE_BINDLESS) == 0)
+    if((m_Settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0)
     {
         m_Version += "#extension GL_ARB_bindless_texture : require\n";
     } // TODO: Bindless and disabled SSBO
@@ -270,7 +270,7 @@ Generator::Generator(Shader::EffectDescription& effect, const string* opts, size
 
 Generator::~Generator() {}
 
-bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, size_t* ssbo_binding_counter, size_t* ubo_binding_counter)
+bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, uint32 settings, size_t* ssbo_binding_counter, size_t* ubo_binding_counter)
 {
     bool status = true;
     switch(buffer->getBufferType())
@@ -334,7 +334,7 @@ bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
             }
         }
 
-        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS) && (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0)
         {
             for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
                 printer->stream() << "\t";
@@ -349,11 +349,14 @@ bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
             size_t bind_point = 0;
             for(auto iter = list->current(), iter_end = list->end(); iter != iter_end; ++iter)
             {
-                auto* vars = iter->extract<Shader::Declaration>()->getVariables();
-                TGE_ASSERT(vars->getNodeType() != Shader::TGE_EFFECT_VARIABLE, "Expect only variables");
+                auto* decl = iter->extract<Shader::Declaration>();
+                auto* vars = decl->getVariables();
+                auto node_type = vars->getNodeType();
+                TGE_ASSERT(node_type == Shader::TGE_EFFECT_VARIABLE, "Expect only variables");
                 auto* var = vars->extract<Shader::Variable>();
                 stream << "layout(binding = " << bind_point++ << ") uniform ";
-                static_cast<Shader::VisitorInterface*>(visitor)->visit(var);
+                static_cast<Shader::VisitorInterface*>(visitor)->visit(decl);
+                stream << ";\n";
             }
         }
     } break;
@@ -364,14 +367,14 @@ bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
 static void ProcessStructBuffer(ShaderPrinter* visitor, const string* opts, size_t opts_count, uint64 settings, const Shader::Variable* var,
                                 size_t* ssbo_binding_counter, size_t* ubo_binding_counter, Shader::EffectDescription* effect)
 {
-    auto size = ConvertStructBuffer(opts, opts_count, var, effect);
+    auto size = ConvertStructBuffer(opts, opts_count, settings, var, effect);
 
     size_t elems = (1 << 16) / size;
 
     auto& os = visitor->stream();
     for(size_t i = 0, indentation = visitor->getIndentation(); i < indentation; ++i)
         os << "\t";
-    if(settings & TEMPEST_DISABLE_SSBO)
+    if(settings & TEMPEST_SETTING_DISABLE_SSBO)
         os << "layout(std140, binding = " TO_STRING(TEMPEST_GLOBALS_BUFFER) ") uniform ";
     else
         os << "layout(std430, binding = " TO_STRING(TEMPEST_GLOBALS_BUFFER) ") buffer ";
@@ -380,7 +383,7 @@ static void ProcessStructBuffer(ShaderPrinter* visitor, const string* opts, size
     for(size_t i = 0, indentation = visitor->getIndentation() + 1; i < indentation; ++i)
         os << "\t";
     os << var->getType()->getArrayElementType()->getNodeName() << " " << var->getNodeName();
-    if(settings & TEMPEST_DISABLE_SSBO)
+    if(settings & TEMPEST_SETTING_DISABLE_SSBO)
         os << "[" << elems << "];\n";
     else
         os << "[];\n";
@@ -421,7 +424,7 @@ void Generator::visit(const Shader::Buffer* buffer)
 {
     m_RawImport.visit(buffer);
     
-    ConvertBuffer(m_Options, m_OptionCount, buffer, &m_Effect);
+    ConvertBuffer(m_Options, m_OptionCount, m_Settings, buffer, &m_Effect);
 }
 
 void Generator::visit(const AST::ListElement* lst)
