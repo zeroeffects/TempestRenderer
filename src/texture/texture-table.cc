@@ -138,7 +138,7 @@ static bool InsertIntoStorage(Texture* tex, uint32 tex_size, uint32 heap_size, u
 
 // TODO: direct copy, if the buffer has enough space
 // TODO: End of buffer fragmentation?
-template<class TBackend> uint32 TextureTable<TBackend>::loadTexture(const Path& filename, Vector2* remap)
+template<class TBackend> Vector4 TextureTable<TBackend>::loadTexture(const Path& filename)
 {
     std::unique_ptr<Texture> tex(LoadImage(filename));
     if(!tex)
@@ -178,7 +178,6 @@ template<class TBackend> uint32 TextureTable<TBackend>::loadTexture(const Path& 
     {
         return InvalidSlot;
     }
-    remap->set(static_cast<float>(hdr.Width)/slot_trait.Edge, static_cast<float>(hdr.Height)/slot_trait.Edge);
     ++subtable.LastSlot;
 
     if(!InsertIntoStorage(tex.get(), tex_size, m_UploadHeapSize, m_BufferIndex, m_UploadHeapBoundary, m_UploadHeap, m_IOCommandBuffer,
@@ -187,7 +186,8 @@ template<class TBackend> uint32 TextureTable<TBackend>::loadTexture(const Path& 
         m_PendingTextures.push_back(PendingTexture{ best_slot, slice, tex.release() });
     }
 
-    return slice | (best_slot << 16);
+    return Vector4(static_cast<float>(hdr.Width) / slot_trait.Edge, static_cast<float>(hdr.Height) / slot_trait.Edge,
+                   static_cast<float>(best_slot), static_cast<float>(slice));
 }
 
 template<class TBackend> void TextureTable<TBackend>::executeIOOperations()

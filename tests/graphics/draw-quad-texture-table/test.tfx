@@ -1,7 +1,7 @@
 struct GlobalsDesc
 {
     vec4 Transform;
-    uint TextureID;
+    vec4 TextureID;
 };
 
 void GetResourceIndex(in uint packed_res_idx, out uint tex_slot, out uint tex_slice)
@@ -44,9 +44,8 @@ fragment shader
 
     void main()
     {
-        uint tex_slot, tex_slice;
-        GetResourceIndex(Globals[DrawIndex].TextureID, tex_slot, tex_slice);
-        vec3 color = textureLod(Textures[tex_slot], vec3(InterpTexCoord, float(tex_slice)), 0.0).xyz;
-        FragmentColor = vec4(color + 0.5, 1.0);
+        vec4 tex_id = Globals[DrawIndex].TextureID;
+        vec3 color = textureLod(Textures[uint(tex_id.z)], vec3(InterpTexCoord*tex_id.xy, float(tex_id.w)), 0.0).xyz;
+        FragmentColor = vec4(color, 1.0);
     }
 }

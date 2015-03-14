@@ -29,7 +29,7 @@
 
 #include "tempest/image/image.hh"
 #include "tempest/utils/types.hh"
-#include "tempest/math/vector2.hh"
+#include "tempest/math/vector4.hh"
 
 #include <memory>
 #include <limits>
@@ -68,7 +68,7 @@ struct TextureTableDescription
 };
 
 #define TEMPTEST_TEXTURE_TABLE_BUFFER_COUNT 2
-const uint32 InvalidSlot = std::numeric_limits<uint32>::max();
+const Vector4 InvalidSlot = Vector4(-1.0f, -1.0f, -1.0f, -1.0f);
 
 template<class TBackend>
 class TextureTable
@@ -109,7 +109,7 @@ public:
     TextureTable(TBackend* backend, const TextureTableDescription& desc = TextureTableDescription());
      ~TextureTable();
     
-    uint32 loadTexture(const Path& filename, Vector2* remap);
+    Vector4 loadTexture(const Path& filename);
 
     void setTextures(TBackend* backend);
 

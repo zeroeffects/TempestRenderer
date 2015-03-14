@@ -63,7 +63,6 @@ TGE_TEST("Testing texture tables")
     
     size_t ind = 0;
     Tempest::uint16 vert = 0;
-    Tempest::Vector2 remap(0.0f, 0.0f);
     auto res_table = Tempest::CreateResourceTable(shader.get(), "Globals", 1);
     auto translate_res_idx = res_table->getResourceIndex("Globals.Transform");
     TGE_ASSERT(translate_res_idx.ResourceTableIndex != Tempest::InvalidResourceIndex, "Unknown resource");
@@ -72,9 +71,9 @@ TGE_TEST("Testing texture tables")
     for(auto& batch_desc : batch_descriptions)
     {
         res_table->resetBakedTable();
-        auto idx = texture_table.loadTexture(Tempest::Path(batch_desc.Name), &remap);
+        auto tex_id = texture_table.loadTexture(Tempest::Path(batch_desc.Name));
         res_table->setResource(translate_res_idx, batch_desc.Transform);
-        res_table->setResource(texture_res_idx, idx);
+        res_table->setResource(texture_res_idx, tex_id);
         auto baked_table = Tempest::ExtractBakedResourceTable(res_table.get());
         auto& batch = batch_desc.OutBatch;
         batch.BaseIndex = 0;
@@ -90,9 +89,9 @@ TGE_TEST("Testing texture tables")
         indices[ind++] = 2;
         indices[ind++] = 3;
         data[vert++] = VertexFormat{ Tempest::Vector2(0.0f, 0.0f), Tempest::Vector2(0.0f, 0.0f) };
-        data[vert++] = VertexFormat{ Tempest::Vector2(0.0f, 1.0f), Tempest::Vector2(0.0f, remap.y()) };
-        data[vert++] = VertexFormat{ Tempest::Vector2(1.0f, 1.0f), Tempest::Vector2(remap.x(), remap.y()) };
-        data[vert++] = VertexFormat{ Tempest::Vector2(1.0f, 0.0f), Tempest::Vector2(remap.x(), 0.0f) };
+        data[vert++] = VertexFormat{ Tempest::Vector2(0.0f, 1.0f), Tempest::Vector2(0.0f, 1.0f) };
+        data[vert++] = VertexFormat{ Tempest::Vector2(1.0f, 1.0f), Tempest::Vector2(1.0f, 1.0f) };
+        data[vert++] = VertexFormat{ Tempest::Vector2(1.0f, 0.0f), Tempest::Vector2(1.0f, 0.0f) };
         tables.push_back(std::move(baked_table));
     }
 
