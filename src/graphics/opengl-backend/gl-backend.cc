@@ -152,7 +152,7 @@ bool GLRenderingBackend::attach(OSWindowSystem& wnd_sys, GLWindow& gl_wnd)
 {
 #ifdef _WIN32
     wnd_sys;
-    int flags = WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
+    int flags = 0;
 #ifndef NDEBUG
     flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
 #endif
@@ -328,7 +328,7 @@ void GLRenderingBackend::setTextures(const BakedResourceTable* resource_table)
 #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
     {
-        TGE_ASSERT(resource_table->getSize() / sizeof(GLuint64) <= m_ActiveTextures, "Texture descriptor overflow");
+        TGE_ASSERT(resource_table->getSize() / (4 * sizeof(GLfloat)) <= m_ActiveTextures, "Texture descriptor overflow");
         auto* res_buf = reinterpret_cast<char*>(glMapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, GLAccessMode::GL_WRITE_ONLY));
         memcpy(res_buf, resource_table->get(), resource_table->getSize());
         glUnmapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER);

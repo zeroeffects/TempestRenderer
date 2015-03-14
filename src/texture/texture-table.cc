@@ -26,6 +26,7 @@
 #include "tempest/graphics/rendering-definitions.hh"
 #include "tempest/image/image.hh"
 #include "tempest/graphics/api-all.hh"
+#include "tempest/utils/memory.hh"
 
 #include <numeric>
 
@@ -51,12 +52,15 @@ template<class TBackend> TextureTable<TBackend>::TextureTable(TBackend* backend,
         m_UploadHeap(backend->createStorageBuffer(StorageMode::PixelUnpack, desc.UploadHeapSize)),
         m_IOCommandBuffer(backend->createIOCommandBuffer(IOCommandBufferDescription{ desc.UploadQueueSize })),
         m_UploadHeapSize(desc.UploadHeapSize),
-        m_BakedTable(new BakedResourceTable(backend->getTextureHandleSize()*TEMPEST_TEXTURE_SLOTS))
+        m_BakedTable(new BakedResourceTable(AlignAddress(backend->getTextureHandleSize(), 4*sizeof(GLfloat))*TEMPEST_TEXTURE_SLOTS))
 {
     std::fill(std::begin(m_Fence), std::end(m_Fence), nullptr);
     
     char* baked_table_ptr = m_BakedTable->get();
 
+    memset(m_BakedTable->get(), 0, AlignAddress(backend->getTextureHandleSize(), 4 * sizeof(GLfloat))*TEMPEST_TEXTURE_SLOTS);
+
+    auto tex_hnd_size = backend->getTextureHandleSize();
     TextureDescription tex_desc;
     tex_desc.Tiling = TextureTiling::Array;
     for(size_t i = 0; i < TEMPEST_TEXTURE_SLOTS; ++i)
@@ -68,9 +72,11 @@ template<class TBackend> TextureTable<TBackend>::TextureTable(TBackend* backend,
         array_desc.LastSlot = 0;
         array_desc.SlotCount = tex_desc.Depth = desc.Slots[i];
         auto* tex = array_desc.Texture = backend->createTexture(tex_desc);
-        auto* cpu_handle = tex->getHandlePointer();
-        memcpy(baked_table_ptr, cpu_handle, backend->getTextureHandleSize());
-        baked_table_ptr += backend->getTextureHandleSize();
+        tex->setFilter(Tempest::FilterMode::Linear, Tempest::FilterMode::Linear, Tempest::FilterMode::Linear);
+        tex->setWrapMode(Tempest::WrapMode::Clamp, Tempest::WrapMode::Clamp, Tempest::WrapMode::Clamp);
+        auto* handle = tex->getHandlePointer();
+        memcpy(baked_table_ptr, handle, tex_hnd_size);
+        baked_table_ptr += AlignAddress(tex_hnd_size, 4*sizeof(GLfloat));
     }
 
     m_UploadHeapBoundary[0] = 0;

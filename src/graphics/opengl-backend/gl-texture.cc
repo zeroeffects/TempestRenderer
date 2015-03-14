@@ -243,4 +243,23 @@ GLuint64 GLTexture::getGPUHandle() const
     return m_GPUHandle;
 }
 #endif
+
+const char*  GLTexture::getHandlePointer()
+{
+#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
+    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
+    {
+        if(m_GPUHandle == 0)
+        {
+            m_GPUHandle = glGetTextureHandleARB(m_Texture);
+            glMakeTextureHandleResidentARB(m_GPUHandle);
+        }
+        return reinterpret_cast<const char*>(&m_GPUHandle);
+    }
+    else
+#endif
+    {
+        return reinterpret_cast<const char*>(&m_Texture);
+    }
+}
 }

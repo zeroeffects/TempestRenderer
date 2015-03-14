@@ -121,19 +121,7 @@ public:
      
     GLuint getCPUHandle() const { return m_Texture; }
 
-    const char* getHandlePointer()
-    {
-#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
-        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
-        {
-            return reinterpret_cast<const char*>(&m_GPUHandle);
-        }
-        else
-#endif
-        {
-            return reinterpret_cast<const char*>(&m_Texture);
-        }
-    }
+    const char* getHandlePointer();
 
     const TextureDescription& getDescription() const { return m_Description; }
 };

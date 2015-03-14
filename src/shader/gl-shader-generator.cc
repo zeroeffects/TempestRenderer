@@ -50,7 +50,7 @@ class ShaderPrinter: public Shader::VisitorInterface
     bool                       m_DrawIDInUse = false;
     
     bool                       m_Valid = true;
-    uint32                     m_Settings;
+    uint32                     m_Settings = 0;
     size_t                     m_SSBOBindingCounter;
     size_t                     m_UBOBindingCounter;
     const string*              m_Options;
@@ -177,7 +177,7 @@ class Generator: public Shader::VisitorInterface
     FileLoader*                m_FileLoader;
     const string*              m_Options;
     size_t                     m_OptionCount;
-    uint32                     m_Settings;
+    uint32                     m_Settings = 0;
 public:
     Generator(Shader::EffectDescription& effect, const string* opts, size_t opts_count, FileLoader* include_loader, uint32);
     virtual ~Generator();
@@ -241,7 +241,7 @@ private:
 };
 
 Generator::Generator(Shader::EffectDescription& effect, const string* opts, size_t opts_count, FileLoader* include_loader, uint32 settings)
-    :   m_RawImport(m_RawImportStream, opts, opts_count, TEMPEST_SSBO_START, TEMPEST_UBO_START, m_Settings, AST::TGE_AST_PRINT_LINE_LOCATION),
+    :   m_RawImport(m_RawImportStream, opts, opts_count, TEMPEST_SSBO_START, TEMPEST_UBO_START, settings, AST::TGE_AST_PRINT_LINE_LOCATION),
         m_Effect(effect),
         m_Valid(true),
         m_FileLoader(include_loader),
