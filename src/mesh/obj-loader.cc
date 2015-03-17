@@ -35,10 +35,14 @@
 #include "tempest/mesh/obj-loader-driver.hh"
 #include "tempest/mesh/obj-mtl-loader.hh"
 #include "tempest/graphics/rendering-convenience.hh"
+#include "tempest/graphics/state-object.hh"
+#include "tempest/texture/texture-table.hh"
 
 namespace Tempest
 {
 class FileLoader;
+
+template<class TBackend> class TextureTable;
 
 static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoader::GroupHeader& hdr, size_t pos_size, size_t tc_size, size_t norm_size,
                              std::vector<uint16>* res_inds, std::vector<char>* res_data, uint32* stride)
@@ -144,6 +148,7 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
 template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObject, class TResourceTable>
 bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                TShaderProgram** progs, TBackend* backend,
+                               TextureTable<TBackend>* tex_table,
                                size_t* batch_count, TDrawBatch** batches,
                                size_t* state_count, TStateObject*** states,
                                TResourceTable*** res_tbl)
@@ -209,6 +214,8 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         }
     });
 
+    auto base_dir = Path(filename).directoryPath() + "/";
+
     for(size_t i = 0, iend = group_count; i < iend; ++i)
     {
         size_t pos_size,
@@ -269,7 +276,10 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         auto* shader_prog = progs[model];
         if(iter == end_state_iter)
         {
-            auto pipeline_state = backend->createStateObject(&rt_fmt, 1, DataFormat::D24S8, shader_prog);
+            DepthStencilStates ds_state;
+            ds_state.DepthTestEnable = true;
+            ds_state.DepthWriteEnable = true;
+            auto pipeline_state = backend->createStateObject(&rt_fmt, 1, DataFormat::D24S8, shader_prog, DrawModes::TriangleList, nullptr, nullptr, &ds_state);
             batch.PipelineState = pipeline_state;
             pstates.emplace_back(model, pipeline_state);
         }
@@ -287,7 +297,8 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
     
         auto globals_res_table = CreateResourceTable(shader_prog, "Globals", 1);
         TGE_ASSERT(globals_res_table, "Expecting valid table");
-        globals_res_table->setResource("Globals.Transform", Imat);
+        globals_res_table->setResource("Globals.WorldViewProjectionTransform", Imat);
+        globals_res_table->setResource("Globals.WorldTransform", Imat);
         if(flags & AmbientAvailable)
         {
             globals_res_table->setResource("Globals.AmbientDissolve", Vector4(ambient.x(), ambient.y(), ambient.z(), material.Dissolve));
@@ -297,6 +308,52 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         {
             globals_res_table->setResource("Globals.Specular", Vector4(specular.x(), specular.y(), specular.z(), material.SpecularExponent));
         }
+
+        if(tc_size)
+        {
+            if(!material.DiffuseReflectivityMap.empty())
+            {
+                auto diff_map = tex_table->loadTexture(Path(base_dir + material.DiffuseReflectivityMap));
+                globals_res_table->setResource("Globals.DiffuseReflectivityMap", diff_map);
+            }
+            else
+            {
+                globals_res_table->setResource("Globals.DiffuseReflectivityMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+            }
+            if(flags & AmbientAvailable)
+            {
+                if(!material.AmbientReflectivityMap.empty())
+                {
+                    auto amb_map = tex_table->loadTexture(Path(base_dir + material.AmbientReflectivityMap));
+                    globals_res_table->setResource("Globals.AmbientReflectivityMap", amb_map);
+                }
+                else
+                {
+                    globals_res_table->setResource("Globals.AmbientReflectivityMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+                }
+            }
+            if(flags & SpecularAvailable)
+            {
+                if(!material.SpecularExponentMap.empty())
+                {
+                    auto exp_map = tex_table->loadTexture(Path(base_dir + material.SpecularExponentMap));
+                    globals_res_table->setResource("Globals.SpecularExponentMap", exp_map);
+                }
+                else
+                {
+                    globals_res_table->setResource("Globals.SpecularExponentMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+                }
+                if(!material.SpecularReflectivityMap.empty())
+                {
+                    auto spec_map = tex_table->loadTexture(Path(base_dir + material.SpecularReflectivityMap));
+                    globals_res_table->setResource("Globals.SpecularReflectivityMap", spec_map);
+                }
+                else
+                {
+                    globals_res_table->setResource("Globals.SpecularReflectivityMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+                }
+            }
+        }
         
         batch.ResourceTable = globals_res_table->getBakedTable();        
         gen_res_tbl[i] = globals_res_table.release();
@@ -305,8 +362,8 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         prev_vert_size = res_data.size()*batch.VertexBuffers[0].Stride;
     }
     
-    auto *vbo = backend->createBuffer(res_data.size(), VBType::VertexBuffer, RESOURCE_STATIC_DRAW, &res_data.front());
-    auto *ibo = backend->createBuffer(res_inds.size()*sizeof(uint16), VBType::IndexBuffer, RESOURCE_STATIC_DRAW, &res_inds.front());
+    auto *vbo = backend->createBuffer(res_data.size(), ResourceBufferType::VertexBuffer, RESOURCE_STATIC_DRAW, &res_data.front());
+    auto *ibo = backend->createBuffer(res_inds.size()*sizeof(uint16), ResourceBufferType::IndexBuffer, RESOURCE_STATIC_DRAW, &res_inds.front());
     
     for(size_t i = 0; i < *batch_count; ++i)
     {
@@ -332,6 +389,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
 
 template bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                         GLShaderProgram** progs, GLRenderingBackend* backend,
+                                        TextureTable<GLRenderingBackend>* tex_table,
                                         size_t* batch_count, GLDrawBatch** batches,
                                         size_t* num_states, GLStateObject*** states,
                                         GLResourceTable*** res_tbl);

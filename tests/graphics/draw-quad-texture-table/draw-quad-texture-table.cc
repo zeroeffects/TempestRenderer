@@ -95,8 +95,8 @@ TGE_TEST("Testing texture tables")
         tables.push_back(std::move(baked_table));
     }
 
-    auto vert_buf = Tempest::CreateBuffer(&sys_obj->Backend, data, Tempest::VBType::VertexBuffer);
-    auto index_buf = Tempest::CreateBuffer(&sys_obj->Backend, indices, Tempest::VBType::IndexBuffer);
+    auto vert_buf = Tempest::CreateBuffer(&sys_obj->Backend, data, Tempest:: ResourceBufferType::VertexBuffer);
+    auto index_buf = Tempest::CreateBuffer(&sys_obj->Backend, indices, Tempest:: ResourceBufferType::IndexBuffer);
 
     for(auto& batch_desc : batch_descriptions)
     {

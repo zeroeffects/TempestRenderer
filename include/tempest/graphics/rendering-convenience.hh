@@ -136,15 +136,15 @@ UniqueSubresource<TBackend, TResource, T> CreateUniqueSubresource(TBackend* back
 }
 
 template<class TBackend, class T>
-UniqueResource<TBackend, typename TBackend::BufferType> CreateBuffer(TBackend* backend, const T& arr, VBType vb_type, uint32 flags = RESOURCE_STATIC_DRAW)
+UniqueResource<TBackend, typename TBackend::BufferType> CreateBuffer(TBackend* backend, const T& arr, ResourceBufferType buffer_type, uint32 flags = RESOURCE_STATIC_DRAW)
 {
-    return CreateUniqueResource(backend, backend->createBuffer(arr.size()*sizeof(typename T::value_type), vb_type, flags, &arr.front()));
+    return CreateUniqueResource(backend, backend->createBuffer(arr.size()*sizeof(typename T::value_type), buffer_type, flags, &arr.front()));
 }
 
 template<class TBackend>
-UniqueResource<TBackend, typename TBackend::BufferType> CreateBuffer(TBackend* backend, const void* arr, size_t size, VBType vb_type, uint32 flags = RESOURCE_STATIC_DRAW)
+UniqueResource<TBackend, typename TBackend::BufferType> CreateBuffer(TBackend* backend, const void* arr, size_t size, ResourceBufferType buffer_type, uint32 flags = RESOURCE_STATIC_DRAW)
 {
-    return CreateUniqueResource(backend, backend->createBuffer(size, vb_type, flags, arr));
+    return CreateUniqueResource(backend, backend->createBuffer(size, buffer_type, flags, arr));
 }
 
 template<class TBackend, class T, size_t TWidth, size_t THeight>

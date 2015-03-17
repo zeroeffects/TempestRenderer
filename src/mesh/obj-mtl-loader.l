@@ -56,7 +56,7 @@ COMMENT     \#.*[\r]*\n
 %}
 
 {INTEGER}"."[0-9]+{MANTISA}?              |
-{INTEGER}{MANTISA}                      yylval->FloatValue = atof(yytext); return Parser::token::T_FLOAT;
+{INTEGER}{MANTISA}                      yylval->FloatValue = static_cast<float>(atof(yytext)); return Parser::token::T_FLOAT;
 {INTEGER}                               yylval->IntegerValue = atoi(yytext); return Parser::token::T_INTEGER;
 "newmtl"                                return Parser::token::T_NEWMTL;
 "Ka"                                    return Parser::token::T_KA;

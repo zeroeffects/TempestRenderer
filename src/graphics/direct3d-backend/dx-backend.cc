@@ -171,7 +171,7 @@ void DXRenderer::setInputLayout(const InputLayoutConstPtr& layout)
 		m_DeviceContext->IASetInputLayout(nullptr);
 }
 
-VideoBufferPtr DXRenderer::createVideoBuffer(VBType type, size_t size, const void* data, uint32 flags)
+VideoBufferPtr DXRenderer::createVideoBuffer( ResourceBufferType type, size_t size, const void* data, uint32 flags)
 {
     return make_aligned_shared<DXVideoBuffer>(*this, type, size, data, flags);
 }

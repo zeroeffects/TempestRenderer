@@ -28,8 +28,8 @@ TGE_TEST("Testing the rendering context")
     
     std::vector<Tempest::uint16> idx_arr{ 0, 1, 2, 3};
     
-    auto vertex_buf = Tempest::CreateBuffer(&sys_obj->Backend, arr, Tempest::VBType::VertexBuffer);
-    auto index_buf = Tempest::CreateBuffer(&sys_obj->Backend, idx_arr, Tempest::VBType::IndexBuffer);
+    auto vertex_buf = Tempest::CreateBuffer(&sys_obj->Backend, arr, Tempest:: ResourceBufferType::VertexBuffer);
+    auto index_buf = Tempest::CreateBuffer(&sys_obj->Backend, idx_arr, Tempest:: ResourceBufferType::IndexBuffer);
     
     auto shader = Tempest::CreateShader(&sys_obj->ShaderCompiler, CURRENT_SOURCE_DIR "/test.tfx");
     TGE_ASSERT(shader, "Expecting successful compilation");

@@ -99,8 +99,9 @@ enum ResourceFlags
     RESOURCE_GENERATE_MIPS = 1 << 4
 };
 
-enum class VBType
+enum class ResourceBufferType
 {
+    ConstantBuffer,
     VertexBuffer,
     IndexBuffer
 };

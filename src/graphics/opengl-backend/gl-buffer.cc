@@ -47,27 +47,28 @@ GLUsageMode TranslateUsage(size_t usage)
     }
 }
 
-static GLBufferTarget TranslateVBType(VBType vb_type)
+static GLBufferTarget TranslateResourceBufferType(ResourceBufferType buffer_type)
 {
-    switch(vb_type)
+    switch(buffer_type)
     {
     default: TGE_ASSERT(false, "Unknown video buffer bind type"); // fall-through
-    case VBType::VertexBuffer: return GLBufferTarget::GL_ARRAY_BUFFER;
-    case VBType::IndexBuffer: return GLBufferTarget::GL_ELEMENT_ARRAY_BUFFER;
+    case ResourceBufferType::ConstantBuffer: return GLBufferTarget::GL_UNIFORM_BUFFER;
+    case ResourceBufferType::VertexBuffer: return GLBufferTarget::GL_ARRAY_BUFFER;
+    case ResourceBufferType::IndexBuffer: return GLBufferTarget::GL_ELEMENT_ARRAY_BUFFER;
     }
 }
 
-GLBuffer::GLBuffer(size_t size, VBType vb_type, size_t usage, const void* data)
+GLBuffer::GLBuffer(size_t size, ResourceBufferType res_buf_type, size_t usage, const void* data)
     :   m_Size(size)
 {
-    auto gl_vbt = TranslateVBType(vb_type);
+    auto gl_bt = TranslateResourceBufferType(res_buf_type);
     glGenBuffers(1, &m_Buffer);
-    glBindBuffer(gl_vbt, m_Buffer);
-    glBufferData(gl_vbt, size, data, TranslateUsage(usage));
+    glBindBuffer(gl_bt, m_Buffer);
+    glBufferData(gl_bt, size, data, TranslateUsage(usage));
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
     {
-        glGetBufferParameterui64vNV(gl_vbt, GLBufferParameterNV::GL_BUFFER_GPU_ADDRESS_NV, &m_GPUAddress);
-        glMakeBufferResidentNV(gl_vbt, GLAccessMode::GL_READ_ONLY);
+        glGetBufferParameterui64vNV(gl_bt, GLBufferParameterNV::GL_BUFFER_GPU_ADDRESS_NV, &m_GPUAddress);
+        glMakeBufferResidentNV(gl_bt, GLAccessMode::GL_READ_ONLY);
     }
     CheckOpenGL();
 }

@@ -30,6 +30,7 @@ namespace Tempest
 template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObject, class TResourceTable>
 bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                TShaderProgram** progs, TBackend* backend,
+                               TextureTable<TBackend>* tex_table,
                                size_t* batch_count, TDrawBatch** batches,
                                size_t* num_states, TStateObject*** states,
                                TResourceTable*** res_tbls);
@@ -66,11 +67,11 @@ struct MeshBlob
 
 template<class TBackend>
 std::unique_ptr<MeshBlob<TBackend>> LoadObjFileStaticGeometryBlob(const string& filename, FileLoader* loader,
-                                                                  typename TBackend::ShaderProgramType** progs, TBackend* backend)
+                                                                  typename TBackend::ShaderProgramType** progs, TextureTable<TBackend>* tex_table, TBackend* backend)
 {
     std::unique_ptr<MeshBlob<TBackend>> result(new MeshBlob<TBackend>);
     result->Backend = backend;
-    auto status = LoadObjFileStaticGeometry(filename, loader, progs, backend,
+    auto status = LoadObjFileStaticGeometry(filename, loader, progs, backend, tex_table,
                                             &result->DrawBatchCount, &result->DrawBatches,
                                             &result->StateCount, &result->StateObjects,
                                             &result->ResourceTables);

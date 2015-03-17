@@ -357,14 +357,19 @@ uint32 GLRenderingBackend::getTextureHandleSize()
     }
 }
 
-GLBuffer* GLRenderingBackend::createBuffer(size_t size, VBType vb_type, uint32 flags, const void* data)
+GLBuffer* GLRenderingBackend::createBuffer(size_t size, ResourceBufferType buffer_type, uint32 flags, const void* data)
 {
-    return new GLBuffer(size, vb_type, flags, data);
+    return new GLBuffer(size, buffer_type, flags, data);
 }
-    
+
 void GLRenderingBackend::destroyRenderResource(GLBuffer* buffer)
 {
     delete buffer;
+}
+
+void GLRenderingBackend::setConstantBuffer(size_t idx, const GLBuffer* buf)
+{
+    buf->bindConstantBuffer(TEMPEST_UBO_START + idx, 0, buf->getSize());
 }
     
 GLTexture* GLRenderingBackend::createTexture(const TextureDescription& desc, uint32 flags, const void* data)

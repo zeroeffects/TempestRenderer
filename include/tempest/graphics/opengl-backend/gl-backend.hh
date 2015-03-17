@@ -239,7 +239,7 @@ public:
      *  \param data     data used for automatic initialization (can be nullptr).
      *  \returns Returns a new buffer object.
      */
-    GLBuffer* createBuffer(size_t size, VBType vb_type, uint32 flags = RESOURCE_STATIC_DRAW, const void* data = nullptr);
+    GLBuffer* createBuffer(size_t size, ResourceBufferType buffer_type, uint32 flags = RESOURCE_STATIC_DRAW, const void* data = nullptr);
     
     /*! \brief Set textures in a single call.
      *
@@ -249,6 +249,9 @@ public:
      *  \param resource_table   packed texture handles.
      */
     void setTextures(const BakedResourceTable* resource_table);
+
+    // TODO: Make signatures...
+    void setConstantBuffer(size_t idx, const GLBuffer* buf);
 
     /*! \brief Set the number of active textures.
      *

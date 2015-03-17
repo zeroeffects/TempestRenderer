@@ -95,7 +95,7 @@ YY_DECL;
 
 #define SET_MATERIAL_FIELD(log_line, name, value) \
     if(driver.getCurrentMaterial()) { \
-        driver.getCurrentMaterial()->name; \
+        driver.getCurrentMaterial()->name = value; \
     } else { \
         driver.error(ToLocation(log_line), "Failed to initialize material field \"" #name "\" because no material was specified."); \
     }
@@ -123,14 +123,14 @@ command
     | "Kd" number number number     { SET_MATERIAL_FIELD(@$, DiffuseReflectivity, Vector3($2, $3, $4)); }
     | "Ks" number number number     { SET_MATERIAL_FIELD(@$, SpecularReflectivity, Vector3($2, $3, $4)); }
     | "Tf" number number number     { SET_MATERIAL_FIELD(@$, TransmissionFilter, Vector3($2, $3, $4)); }
-    | "illum" "illum_model"         { SET_MATERIAL_FIELD(@$, IllumModel, $2); }
-    | "illum" "integer"             { SET_MATERIAL_FIELD(@$, IllumModel, $2); }
+    | "illum" "illum_model"         { SET_MATERIAL_FIELD(@$, IllumModel, static_cast<ObjMtlLoader::IlluminationModel>($2)); }
+    | "illum" "integer"             { SET_MATERIAL_FIELD(@$, IllumModel, static_cast<ObjMtlLoader::IlluminationModel>($2)); }
     | "Ns" number                   { SET_MATERIAL_FIELD(@$, SpecularExponent, $2); }
     | "sharpness" number            { SET_MATERIAL_FIELD(@$, ReflectionSharpness, $2); }
     | "Ni" number                   { SET_MATERIAL_FIELD(@$, RefractionIndex, $2); }
     | "d" number                    { SET_MATERIAL_FIELD(@$, Dissolve, $2); }
     | "d" number number             { SET_MATERIAL_FIELD(@$, Dissolve, $2); } // ignore $3
-    | "Ke" number number number     { SET_MATERIAL_FIELD(@$, Emission, $2); }
+    | "Ke" number number number     { SET_MATERIAL_FIELD(@$, Emission, Vector3($2, $3, $4)); }
     | "map_Ka" "string"             { SET_MATERIAL_FIELD(@$, AmbientReflectivityMap, $2); }
     | "map_Kd" "string"             { SET_MATERIAL_FIELD(@$, DiffuseReflectivityMap, $2); }
     | "map_Ks" "string"             { SET_MATERIAL_FIELD(@$, SpecularReflectivityMap, $2); }

@@ -32,8 +32,8 @@ TGE_TEST("Testing the rendering context")
     
     std::vector<Tempest::uint16> idx_arr{ 0, 1, 2, 3};
     
-    auto vertex_buf = Tempest::CreateBuffer(&sys_obj->Backend, arr, Tempest::VBType::VertexBuffer);
-    auto index_buf = Tempest::CreateBuffer(&sys_obj->Backend, idx_arr, Tempest::VBType::IndexBuffer);
+    auto vertex_buf = Tempest::CreateBuffer(&sys_obj->Backend, arr, Tempest:: ResourceBufferType::VertexBuffer);
+    auto index_buf = Tempest::CreateBuffer(&sys_obj->Backend, idx_arr, Tempest:: ResourceBufferType::IndexBuffer);
     
     // Compile a shader. This project contains a complicated shader parser, but you can
     // probably get away with minimal shader preprocessor just to fill the gaps between
