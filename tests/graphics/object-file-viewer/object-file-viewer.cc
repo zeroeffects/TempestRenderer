@@ -79,8 +79,13 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
     
     size_t period = 5;
 
+    Tempest::uint32 total_slots = TGE_FIXED_ARRAY_SIZE(tex_table_desc.Slots);
+
+    sys_obj->Backend.setActiveTextures(total_slots);
+
     for(;;)
     {
+        texture_table.setTextures(&sys_obj->Backend);
         sys_obj->Backend.setConstantBuffer(0, const_buf.get());
 
         sys_obj->Backend.clearColorBuffer(0, Tempest::Vector4(0, 0, 0, 0));

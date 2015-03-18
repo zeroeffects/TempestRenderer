@@ -40,6 +40,7 @@
 #include "tempest/graphics/opengl-backend/gl-storage.hh"
 #include "tempest/graphics/opengl-backend/gl-io-command-buffer.hh"
 #include "tempest/graphics/state-object.hh"
+#include "tempest/utils/memory.hh"
 #include "tempest/utils/logging.hh"
 
 #include <cassert>
@@ -316,9 +317,10 @@ void GLRenderingBackend::setActiveTextures(uint32 num_textures)
             glDeleteBuffers(1, &m_TexturesTable);
         }
 
+        GLsizeiptr size = num_textures * AlignAddress(sizeof(GLuint64), 4 * sizeof(GLfloat));
         glGenBuffers(1, &m_TexturesTable);
         glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_TexturesTable);
-        glBufferData(GLBufferTarget::GL_UNIFORM_BUFFER, num_textures*sizeof(GLuint64), nullptr, GLUsageMode::GL_DYNAMIC_DRAW);
+        glBufferData(GLBufferTarget::GL_UNIFORM_BUFFER, size, nullptr, GLUsageMode::GL_DYNAMIC_DRAW);
     }
 #endif
 }
@@ -329,7 +331,8 @@ void GLRenderingBackend::setTextures(const BakedResourceTable* resource_table)
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
     {
         TGE_ASSERT(resource_table->getSize() / (4 * sizeof(GLfloat)) <= m_ActiveTextures, "Texture descriptor overflow");
-        auto* res_buf = reinterpret_cast<char*>(glMapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, GLAccessMode::GL_WRITE_ONLY));
+        glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_TexturesTable);
+        auto* res_buf = reinterpret_cast<char*>(glMapBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, 0, resource_table->getSize(), GL_MAP_INVALIDATE_BUFFER_BIT|GL_MAP_WRITE_BIT));
         memcpy(res_buf, resource_table->get(), resource_table->getSize());
         glUnmapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER);
         glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, 0, m_TexturesTable, 0, m_ActiveTextures*sizeof(GLuint64));
