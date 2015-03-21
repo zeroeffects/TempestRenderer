@@ -52,15 +52,14 @@ template<class TBackend> TextureTable<TBackend>::TextureTable(TBackend* backend,
         m_UploadHeap(backend->createStorageBuffer(StorageMode::PixelUnpack, desc.UploadHeapSize)),
         m_IOCommandBuffer(backend->createIOCommandBuffer(IOCommandBufferDescription{ desc.UploadQueueSize })),
         m_UploadHeapSize(desc.UploadHeapSize),
-        m_BakedTable(new BakedResourceTable(AlignAddress(backend->getTextureHandleSize(), 4*sizeof(GLfloat))*TEMPEST_TEXTURE_SLOTS))
+        m_BakedTable(new BakedResourceTable(4*sizeof(GLfloat)*TEMPEST_TEXTURE_SLOTS)) // aligned to 4*sizeof(float)
 {
     std::fill(std::begin(m_Fence), std::end(m_Fence), nullptr);
     
     char* baked_table_ptr = m_BakedTable->get();
 
-    memset(m_BakedTable->get(), 0, AlignAddress(backend->getTextureHandleSize(), 4 * sizeof(GLfloat))*TEMPEST_TEXTURE_SLOTS);
+    memset(m_BakedTable->get(), 0, 4*sizeof(GLfloat)*TEMPEST_TEXTURE_SLOTS);
 
-    auto tex_hnd_size = backend->getTextureHandleSize();
     TextureDescription tex_desc;
     tex_desc.Tiling = TextureTiling::Array;
     for(size_t i = 0; i < TEMPEST_TEXTURE_SLOTS; ++i)
@@ -74,9 +73,8 @@ template<class TBackend> TextureTable<TBackend>::TextureTable(TBackend* backend,
         auto* tex = array_desc.Texture = backend->createTexture(tex_desc);
         tex->setFilter(Tempest::FilterMode::Linear, Tempest::FilterMode::Linear, Tempest::FilterMode::Linear);
         tex->setWrapMode(Tempest::WrapMode::Clamp, Tempest::WrapMode::Clamp, Tempest::WrapMode::Clamp);
-        auto* handle = tex->getHandlePointer();
-        memcpy(baked_table_ptr, handle, tex_hnd_size);
-        baked_table_ptr += AlignAddress(tex_hnd_size, 4*sizeof(GLfloat));
+        *reinterpret_cast<uint64*>(baked_table_ptr) = tex->getHandle();
+        baked_table_ptr += 4*sizeof(GLfloat); // aligned
     }
 
     m_UploadHeapBoundary[0] = 0;

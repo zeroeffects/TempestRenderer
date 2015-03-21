@@ -340,24 +340,29 @@ void GLRenderingBackend::setTextures(const BakedResourceTable* resource_table)
     else
 #endif
     {
-        // Well, we need signature to workaround the issue.
-        GLsizei count = static_cast<GLsizei>(resource_table->getSize() / sizeof(GLuint));
-        glBindTextures(0, count, reinterpret_cast<const GLuint*>(resource_table->get()));
+        auto* table_ptr = resource_table->get();
+        size_t entry_count = resource_table->getSize() / (4 * sizeof(GLfloat));
+        for(size_t i = 0; i < entry_count; ++i)
+        {
+            auto* tex_info = reinterpret_cast<const GLTextureBindInfo*>(table_ptr);
+            glActiveTexture(UINT_TO_GL_TEXTURE(i));
+            if(tex_info->handle != 0)
+            {
+                glBindTexture(tex_info->target, tex_info->handle);
+            }
+            else
+            {
+                glBindTexture(GLTextureTarget::GL_TEXTURE_2D, 0);
+            }
+            table_ptr += 4 * sizeof(GLfloat);
+        }
     }
 }
 
 uint32 GLRenderingBackend::getTextureHandleSize()
 {
-#ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
-    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
-    {
-        return sizeof(GLuint64);
-    }
-    else
-#endif
-    {
-        return sizeof(GLuint);
-    }
+    static_assert(sizeof(GLuint64) == sizeof(GLTextureBindInfo), "Invalid bind info size");
+    return sizeof(GLuint64);
 }
 
 GLBuffer* GLRenderingBackend::createBuffer(size_t size, ResourceBufferType buffer_type, uint32 flags, const void* data)

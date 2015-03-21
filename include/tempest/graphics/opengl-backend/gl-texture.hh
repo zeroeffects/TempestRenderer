@@ -46,6 +46,19 @@ struct TextureInfo
     GLType   Type;
 };
 
+struct GLTextureBindInfo
+{
+    union
+    {
+        struct
+        {
+            GLTextureTarget target;
+            uint32          handle;
+        };
+        GLuint64 handle64;
+    };
+};
+
 inline TextureInfo TranslateTextureInfo(DataFormat fmt)
 {
     switch(fmt)
@@ -121,7 +134,7 @@ public:
      
     GLuint getCPUHandle() const { return m_Texture; }
 
-    const char* getHandlePointer();
+    GLuint64 getHandle() const;
 
     const TextureDescription& getDescription() const { return m_Description; }
 };
