@@ -889,13 +889,20 @@ bool MatrixType::hasValidConstructor(const List* var_list) const
     }
     else
     {
-		auto expr = var_list->current_front()->extract<Expression>();
-		ElementType type_enum = expr->getFirst()->getTypeEnum();
-        if(type_enum != ElementType::Vector &&
-           type_enum != ElementType::Scalar &&
-           type_enum != ElementType::Matrix &&
-           type_enum != ElementType::Array)
+        if(*var_list->current_front())
+        {
+            auto expr = var_list->current_front()->extract<Expression>();
+            ElementType type_enum = expr->getFirst()->getTypeEnum();
+            if(type_enum != ElementType::Vector &&
+               type_enum != ElementType::Scalar &&
+               type_enum != ElementType::Matrix &&
+               type_enum != ElementType::Array)
+               return false;
+        }
+        else
+        {
             return false;
+        }
     }
     return true;
 }
