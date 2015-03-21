@@ -43,7 +43,7 @@ void GLResourceTable::setResource(ResourceIndex index, const GLTexture& tex)
         TGE_ASSERT(UniformValueType::Texture == m_ResourceTable->Uniforms.Values[index.ResourceTableIndex].Type, "Mismatching uniform variable types.");
     #endif
 #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
-    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
+    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS))
     {
         m_BakedResourceTable.setValue(index.BaseOffset, tex.getGPUHandle());
     }
