@@ -76,10 +76,21 @@ class BakedResourceTable
     char*                   m_Table;
     size_t                  m_Size;
 public:
+    BakedResourceTable()
+        :   m_Table(nullptr),
+            m_Size(0) {}
+
     BakedResourceTable(size_t size)
-        : m_Table(new char[size]),
-        m_Size(size) {}
-    ~BakedResourceTable() { delete m_Table; }
+        :   m_Table(new char[size]),
+            m_Size(size) {}
+    ~BakedResourceTable() { delete[] m_Table; }
+
+    void realloc(size_t size)
+    {
+        delete[] m_Table;
+        m_Table = new char[size];
+        m_Size = size;
+    }
 
     void reset()
     {
@@ -99,6 +110,7 @@ public:
         m_Table = table.m_Table;
         m_Size = table.m_Size;
         table.m_Table = nullptr;
+        return *this;
     }
 
     template<class T>
