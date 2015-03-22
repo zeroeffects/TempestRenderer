@@ -1085,6 +1085,9 @@ DECLARE_GL_FUNCTION(void, glFramebufferRenderbuffer, GLFramebufferTarget target,
 
 DECLARE_GL_FUNCTION(void, glGetIntegerv, GLParameterType pname, GLint *data);
 
+DECLARE_GL_FUNCTION(void, glBindAttribLocation, GLuint program, GLuint index, const GLchar *name);
+DECLARE_GL_FUNCTION(GLint, glGetAttribLocation, GLuint program, const GLchar *name);
+
 #ifndef TEMPEST_EXTRACT_FUNCTIONS
 #ifdef _WIN32
 #   define GL_GET_PROC_ADDRESS(func) wglGetProcAddress(func)

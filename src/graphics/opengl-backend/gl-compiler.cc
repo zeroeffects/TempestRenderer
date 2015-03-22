@@ -1,4 +1,4 @@
-/*   The MIT License
+﻿/*   The MIT License
  *   
  *   Tempest Engine
  *   Copyright (c) 2009 2010 2011 2012 Zdravko Velinov
@@ -171,6 +171,13 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         res_table->BufferSize -= static_cast<Tempest::uint32>(buffer.getResiablePart());
     }
     
+    uint32 input_param_count = effect.getVertexAttributeCount();
+    for(uint32 iparam_idx = 0; iparam_idx < input_param_count; ++iparam_idx)
+    {
+        auto& input_param = effect.getVertexAttribute(iparam_idx);
+        glBindAttribLocation(prog.get(), iparam_idx, input_param.Name.c_str());
+    }
+
     glLinkProgram(prog.get());
     
     GLint prog_status;
@@ -218,6 +225,15 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         return nullptr;
     }
     
+#ifndef NDEBUG
+    for(uint32 iparam_idx = 0; iparam_idx < input_param_count; ++iparam_idx)
+    {
+        auto& input_param = effect.getVertexAttribute(iparam_idx);
+        auto actual_idx = glGetAttribLocation(prog.get(), input_param.Name.c_str());
+        TGE_ASSERT(actual_idx == iparam_idx, "This driver is broken");
+    }
+#endif
+
     auto* input_layout = CreatePackedData<GLInputLayout>(effect.getVertexAttributeCount(), &effect.getVertexAttribute(0));
 
     return new GLShaderProgram(prog.release(), input_layout, res_tables.release(), res_table_count);

@@ -113,12 +113,20 @@ GLInputLayout::GLInputLayout(uint32 count, const Shader::VertexAttributeDescript
 
 void GLInputLayout::bind(GLBufferTableEntry* buffer_table) const
 {
+    GLuint buffer = 0;
     for(GLuint i = 0, iend = m_Attributes.Count; i < iend; ++i)
     {
+        glEnableVertexAttribArray(i);
         auto& vert_attr = m_Attributes.Values[i];
         if(buffer_table)
         {
             // GL 2.0 style - should work everywhere.
+            GLuint cur_buffer = buffer_table[vert_attr.Binding].Buffer;
+            if(cur_buffer != buffer)
+            {
+                glBindBuffer(GLBufferTarget::GL_ARRAY_BUFFER, cur_buffer);
+                buffer = cur_buffer;
+            }
             glVertexAttribPointer(i, vert_attr.Size, vert_attr.Type, vert_attr.Normalized,
                                   buffer_table[vert_attr.Binding].Stride,
                                   reinterpret_cast<GLvoid*>(reinterpret_cast<GLchar*>(nullptr) + vert_attr.Offset + buffer_table[vert_attr.Binding].Offset));
@@ -128,7 +136,6 @@ void GLInputLayout::bind(GLBufferTableEntry* buffer_table) const
             glVertexAttribFormat(i, vert_attr.Size, vert_attr.Type, vert_attr.Normalized, vert_attr.Offset);
             glVertexAttribBinding(i, vert_attr.Binding);
         }
-        glEnableVertexAttribArray(i);
     }
     CheckOpenGL();
 }

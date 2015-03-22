@@ -69,22 +69,6 @@ enum class BufferType
     StructBuffer //!< There is another way to specify it. However, still available to avoid enum duplication.
 };
 
-class InputParameter
-{
-    ElementType             m_Type;
-    string                  m_Name;
-    string                  m_Semantic;
-public:
-    InputParameter(ElementType _type, string name, string _semantic)
-        :   m_Type(_type),
-            m_Name(name),
-            m_Semantic(_semantic) {}
-
-    ElementType getType() const { return m_Type; }
-    string getName() const { return m_Name; }
-    string getSemantic() const { return m_Semantic; }
-};
-
 class BufferElement
 {
     UniformValueType        m_Type;
@@ -134,25 +118,18 @@ public:
     BufferType getBufferType() const { return m_BufferType; }
 };
 
-typedef std::vector<InputParameter>       InputParameterVector;
-
 class ShaderDescription
 {
     string                  m_AdditionalOpts;
     string                  m_Content;
-    InputParameterVector    m_InputSignature;
 public:
     ShaderDescription() = default;
 
-    void addInputParameter(InputParameter param) { m_InputSignature.push_back(param); }
     void appendContent(string content) { m_Content += content; }
 
     string getContent() const { return m_Content; }
     void setAdditionalOptions(string opts) { m_AdditionalOpts = opts; }
     string getAdditionalOptions() const { return m_AdditionalOpts; }
-
-    uint32 getInputParameterCount() const { return static_cast<uint32>(m_InputSignature.size()); }
-    const InputParameter& getInputParameter(uint32 idx) const { return m_InputSignature[idx]; }
 };
 
 struct VertexAttributeDescription

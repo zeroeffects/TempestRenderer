@@ -475,9 +475,10 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 ali
         auto& vb = prev_vert_buffers[vb_idx];
         if(vb.VertexBuffer)
         {
-            vb.VertexBuffer->bindVertexBuffer(vb_idx, vb.Offset, vb.Stride);
-            buffer_table[vb_idx].Offset = vb.Offset;
-            buffer_table[vb_idx].Stride = vb.Stride;
+            auto& buf_table_entry = buffer_table[vb_idx];
+            buf_table_entry.Offset = vb.Offset;
+            buf_table_entry.Stride = vb.Stride;
+            buf_table_entry.Buffer = vb.VertexBuffer->getCPUHandle();
         }
     }
 

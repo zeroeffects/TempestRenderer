@@ -52,6 +52,7 @@ struct GLVertexAttributeDescription
 
 struct GLBufferTableEntry
 {
+    GLuint    Buffer;
     GLsizei   Stride;
     GLsizei   Offset;
 };

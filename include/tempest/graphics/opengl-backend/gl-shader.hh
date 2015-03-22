@@ -131,6 +131,8 @@ public:
     
     BakedResourceTable* getBakedTable() { return &m_BakedResourceTable; }
 
+    void swapBakedTable(BakedResourceTable& table) { std::swap(m_BakedResourceTable, table); }
+
     void resetBakedTable() { m_BakedResourceTable.reset(); }
 };
 

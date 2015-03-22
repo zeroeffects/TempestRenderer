@@ -52,6 +52,8 @@ public:
     
     GLuint64 getGPUAddress() const { return m_GPUAddress; }
     size_t getSize() const { return m_Size; }
+
+    GLuint getCPUHandle() const { return m_Buffer; }
 };
 }
 
