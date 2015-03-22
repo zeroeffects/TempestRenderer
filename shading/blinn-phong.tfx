@@ -38,7 +38,7 @@ constant buffer SceneParams
 struct GlobalsDesc
 {
     mat4 WorldViewProjectionTransform;
-    mat4 WorldTransform;
+    mat4 RotateTransform;
     vec4 DiffuseReflectivity;              // Kd, sharpness
     @MaterialSpecular vec4 Specular;       // Ks, Ns
     @MaterialAmbient vec4 AmbientDissolve; // Ka, d (alpha)
@@ -81,7 +81,7 @@ vertex shader
     {
         DrawIndex = tge_DrawID;
         @MaterialTexture InterpTexCoord = TexCoord;
-        InterpNormal = mat3(Globals[tge_DrawID].WorldTransform)*Normal;
+        InterpNormal = mat3(Globals[tge_DrawID].RotateTransform)*Normal;
         @MaterialSpecular InterpView = CameraPosition - Position.xyz/Position.w;
         gl_Position = Globals[tge_DrawID].WorldViewProjectionTransform*Position;
     }

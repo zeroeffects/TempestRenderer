@@ -298,7 +298,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         auto globals_res_table = CreateResourceTable(shader_prog, "Globals", 1);
         TGE_ASSERT(globals_res_table, "Expecting valid table");
         globals_res_table->setResource("Globals.WorldViewProjectionTransform", Imat);
-        globals_res_table->setResource("Globals.WorldTransform", Imat);
+        globals_res_table->setResource("Globals.RotateTransform", Imat);
         if(flags & AmbientAvailable)
         {
             globals_res_table->setResource("Globals.AmbientDissolve", Vector4(ambient.x(), ambient.y(), ambient.z(), material.Dissolve));

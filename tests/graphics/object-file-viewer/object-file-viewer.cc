@@ -10,6 +10,8 @@
 
 TGE_TEST("Testing loading object files directly into the engine for testing purposes")
 {
+    const Tempest::uint32 amp_up_geometry = 8;
+
     Tempest::WindowDescription wdesc;
     wdesc.Width = 800;
     wdesc.Height = 600;
@@ -17,13 +19,8 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
     auto sys_obj = Tempest::CreateSystemAndWindowSimple<Tempest::GLSystem>(wdesc);
     TGE_ASSERT(sys_obj, "GL initialization failed");
 
-    Tempest::CommandBufferDescription cmd_buffer_desc;
-    cmd_buffer_desc.CommandCount = 16;
-    cmd_buffer_desc.ConstantsBufferSize = 1024;
-
     typedef decltype(sys_obj->Backend) BackendType;
     typedef BackendType::ShaderProgramType ShaderProgramType;
-    auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend, cmd_buffer_desc);
     
     const size_t base_layout = 2;
     const size_t base_models = 3;
@@ -51,7 +48,7 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
 
     // Transform is always first
     auto world_trans_idx = mesh_blob->ResourceTables[0]->getResourceIndex("Globals.WorldViewProjectionTransform");
-    auto proj_trans_idx = mesh_blob->ResourceTables[0]->getResourceIndex("Globals.WorldTransform");
+    auto proj_trans_idx = mesh_blob->ResourceTables[0]->getResourceIndex("Globals.RotateTransform");
 
     struct SceneParams
     {
@@ -59,17 +56,39 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
         Tempest::Vector4 SunDirection;
     } scene_params;
 
-    scene_params.CameraPosition = Tempest::Vector4(0.0f, 0.0f, 2.0f, 1.0f);
+    scene_params.CameraPosition = Tempest::Vector4(0.0f, 0.0f, 4.0f, 1.0f);
     scene_params.SunDirection = Tempest::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
     scene_params.SunDirection.normalizePartial();
 
     auto const_buf = Tempest::CreateBuffer(&sys_obj->Backend, &scene_params, sizeof(SceneParams), Tempest::ResourceBufferType::ConstantBuffer);
 
+    Tempest::CommandBufferDescription cmd_buffer_desc;
+    cmd_buffer_desc.CommandCount = amp_up_geometry*mesh_blob->DrawBatchCount;
+    cmd_buffer_desc.ConstantsBufferSize = 16*1024*1024;
+    auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend, cmd_buffer_desc);
+
+    size_t batch_count = amp_up_geometry*mesh_blob->DrawBatchCount;
+    std::unique_ptr<Tempest::BakedResourceTable[]> baked_tables(new Tempest::BakedResourceTable[batch_count]);
+
+    BackendType::CommandBufferType::DrawBatchType draw_batch;
+
     for(size_t i = 0; i < mesh_blob->DrawBatchCount; ++i)
     {
-        command_buf->enqueueBatch(mesh_blob->DrawBatches[i]);
-        TGE_ASSERT(mesh_blob->ResourceTables[i]->getResourceIndex("Globals.WorldViewProjectionTransform") == world_trans_idx, "WorldViewProjectionTransform is not first!");
-        TGE_ASSERT(mesh_blob->ResourceTables[i]->getResourceIndex("Globals.WorldTransform") == proj_trans_idx, "WorldTransform is not second!");
+        draw_batch = mesh_blob->DrawBatches[i];
+        auto* orig_table = draw_batch.ResourceTable;
+        for(size_t j = 0; j < amp_up_geometry; ++j)
+        {
+            auto size = orig_table->getSize();
+            auto& inst_table = baked_tables[j*mesh_blob->DrawBatchCount + i]; // Because we are doing it this way inside the loop
+            inst_table.realloc(size);
+            memcpy(inst_table.get(), orig_table->get(), size);
+            draw_batch.ResourceTable = &inst_table;
+
+            command_buf->enqueueBatch(draw_batch);
+
+            TGE_ASSERT(mesh_blob->ResourceTables[i]->getResourceIndex("Globals.WorldViewProjectionTransform") == world_trans_idx, "WorldViewProjectionTransform is not first!");
+            TGE_ASSERT(mesh_blob->ResourceTables[i]->getResourceIndex("Globals.RotateTransform") == proj_trans_idx, "RotateTransform is not second!");
+        }
     }
 
     texture_table.executeIOOperations();
@@ -91,10 +110,10 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
         sys_obj->Backend.clearColorBuffer(0, Tempest::Vector4(0, 0, 0, 0));
         sys_obj->Backend.clearDepthStencilBuffer();
 
-        for(size_t i = 0; i < mesh_blob->DrawBatchCount; ++i)
-        {
-            auto now = std::chrono::system_clock::now();
+        auto now = std::chrono::system_clock::now();
 
+        for(size_t i = 0; i < amp_up_geometry; ++i)
+        {
             Tempest::Matrix4 mat = Tempest::PerspectiveMatrix(90.0f, (float)sys_obj->Window.getWidth() / sys_obj->Window.getHeight(), 0.1f, 10.0f);
             mat.translate(-Tempest::ToVector3(scene_params.CameraPosition));
 
@@ -102,11 +121,23 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
             rot_mat.identity();
             rot_mat.rotateY(2.0f * Tempest::math_pi * (std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 5000) / 5000.0f);
 
+            mat.translate(Tempest::Vector2((amp_up_geometry*0.5f - i - 0.5f)*1.0f, 0.0f));
+            //mat.translate(-Tempest::Vector2(((i % 4) / 4.0f - 0.5f), ((i / 4) / 4.0f - 0.5f)));
+
             mat *= rot_mat;
 
-            auto* res_table = mesh_blob->ResourceTables[i];
-            res_table->setResource(world_trans_idx, mat);
-            res_table->setResource(proj_trans_idx, rot_mat);
+            for(size_t j = 0; j < mesh_blob->DrawBatchCount; ++j)
+            {
+                auto* res_table = mesh_blob->ResourceTables[j];
+
+                auto& cur_baked_table = baked_tables[i*mesh_blob->DrawBatchCount + j];
+                res_table->swapBakedTable(cur_baked_table);
+
+                res_table->setResource(world_trans_idx, mat);
+                res_table->setResource(proj_trans_idx, rot_mat);
+
+                res_table->swapBakedTable(cur_baked_table);
+            }
         }
 
         sys_obj->Backend.submitCommandBuffer(command_buf.get());
