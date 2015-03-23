@@ -15,7 +15,7 @@ TGE_TEST("Testing window initialization")
     
     sys_obj->Window.show();
     
-    for(;;)
+    while(!sys_obj->Window.isDead())
     {
         sys_obj->Window.swapBuffers();
     }

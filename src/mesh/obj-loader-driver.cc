@@ -58,8 +58,11 @@ void Driver::parseMaterialFile(const Location& loc, const string& name)
 
 void Driver::pushMaterial(const Location& loc, const string& name)
 {
+    string trans_name;
+    trans_name.resize(name.size());
+    std::transform(name.begin(), name.end(), trans_name.begin(), ::tolower);
     auto beg_iter = std::begin(m_Materials), end_iter = std::end(m_Materials);
-    auto iter = std::find_if(beg_iter, end_iter, [&name](const ObjMtlLoader::Material& mtl) { return mtl.Name == name; });
+    auto iter = std::find_if(beg_iter, end_iter, [&trans_name](const ObjMtlLoader::Material& mtl) { return mtl.Name == trans_name; });
     if(iter == end_iter)
     {
         error(loc, "Unknown material: " + name);

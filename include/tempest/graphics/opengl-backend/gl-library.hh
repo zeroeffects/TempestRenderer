@@ -743,7 +743,8 @@ enum class GLFramebufferStatus: GLuint
 // These are discouraged to be used. So only the ones that are needed would be added.
 enum class GLParameterType: GLint
 {
-    GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT        = 0x8A34
+    GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT        = 0x8A34,
+    GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT = 0x90DF
 };
 
 #define UINT_TO_GL_COLOR_ATTACHMENT(num) static_cast<GLAttachmentIndex>(static_cast<GLuint>(GLAttachmentIndex::GL_COLOR_ATTACHMENT0) + num)

@@ -61,7 +61,7 @@ TGE_TEST("Testing the rendering context")
     
     sys_obj->Window.show();
     
-    for(;;)
+    while(!sys_obj->Window.isDead())
     {
         sys_obj->Backend.submitCommandBuffer(command_buf.get());
         

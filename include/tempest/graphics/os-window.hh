@@ -54,10 +54,16 @@ typedef Window OSWindow;
 
 namespace Tempest
 {
+enum
+{
+    TEMPEST_WINDOW_STATE_DEAD = 1 << 0
+};
+
 struct WindowInformation
 {
     size_t Width = 0,
            Height = 0;
+    uint32 Flags = 0;
 };
 
 class OSWindowSystem

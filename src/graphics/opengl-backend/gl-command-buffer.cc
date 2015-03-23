@@ -81,6 +81,8 @@ static GLDrawMode TranslateDrawMode(DrawModes mode)
     }
 }
 
+#define MAX_LAYOUT_SIZE 16
+
 GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
     :   m_CommandBuffer(new GLDrawBatch[desc.CommandCount]),
         m_ConstantBufferSize(desc.ConstantsBufferSize)
@@ -88,8 +90,6 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
     GLuint cmd_buf_size = desc.CommandCount*sizeof(DrawElementsIndirectCommand);
 
     GLint alignment;
-    glGetIntegerv(GLParameterType::GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
-    m_Alignment = alignment;
 
 #ifndef TEMPEST_DISABLE_MDI
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
@@ -102,7 +102,7 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
 #ifndef TEMPEST_DISABLE_MDI_BINDLESS
         if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
         {
-            cmd_buf_size += desc.CommandCount*(sizeof(GLuint) + MAX_VERTEX_BUFFERS*sizeof(BindlessPtrNV));
+            cmd_buf_size += desc.CommandCount*(sizeof(GLuint) + MAX_LAYOUT_SIZE*sizeof(BindlessPtrNV));
         }
 #endif
         m_CommandBufferSize = cmd_buf_size;
@@ -117,17 +117,24 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
                         GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
         m_ConstantBufferPtr = glMapBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, 0, const_buf_size,
                                                GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+
+        glGetIntegerv(GLParameterType::GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &alignment);
+        
         CheckOpenGL();
     }
     else
 #endif
     {
+        glGetIntegerv(GLParameterType::GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
+        
         auto const_buf_size = m_CommandBufferSize = cmd_buf_size;
         glGenBuffers(1, &m_ConstantBuffer);
         glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBuffer);
         glBufferData(GLBufferTarget::GL_UNIFORM_BUFFER, const_buf_size, nullptr, GLUsageMode::GL_DYNAMIC_DRAW);
         CheckOpenGL();
     }
+
+    m_Alignment = alignment;
 }
 
 GLCommandBuffer::~GLCommandBuffer()
@@ -307,6 +314,8 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
             }
         }
 
+        TGE_ASSERT(layout_size < MAX_LAYOUT_SIZE, "Layout is capped at 16 attributes");
+
         cmd_buf += sizeof(DrawElementsIndirectCommand) + 
                    sizeof(GLuint) +
                    sizeof(BindlessPtrNV)*(layout_size + 1);
@@ -330,7 +339,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
 }
 
 static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size,
-                                    GLvoid* gpu_cmd_buf_ptr, GLuint const_buf_ring, GLvoid* const_buf_ptr)
+                                    GLvoid* gpu_cmd_buf_ptr, size_t alignment, GLuint const_buf_ring, GLvoid* const_buf_ptr)
 {
     char *cmd_buf = reinterpret_cast<char*>(gpu_cmd_buf_ptr),
          *cmd_start = cmd_buf,
@@ -386,6 +395,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
                                         cnt, 0);
             CheckOpenGL();
             cmd_start = cmd_buf;
+            res_buf = AlignAddress(res_buf, alignment);
             res_start = res_buf;
             cnt = 0;
             
@@ -570,7 +580,7 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
         else
 #endif
         {
-            ExecuteCommandBufferARB(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr, m_ConstantBuffer, m_ConstantBufferPtr);
+            ExecuteCommandBufferARB(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr, m_Alignment, m_ConstantBuffer, m_ConstantBufferPtr);
         }
 
         m_GPUFence = glFenceSync(GLSyncCondition::GL_SYNC_GPU_COMMANDS_COMPLETE, 0);

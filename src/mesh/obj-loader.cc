@@ -47,9 +47,9 @@ template<class TBackend> class TextureTable;
 static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoader::GroupHeader& hdr, size_t pos_size, size_t tc_size, size_t norm_size,
                              std::vector<uint16>* res_inds, std::vector<char>* res_data, uint32* stride)
 {
-    int32        strides[3];
-    const int32* inds[3];
-    const char*  verts[3];
+    int32        strides[3] = {};
+    const int32* inds[3] = {};
+    const char*  verts[3] = {};
 
     std::vector<Vector3> gen_norms;
     
@@ -92,7 +92,7 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     }
     else
     {
-        TGE_ASSERT(pos_ind.size() % 3, "Position indices should be multiple of 3");
+        TGE_ASSERT((pos_ind.size() % 3) == 0, "Position indices should be multiple of 3");
         
         gen_norms.resize(pos.size(), Vector3(0.0f, 0.0f, 0.0f));
         for(size_t i = 0; i < pos_ind.size();)

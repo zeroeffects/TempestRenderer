@@ -67,6 +67,12 @@ LRESULT CALLBACK TempestWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             info->Height = HIWORD(lParam);
             return 0;
         } break;
+        case WM_QUIT:
+        case WM_CLOSE:
+        {
+            info->Flags |= TEMPEST_WINDOW_STATE_DEAD;
+            return 0;
+        } break;
         }
     }
 

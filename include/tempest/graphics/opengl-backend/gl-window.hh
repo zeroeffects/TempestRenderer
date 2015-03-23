@@ -68,6 +68,8 @@ public:
      */
     bool init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescription& wdesc);
 
+    bool isDead() const { return m_WindowInformation.Flags & TEMPEST_WINDOW_STATE_DEAD; }
+
 #ifdef LINUX
     GLXFBConfigPtr getFBConfig() { return m_FBConfig; }
 #elif defined(_WIN32)

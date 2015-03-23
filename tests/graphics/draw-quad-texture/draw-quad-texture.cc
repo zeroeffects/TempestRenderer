@@ -94,7 +94,7 @@ TGE_TEST("Testing the rendering context")
     sys_obj->Backend.setActiveTextures(16);
 
     // And that's the render loop. We have prebaked everything, so we are not doing anything special.
-    for(;;)
+    while(!sys_obj->Window.isDead())
     {
         sys_obj->Backend.setTextures(baked_res_table.get());
 

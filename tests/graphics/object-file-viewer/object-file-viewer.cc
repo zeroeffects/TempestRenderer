@@ -102,7 +102,7 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
 
     sys_obj->Backend.setActiveTextures(total_slots);
 
-    for(;;)
+    while(!sys_obj->Window.isDead())
     {
         texture_table.setTextures(&sys_obj->Backend);
         sys_obj->Backend.setConstantBuffer(0, const_buf.get());

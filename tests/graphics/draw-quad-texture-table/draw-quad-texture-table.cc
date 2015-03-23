@@ -117,7 +117,7 @@ TGE_TEST("Testing texture tables")
     
     sys_obj->Backend.setActiveTextures(total_slots);
 
-    for(;;)
+    while(!sys_obj->Window.isDead())
     {
         texture_table.setTextures(&sys_obj->Backend);
 
