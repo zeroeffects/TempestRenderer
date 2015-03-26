@@ -547,9 +547,8 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 ali
         }
 
         auto mode = TranslateDrawMode(prev_state->getPrimitiveType());
-        CheckOpenGL();
         glDrawElementsBaseVertex(mode, cpu_cmd.VertexCount, GLType::GL_UNSIGNED_SHORT,
-                                 reinterpret_cast<char*>(nullptr) + cpu_cmd.BaseIndex, cpu_cmd.BaseVertex);
+                                 reinterpret_cast<char*>(nullptr) + cpu_cmd.BaseIndex*sizeof(GLushort), cpu_cmd.BaseVertex);
         CheckOpenGL();
     }
 }

@@ -189,14 +189,13 @@ face_P
                                                 driver.pushPositionIndex($1);
                                                 driver.pushPositionIndex($2);
                                                 driver.pushPositionIndex($3);
-                                                $$.PositionIndex[0] = $2; 
+                                                $$.PositionIndex[0] = $1; 
                                                 $$.PositionIndex[1] = $3;
                                             }
     | face_P "integer"                      {
                                                 driver.pushPositionIndex($1.PositionIndex[0]);
                                                 driver.pushPositionIndex($1.PositionIndex[1]);
                                                 driver.pushPositionIndex($2);
-                                                $$.PositionIndex[0] = $1.PositionIndex[1];
                                                 $$.PositionIndex[1] = $2;
                                             }
     ;
@@ -207,8 +206,8 @@ face_PT
                                                 driver.pushPositionIndex($1); driver.pushTexCoordIndex($3);
                                                 driver.pushPositionIndex($4); driver.pushTexCoordIndex($6);
                                                 driver.pushPositionIndex($7); driver.pushTexCoordIndex($9);
-                                                $$.PositionIndex[0] = $4; 
-                                                $$.TexCoordIndex[0] = $6;
+                                                $$.PositionIndex[0] = $1; 
+                                                $$.TexCoordIndex[0] = $3;
                                                 $$.PositionIndex[1] = $7;
                                                 $$.TexCoordIndex[1] = $9;
                                             }
@@ -217,8 +216,6 @@ face_PT
                                                 driver.pushPositionIndex($1.PositionIndex[0]); driver.pushTexCoordIndex($1.TexCoordIndex[0]);
                                                 driver.pushPositionIndex($1.PositionIndex[1]); driver.pushTexCoordIndex($1.TexCoordIndex[1]);
                                                 driver.pushPositionIndex($2); driver.pushTexCoordIndex($4);
-                                                $$.PositionIndex[0] = $1.PositionIndex[1];
-                                                $$.TexCoordIndex[0] = $1.TexCoordIndex[1];
                                                 $$.PositionIndex[1] = $2;
                                                 $$.TexCoordIndex[1] = $4;
                                             }
@@ -229,9 +226,9 @@ face_PTN
                                                 driver.pushPositionIndex($1); driver.pushTexCoordIndex($3); driver.pushNormalIndex($5);
                                                 driver.pushPositionIndex($6); driver.pushTexCoordIndex($8); driver.pushNormalIndex($10);
                                                 driver.pushPositionIndex($11); driver.pushTexCoordIndex($13); driver.pushNormalIndex($15);
-                                                $$.PositionIndex[0] = $6;
-                                                $$.TexCoordIndex[0] = $8;
-                                                $$.NormalIndex[0] = $10;
+                                                $$.PositionIndex[0] = $1;
+                                                $$.TexCoordIndex[0] = $3;
+                                                $$.NormalIndex[0] = $5;
                                                 $$.PositionIndex[1] = $11;
                                                 $$.TexCoordIndex[1] = $13;
                                                 $$.NormalIndex[1] = $15;
@@ -241,9 +238,6 @@ face_PTN
                                                 driver.pushPositionIndex($1.PositionIndex[0]); driver.pushTexCoordIndex($1.TexCoordIndex[0]); driver.pushNormalIndex($1.NormalIndex[0]);
                                                 driver.pushPositionIndex($1.PositionIndex[1]); driver.pushTexCoordIndex($1.TexCoordIndex[1]); driver.pushNormalIndex($1.NormalIndex[1]);
                                                 driver.pushPositionIndex($2); driver.pushTexCoordIndex($4); driver.pushNormalIndex($6);
-                                                $$.PositionIndex[0] = $1.PositionIndex[1];
-                                                $$.TexCoordIndex[0] = $1.TexCoordIndex[1];
-                                                $$.NormalIndex[0] = $1.NormalIndex[1];
                                                 $$.PositionIndex[1] = $2;
                                                 $$.TexCoordIndex[1] = $4;
                                                 $$.NormalIndex[1] = $6;
@@ -256,8 +250,8 @@ face_PN
                                                 driver.pushPositionIndex($1); driver.pushNormalIndex($4);
                                                 driver.pushPositionIndex($5); driver.pushNormalIndex($8);
                                                 driver.pushPositionIndex($9); driver.pushNormalIndex($12);
-                                                $$.PositionIndex[0] = $5;
-                                                $$.NormalIndex[0] = $8;
+                                                $$.PositionIndex[0] = $1;
+                                                $$.NormalIndex[0] = $4;
                                                 $$.PositionIndex[1] = $9;
                                                 $$.NormalIndex[1] = $12;
                                             }
@@ -266,8 +260,6 @@ face_PN
                                                 driver.pushPositionIndex($1.PositionIndex[0]); driver.pushNormalIndex($1.NormalIndex[0]);
                                                 driver.pushPositionIndex($1.PositionIndex[1]); driver.pushNormalIndex($1.NormalIndex[1]);
                                                 driver.pushPositionIndex($2); driver.pushNormalIndex($5);
-                                                $$.PositionIndex[0] = $1.PositionIndex[1];
-                                                $$.NormalIndex[0] = $1.NormalIndex[1];
                                                 $$.PositionIndex[1] = $2;
                                                 $$.NormalIndex[1] = $5;
                                             }

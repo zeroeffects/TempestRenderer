@@ -63,18 +63,19 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     auto& pos_ind = obj_loader_driver.getPositionIndices();
     auto& tc_ind = obj_loader_driver.getTexCoordIndices();
     auto& norm_ind = obj_loader_driver.getNormalIndices();
-    if(pos_size != 0)
-    {
-        verts[num] = reinterpret_cast<const char*>(&pos.front());
-        inds[num] = &pos_ind.front();
-        *stride += strides[num++] = sizeof(pos.front());
-        ind_count = pos_size;
-    }
+    TGE_ASSERT(pos_size, "Position indices be greater than zero");
+    if(pos_size == 0)
+        return;
+
+    verts[num] = reinterpret_cast<const char*>(&pos.front());
+    inds[num] = &pos_ind[hdr.PositionStart];
+    *stride += strides[num++] = sizeof(pos.front());
+    ind_count = pos_size;
     
     if(tc_size != 0)
     {
         verts[num] = reinterpret_cast<const char*>(&tc.front());
-        inds[num] = &tc_ind.front();
+        inds[num] = &tc_ind[hdr.TexCoordStart];
         *stride += strides[num++] = sizeof(tc.front());
         TGE_ASSERT(ind_count == 0 || ind_count == tc_size, "Indices should be the same"); ind_count = tc_size;
     }
@@ -82,20 +83,16 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     if(norm_size != 0)
     {
         verts[num] = reinterpret_cast<const char*>(&norm.front());
-        inds[num] = &norm_ind.front();
+        inds[num] = &norm_ind[hdr.NormalStart];
         *stride += strides[num++] = sizeof(norm.front());
         TGE_ASSERT(ind_count == 0 || ind_count == norm_size, "Indices should be the same"); ind_count = norm_size;
-    }
-    else if(pos_size == 0)
-    {
-        return;
     }
     else
     {
         TGE_ASSERT((pos_ind.size() % 3) == 0, "Position indices should be multiple of 3");
         
-        gen_norms.resize(pos.size(), Vector3(0.0f, 0.0f, 0.0f));
-        for(size_t i = 0; i < pos_ind.size();)
+        gen_norms.resize(pos_size, Vector3(0.0f, 0.0f, 0.0f));
+        for(size_t i = hdr.PositionStart, iend = hdr.PositionStart + pos_size; i < pos_size;)
         {
             auto prev_idx = pos_ind[i++];
             auto current_idx = pos_ind[i++];
@@ -118,7 +115,7 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
         }
         
         verts[num] = reinterpret_cast<const char*>(&gen_norms.front());
-        inds[num] = &pos_ind.front();
+        inds[num] = &pos_ind[hdr.PositionStart];
         *stride += strides[num++] = sizeof(gen_norms.front());
     }
     
@@ -131,12 +128,13 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     if(interm_indices.size() < std::numeric_limits<uint16>::max())
     {
         size_t i = 0;
-        res_inds->resize(interm_indices.size());
+        size_t start_offset = res_inds->size();
+        res_inds->resize(start_offset + interm_indices.size());
         for(size_t i = 0, iend = interm_indices.size(); i < iend; ++i)
         {
             auto ind = interm_indices[i];
             TGE_ASSERT(ind < std::numeric_limits<uint16>::max(), "Invalid index");
-            (*res_inds)[i] = static_cast<uint16>(ind);
+            (*res_inds)[start_offset + i] = static_cast<uint16>(ind);
         }
     }
     else
@@ -359,7 +357,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         gen_res_tbl[i] = globals_res_table.release();
 
         prev_ind_size = res_inds.size();
-        prev_vert_size = res_data.size()*batch.VertexBuffers[0].Stride;
+        prev_vert_size = res_data.size();
     }
     
     auto *vbo = backend->createBuffer(res_data.size(), ResourceBufferType::VertexBuffer, RESOURCE_STATIC_DRAW, &res_data.front());
