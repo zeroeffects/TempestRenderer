@@ -203,7 +203,7 @@ void GLCommandBuffer::prepareCommandBuffer()
               });
 }
 
-static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLvoid* gpu_cmd_buf_ptr, GLuint const_buf_ring, GLvoid* const_buf_ptr)
+static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLvoid* gpu_cmd_buf_ptr, size_t alignment, GLuint const_buf_ring, GLvoid* const_buf_ptr)
 {
     // Naive to start with. TODO: Ring buffer.
     char *cmd_buf = reinterpret_cast<char*>(gpu_cmd_buf_ptr),
@@ -252,6 +252,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
                                                   cnt, 0, layout_size);
             CheckOpenGL();
             cmd_start = cmd_buf;
+            res_buf = AlignAddress(res_buf, alignment);
             res_start = res_buf;
             cnt = 0;
             
@@ -574,7 +575,7 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
 #ifndef TEMPEST_DISABLE_MDI_BINDLESS
         if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
         {
-            ExecuteCommandBufferNV(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr, m_ConstantBuffer, m_ConstantBufferPtr);
+            ExecuteCommandBufferNV(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr, m_Alignment, m_ConstantBuffer, m_ConstantBufferPtr);
         }
         else
 #endif
