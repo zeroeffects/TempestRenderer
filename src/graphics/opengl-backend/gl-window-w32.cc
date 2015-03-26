@@ -146,6 +146,8 @@ void GLWindow::show()
 
 void GLWindow::swapBuffers()
 {
+    m_WindowInformation.MouseDeltaX = m_WindowInformation.MouseDeltaY = 0;
+
     MSG msg;
     SwapBuffers(m_DC);
     while(PeekMessage(&msg, m_Window, 0, 0, PM_REMOVE))

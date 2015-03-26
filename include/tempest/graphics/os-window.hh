@@ -61,9 +61,14 @@ enum
 
 struct WindowInformation
 {
-    size_t Width = 0,
-           Height = 0;
-    uint32 Flags = 0;
+    uint32 Width = 0,
+           Height = 0,
+           MouseButtons = 0,
+           Flags = 0;
+    int32  MouseX = 0,
+           MouseY = 0,
+           MouseDeltaX = 0,
+           MouseDeltaY = 0;
 };
 
 class OSWindowSystem

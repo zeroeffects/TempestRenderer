@@ -26,6 +26,8 @@
 #include "tempest/graphics/opengl-backend/gl-window.hh"
 #include "tempest/utils/logging.hh"
 
+#include <Windowsx.h>
+
 namespace Tempest
 {
 LRESULT CALLBACK TempestWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -67,12 +69,24 @@ LRESULT CALLBACK TempestWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             info->Height = HIWORD(lParam);
             return 0;
         } break;
+        case WM_MOUSEMOVE:
+        {
+            auto prev_mouse_x = info->MouseX;
+            auto prev_mouse_y = info->MouseY;
+
+            info->MouseX = (int32)(short)GET_X_LPARAM(lParam);
+            info->MouseY = (int32)(short)GET_Y_LPARAM(lParam);
+            info->MouseDeltaX = info->MouseX - prev_mouse_x;
+            info->MouseDeltaY = info->MouseY - prev_mouse_y;
+            return 0;
+        } break;
         case WM_QUIT:
         case WM_CLOSE:
         {
             info->Flags |= TEMPEST_WINDOW_STATE_DEAD;
             return 0;
         } break;
+        default: break;
         }
     }
 

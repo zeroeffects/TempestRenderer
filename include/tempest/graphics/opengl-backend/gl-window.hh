@@ -77,8 +77,13 @@ public:
 #endif
     OSWindow getWindowId() {  return m_Window; }
     
-    size_t getWidth() const { return m_WindowInformation.Width; }
-    size_t getHeight() const { return m_WindowInformation.Height; }
+    uint32 getWidth() const { return m_WindowInformation.Width; }
+    uint32 getHeight() const { return m_WindowInformation.Height; }
+
+    int32 getMouseDeltaX() const { return m_WindowInformation.MouseDeltaX; }
+    int32 getMouseDeltaY() const { return m_WindowInformation.MouseDeltaY; }
+    int32 getMouseX() const { return m_WindowInformation.MouseX; }
+    int32 getMouseY() const { return m_WindowInformation.MouseY; }
 
     void show();
     

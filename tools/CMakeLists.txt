@@ -1,1 +1,2 @@
 ADD_SUBDIRECTORY(shader-compiler)
+ADD_SUBDIRECTORY(shading-evaluation)

@@ -23,6 +23,7 @@
  */
 
 #include <vector>
+#include <algorithm>
 
 #include "tempest/math/vector4.hh"
 #include "tempest/math/matrix4.hh"
@@ -52,7 +53,8 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     const char*  verts[3] = {};
 
     std::vector<Vector3> gen_norms;
-    
+    std::vector<int32> gen_inds;
+
     *stride = 0;
 
     size_t num = 0, ind_count = 0;
@@ -89,24 +91,43 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
     }
     else
     {
-        TGE_ASSERT((pos_ind.size() % 3) == 0, "Position indices should be multiple of 3");
+        TGE_ASSERT((pos_size % 3) == 0, "Position indices should be multiple of 3");
+        
+        int32 min_ind = std::numeric_limits<int32>::max();
+        for(size_t i = hdr.PositionStart, iend = hdr.PositionStart + pos_size; i < iend; ++i)
+        {
+            auto ind = pos_ind[i];
+            if(min_ind > ind)
+                min_ind = ind;
+        }
         
         gen_norms.resize(pos_size, Vector3(0.0f, 0.0f, 0.0f));
-        for(size_t i = hdr.PositionStart, iend = hdr.PositionStart + pos_size; i < pos_size;)
+        gen_inds.resize(pos_size);
+
+        for(size_t i = hdr.PositionStart, iend = hdr.PositionStart + pos_size; i < iend;)
         {
-            auto prev_idx = pos_ind[i++];
-            auto current_idx = pos_ind[i++];
-            auto next_idx = pos_ind[i++];
+            auto prev_idx = pos_ind[i];
+            gen_inds[i - hdr.PositionStart] = prev_idx - min_ind;
+            ++i;
+
+            auto current_idx = pos_ind[i];
+            gen_inds[i - hdr.PositionStart] = current_idx - min_ind;
+            ++i;
+
+            auto next_idx = pos_ind[i];
+            gen_inds[i - hdr.PositionStart] = next_idx - min_ind;
+            ++i;
+
             auto& prev = pos[prev_idx];
             auto& current = pos[current_idx];
             auto& next = pos[next_idx];
             auto current_v3 = ToVector3(current);
             auto d0 = ToVector3(prev) - current_v3;
             auto d1 = ToVector3(next) - current_v3;
-            Vector3 norm = d0.cross(d1);
-            gen_norms[prev_idx] += norm;
-            gen_norms[current_idx] += norm;
-            gen_norms[next_idx] += norm;
+            Vector3 norm = d1.cross(d0);
+            gen_norms[prev_idx - min_ind] += norm;
+            gen_norms[current_idx - min_ind] += norm;
+            gen_norms[next_idx - min_ind] += norm;
         }
         
         for(auto& norm : gen_norms)
@@ -115,7 +136,7 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
         }
         
         verts[num] = reinterpret_cast<const char*>(&gen_norms.front());
-        inds[num] = &pos_ind[hdr.PositionStart];
+        inds[num] = &gen_inds.front();
         *stride += strides[num++] = sizeof(gen_norms.front());
     }
     
