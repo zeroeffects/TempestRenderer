@@ -39,23 +39,6 @@
 #   define TGE_TRAP() __builtin_trap()
 #endif
 
-#ifndef NDEBUG
-//! The actual implementation of TGE_ASSERT.
-#   define _TGE_ASSERT(statement, doc_msg, ignore_var) \
-         do { \
-            static bool ignore_var = false; \
-            if(!(statement) && !ignore_var) \
-                ignore_var = Tempest::Assert(__FILE__ ":" TO_STRING(__LINE__) ": " TO_STRING(statement), doc_msg); \
-         } while(0)
-/*! \brief The recommended way to place assertions. It includes additional information over the basic standard function.
- *  \param statement    the asserted condition.
- *  \param doc_msg      documentation string that would potentially help the developer that is going to debug it in the future and determine why this should not be the case.
- */
-#   define TGE_ASSERT(statement, doc_msg) _TGE_ASSERT(statement, doc_msg, CONCAT_MACRO(__ignoreAssert, __COUNTER__))
-#else
-#   define TGE_ASSERT(statement, doc_msg)
-#endif
-
 //! Dialog message associated with crashed state of the application.
 #define TGE_CRASH(doc_msg) CrashMessageBox("Application Crashed", doc_msg)
 
@@ -69,6 +52,26 @@ enum DialogAnswer
                       *   but they must be reported. */
     TGE_ANSWER_IGNORE //!< Ignore all errors of this type.
 };
+
+#ifndef NDEBUG
+//! The actual implementation of TGE_ASSERT.
+#   define _TGE_ASSERT(statement, doc_msg, ignore_var) \
+         do { \
+            static Tempest::DialogAnswer ignore_var = Tempest::TGE_ANSWER_RETRY; \
+            if(!(statement) && (ignore_var) != Tempest::TGE_ANSWER_IGNORE) { \
+                ignore_var = Tempest::Assert(__FILE__ ":" TO_STRING(__LINE__) ": " TO_STRING(statement), doc_msg); \
+                if(ignore_var == Tempest::TGE_ANSWER_ABORT) \
+                    TGE_TRAP(); \
+            } \
+         } while(0)
+/*! \brief The recommended way to place assertions. It includes additional information over the basic standard function.
+*  \param statement    the asserted condition.
+*  \param doc_msg      documentation string that would potentially help the developer that is going to debug it in the future and determine why this should not be the case.
+*/
+#   define TGE_ASSERT(statement, doc_msg) _TGE_ASSERT(statement, doc_msg, CONCAT_MACRO(__ignoreAssert, __COUNTER__))
+#else
+#   define TGE_ASSERT(statement, doc_msg)
+#endif
 
 /*! \brief Used internally for displaying message boxes about failed assertions under all supported platforms.
  * 
@@ -108,7 +111,7 @@ string Backtrace(size_t start_frame = 1, size_t end_frame = 11);
  *  \param statement the actual statement which caused the failure.
  *  \param doc_msg   a short description why this statement is unexpected, what could happen and whether there is another way to resolve this issue.
  */
-inline bool Assert(const char* statement, const string& doc_msg)
+inline DialogAnswer Assert(const char* statement, const string& doc_msg)
 {
     std::stringstream ss;
     ss << statement << "\n\n"
@@ -118,12 +121,12 @@ inline bool Assert(const char* statement, const string& doc_msg)
     DialogAnswer res = AssertMessageBox("Assertion Failed", ss.str());
     switch(res)
     {
-    case TGE_ANSWER_ABORT: TGE_TRAP(); return false;
-    case TGE_ANSWER_RETRY: return false;
-    case TGE_ANSWER_IGNORE: return true;
+    case TGE_ANSWER_ABORT: return TGE_ANSWER_ABORT;
+    case TGE_ANSWER_RETRY: return TGE_ANSWER_RETRY;
+    case TGE_ANSWER_IGNORE: return TGE_ANSWER_IGNORE;
     }
     
-    return false;
+    return TGE_ANSWER_IGNORE;
 }
 
 
