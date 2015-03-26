@@ -221,7 +221,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
         auto& vb = first.VertexBuffers[i];
         if(vb.VertexBuffer)
         {
-            glBindVertexBuffer(i, 0, vb.Offset, vb.Stride);
+            glBindVertexBuffer(i, 0, 0, vb.Stride);
         }
     }
     
@@ -277,7 +277,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
             prev_mode = cpu_cmd.PipelineState->getPrimitiveType();
         }
         
-        size_t layout_size = cpu_cmd.PipelineState->getInputLayout() ? cpu_cmd.PipelineState->getInputLayout()->getAttributeCount() : 0;
+        size_t layout_size = prev_state->getInputLayout() ? prev_state->getInputLayout()->getAttributeCount() : 0;
         
         if(cpu_cmd.ResourceTable)
         {
@@ -305,7 +305,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
             gpu_vb.reserved = 0;
             if(vb.VertexBuffer)
             {
-                gpu_vb.address = vb.VertexBuffer->getGPUAddress();
+                gpu_vb.address = vb.VertexBuffer->getGPUAddress() + vb.Offset;
                 gpu_vb.length = vb.VertexBuffer->getSize();
             }
             else
