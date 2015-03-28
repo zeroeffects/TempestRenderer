@@ -35,10 +35,11 @@ namespace Tempest
 struct SlotTraitDescription
 {
     DataFormat      Format;
+    TextureTiling   Tiling;
     uint16          Edge;
 };
 
-#define TEMPEST_TEXTURE_TABLE_SLOT(name, format, edge) { format, edge },
+#define TEMPEST_TEXTURE_TABLE_SLOT(name, format, tiling, edge) { format, tiling, edge },
 
 static const SlotTraitDescription SlotTraits[] =
 {
@@ -61,12 +62,12 @@ template<class TBackend> TextureTable<TBackend>::TextureTable(TBackend* backend,
     memset(m_BakedTable->get(), 0, 4*sizeof(GLfloat)*TEMPEST_TEXTURE_SLOTS);
 
     TextureDescription tex_desc;
-    tex_desc.Tiling = TextureTiling::Array;
     for(size_t i = 0; i < TEMPEST_TEXTURE_SLOTS; ++i)
     {
         auto& trait = SlotTraits[i];
         tex_desc.Format = trait.Format;
         tex_desc.Width = tex_desc.Height = trait.Edge;
+        tex_desc.Tiling = trait.Tiling;
         auto& array_desc = m_Textures[i];
         array_desc.LastSlot = 0;
         array_desc.SlotCount = tex_desc.Depth = desc.Slots[i];

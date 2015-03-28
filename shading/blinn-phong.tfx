@@ -58,7 +58,7 @@ struct GlobalsDesc
 // The main reason is APIs that support some non-bindless weirdness for the old hardware sake.
 resource buffer ResourcesTable
 {
-    sampler2DArray Textures[16];
+    sampler2DArray Textures[4];
 }
 
 structbuffer GlobalsDesc Globals;

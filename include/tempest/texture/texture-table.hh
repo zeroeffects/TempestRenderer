@@ -30,6 +30,7 @@
 #include "tempest/image/image.hh"
 #include "tempest/utils/types.hh"
 #include "tempest/math/vector4.hh"
+#include "tempest/graphics/texture.hh"
 
 #include <memory>
 #include <limits>
@@ -40,12 +41,13 @@ class Texture;
 class BakedResourceTable;
 
 #define TEMPEST_TEXTURE_TABLE_SLOTS \
-    TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_128x128, DataFormat::RGBA8UNorm, 128) \
-    TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_256x256, DataFormat::RGBA8UNorm, 256) \
-    TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_512x512, DataFormat::RGBA8UNorm, 512) \
-    TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_1024x1024, DataFormat::RGBA8UNorm, 1024)
+    TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_128x128, DataFormat::RGBA8UNorm, TextureTiling::Array, 128) \
+    TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_256x256, DataFormat::RGBA8UNorm, TextureTiling::Array, 256) \
+    TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_512x512, DataFormat::RGBA8UNorm, TextureTiling::Array, 512) \
+    TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_1024x1024, DataFormat::RGBA8UNorm, TextureTiling::Array, 1024) \
+    TEMPEST_TEXTURE_TABLE_SLOT(TEMPEST_RGBA_CUBE, DataFormat::RGBA8UNorm, TextureTiling::Cube, 256)
     
-#define TEMPEST_TEXTURE_TABLE_SLOT(name, format, edge) name,
+#define TEMPEST_TEXTURE_TABLE_SLOT(name, format, tiling, edge) name,
 
 enum
 {

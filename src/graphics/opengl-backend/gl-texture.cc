@@ -38,36 +38,55 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
     glGenTextures(1, &m_Texture);
     auto tex_info = TranslateTextureInfo(desc.Format);
     TGE_ASSERT(desc.Width && desc.Height && desc.Depth, "Texture should have all dimensions different than zero");
-    if(desc.Tiling == TextureTiling::Cube)
-    {
-        TGE_ASSERT(desc.Depth == 6, "Unexpected number of faces for cube map. Should be 6.");
-        TGE_ASSERT(false, "TODO: Unimplemented"); // TODO: cube mapping
-        //m_Target = GL_TEXTURE_CUBE_MAP;
-        //glBindTexture(m_Target, m_TexId);
-        //glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, tex_info.internalFormat, width, height, 0, tex_info.format, tex_info.type, data);
-        //glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, tex_info.internalFormat, width, height, 0, tex_info.format, tex_info.type, data + width*height*tex_info.size);
-        //glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, tex_info.internalFormat, width, height, 0, tex_info.format, tex_info.type, data + 2*width*height*tex_info.size);
-        //glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, tex_info.internalFormat, width, height, 0, tex_info.format, tex_info.type, data + 3*width*height*tex_info.size);
-        //glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, tex_info.internalFormat, width, height, 0, tex_info.format, tex_info.type, data + 4*width*height*tex_info.size);
-        //glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, tex_info.internalFormat, width, height, 0, tex_info.format, tex_info.type, data + 5*width*height*tex_info.size);
-    }
-    else if(desc.Depth > 1)
+    if(desc.Depth > 1)
     {
         switch(desc.Tiling)
         {
         case TextureTiling::Array: m_Target = GLTextureTarget::GL_TEXTURE_2D_ARRAY; break;
         case TextureTiling::Volume: m_Target = GLTextureTarget::GL_TEXTURE_3D; break;
+        case TextureTiling::Cube: m_Target = GLTextureTarget::GL_TEXTURE_CUBE_MAP_ARRAY; break;
         default: TGE_ASSERT(false, "Uexpected tiling mode"); break;
         }
         
         glBindTexture(m_Target, m_Texture);
         if(desc.Samples > 1)
         {
+            TGE_ASSERT(desc.Tiling != TextureTiling::Cube, "Multisampling with cubemaps is unsupported");
             glTexImage3DMultisample(m_Target, desc.Samples, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, GL_TRUE);
         }
         else
         {
-            glTexImage3D(m_Target, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, data);
+            if(desc.Tiling == TextureTiling::Cube)
+            {
+                const void *pos_x_map = nullptr,
+                    *neg_x_map = nullptr,
+                    *pos_y_map = nullptr,
+                    *neg_y_map = nullptr,
+                    *pos_z_map = nullptr,
+                    *neg_z_map = nullptr;
+                if(data)
+                {
+                    auto* data_u8 = reinterpret_cast<const uint8*>(data);
+                    size_t depth_slice = desc.Width*desc.Height*DataFormatElementSize(desc.Format);
+                    pos_x_map = data_u8;
+                    neg_x_map = data_u8 + depth_slice*desc.Depth;
+                    pos_y_map = data_u8 + 2 * depth_slice*desc.Depth;
+                    neg_y_map = data_u8 + 3 * depth_slice*desc.Depth;
+                    pos_z_map = data_u8 + 4 * depth_slice*desc.Depth;
+                    neg_z_map = data_u8 + 5 * depth_slice*desc.Depth;
+                }
+
+                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, pos_x_map);
+                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, neg_x_map);
+                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, pos_y_map);
+                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, neg_y_map);
+                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, pos_z_map);
+                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, neg_z_map);
+            }
+            else
+            {
+                glTexImage3D(m_Target, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, data);
+            }
         }
     }
     else if(desc.Height)
@@ -76,18 +95,50 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
         {
         case TextureTiling::Array: m_Target = GLTextureTarget::GL_TEXTURE_1D_ARRAY; break;
         case TextureTiling::Flat: m_Target = GLTextureTarget::GL_TEXTURE_2D; break;
+        case TextureTiling::Cube: m_Target = GLTextureTarget::GL_TEXTURE_CUBE_MAP; break;
         default: TGE_ASSERT(false, "Uexpected tiling mode"); break;
         }
 
         glBindTexture(m_Target, m_Texture);
         if(desc.Samples > 1)
         {
+            TGE_ASSERT(desc.Tiling != TextureTiling::Cube, "Multisampling with cubemaps is unsupported");
             glTexImage2DMultisample(m_Target, desc.Samples, tex_info.InternalFormat, desc.Width, desc.Height, GL_TRUE);
             TGE_ASSERT(data == nullptr, "Uploading data on multisampled textures is unsupported");
         }
         else
         {
-            glTexImage2D(m_Target, 0, tex_info.InternalFormat, desc.Width, desc.Height, 0, tex_info.Format, tex_info.Type, data);
+            if(desc.Tiling == TextureTiling::Cube)
+            {
+                const void *pos_x_map = nullptr,
+                           *neg_x_map = nullptr,
+                           *pos_y_map = nullptr,
+                           *neg_y_map = nullptr,
+                           *pos_z_map = nullptr,
+                           *neg_z_map = nullptr;
+                if(data)
+                {
+                    auto* data_u8 = reinterpret_cast<const uint8*>(data);
+                    size_t depth_slice = desc.Width*desc.Height*DataFormatElementSize(desc.Format);
+                    pos_x_map = data_u8;
+                    neg_x_map = data_u8 + depth_slice;
+                    pos_y_map = data_u8 + 2 * depth_slice;
+                    neg_y_map = data_u8 + 3 * depth_slice;
+                    pos_z_map = data_u8 + 4 * depth_slice;
+                    neg_z_map = data_u8 + 5 * depth_slice;
+                }
+
+                glTexImage2D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, tex_info.InternalFormat, desc.Width, desc.Height, 0, tex_info.Format, tex_info.Type, pos_x_map);
+                glTexImage2D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, tex_info.InternalFormat, desc.Width, desc.Height, 0, tex_info.Format, tex_info.Type, neg_x_map);
+                glTexImage2D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, tex_info.InternalFormat, desc.Width, desc.Height, 0, tex_info.Format, tex_info.Type, pos_y_map);
+                glTexImage2D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, tex_info.InternalFormat, desc.Width, desc.Height, 0, tex_info.Format, tex_info.Type, neg_y_map);
+                glTexImage2D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, tex_info.InternalFormat, desc.Width, desc.Height, 0, tex_info.Format, tex_info.Type, pos_z_map);
+                glTexImage2D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, tex_info.InternalFormat, desc.Width, desc.Height, 0, tex_info.Format, tex_info.Type, neg_z_map);
+            }
+            else
+            {
+                glTexImage2D(m_Target, 0, tex_info.InternalFormat, desc.Width, desc.Height, 0, tex_info.Format, tex_info.Type, data);
+            }
         }
     }
     else

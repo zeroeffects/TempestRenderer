@@ -333,7 +333,13 @@ enum class GLTextureTarget: GLuint
     GL_TEXTURE_3D                      = 0x806F,
     GL_TEXTURE_CUBE_MAP                = 0x8513,
     GL_TEXTURE_CUBE_MAP_ARRAY          = 0x9009,
-    GL_TEXTURE_RECTANGLE               = 0x84F5
+    GL_TEXTURE_RECTANGLE               = 0x84F5,
+    GL_TEXTURE_CUBE_MAP_POSITIVE_X     = 0x8515,
+    GL_TEXTURE_CUBE_MAP_NEGATIVE_X     = 0x8516,
+    GL_TEXTURE_CUBE_MAP_POSITIVE_Y     = 0x8517,
+    GL_TEXTURE_CUBE_MAP_NEGATIVE_Y     = 0x8518,
+    GL_TEXTURE_CUBE_MAP_POSITIVE_Z     = 0x8519,
+    GL_TEXTURE_CUBE_MAP_NEGATIVE_Z     = 0x851A
 };
 
 enum class GLTextureParameter: GLuint
