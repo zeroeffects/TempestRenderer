@@ -362,6 +362,7 @@ void Parser::parseIndices(const Location& declaration_location)
         m_Driver.error(declaration_location, "\tValid vertex declarations are:\n"
                        "\t\tf <index> <index> <index> [ <index> ... ]\n"
                        "\t\tf <index>/<index> <index>/<index> <index>/<index> [ <index>/<index> ... ] \n"
+                       "\t\tf <index>//<index> <index>//<index> <index>//<index> [ <index>//<index> ... ] \n"
                        "\t\tf <index>/<index>/<index> <index>/<index>/<index> <index>/<index>/<index> [ <index>/<index>/<index> ... ] \n");
         return;
     }

@@ -58,30 +58,7 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
         {
             if(desc.Tiling == TextureTiling::Cube)
             {
-                const void *pos_x_map = nullptr,
-                    *neg_x_map = nullptr,
-                    *pos_y_map = nullptr,
-                    *neg_y_map = nullptr,
-                    *pos_z_map = nullptr,
-                    *neg_z_map = nullptr;
-                if(data)
-                {
-                    auto* data_u8 = reinterpret_cast<const uint8*>(data);
-                    size_t depth_slice = desc.Width*desc.Height*DataFormatElementSize(desc.Format);
-                    pos_x_map = data_u8;
-                    neg_x_map = data_u8 + depth_slice*desc.Depth;
-                    pos_y_map = data_u8 + 2 * depth_slice*desc.Depth;
-                    neg_y_map = data_u8 + 3 * depth_slice*desc.Depth;
-                    pos_z_map = data_u8 + 4 * depth_slice*desc.Depth;
-                    neg_z_map = data_u8 + 5 * depth_slice*desc.Depth;
-                }
-
-                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, pos_x_map);
-                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, neg_x_map);
-                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, pos_y_map);
-                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, neg_y_map);
-                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, pos_z_map);
-                glTexImage3D(GLTextureTarget::GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth, 0, tex_info.Format, tex_info.Type, neg_z_map);
+                glTexImage3D(m_Target, 0, tex_info.InternalFormat, desc.Width, desc.Height, desc.Depth*6, 0, tex_info.Format, tex_info.Type, data);
             }
             else
             {
