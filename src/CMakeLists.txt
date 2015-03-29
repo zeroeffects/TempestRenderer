@@ -222,14 +222,9 @@ SET(TEMPEST_MATH_INC
 FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-loader)
 FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-mtl-loader)
    
-BISON_TARGET(ObjParser "${CMAKE_CURRENT_SOURCE_DIR}/mesh/obj-loader.y"
-             "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-loader/obj-loader-parser.cc"
-             VERBOSE "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-loader/obj-loader-parser.output"
-             COMPILE_FLAGS "--report=state")
 FLEX_TARGET(ObjScanner "${CMAKE_CURRENT_SOURCE_DIR}/mesh/obj-loader.l"
             "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-loader/obj-loader-lexer.cc"
             COMPILE_FLAGS "-Pobj_loader_")
-ADD_FLEX_BISON_DEPENDENCY(ObjScanner ObjParser)
 
 BISON_TARGET(ObjMtlParser "${CMAKE_CURRENT_SOURCE_DIR}/mesh/obj-mtl-loader.y"
              "${CMAKE_CURRENT_BINARY_DIR}/mesh/obj-mtl-loader/obj-mtl-loader-parser.cc"
@@ -243,7 +238,7 @@ ADD_FLEX_BISON_DEPENDENCY(ObjMtlScanner ObjMtlParser)
 SET(TEMPEST_MESH_SRC
     mesh/obj-loader.cc
     mesh/obj-loader-driver.cc
-    ${BISON_ObjParser_OUTPUTS}
+    mesh/obj-loader-parser.cc
     ${FLEX_ObjScanner_OUTPUTS}
     ${BISON_ObjMtlParser_OUTPUTS}
     ${FLEX_ObjMtlScanner_OUTPUTS}
@@ -251,6 +246,7 @@ SET(TEMPEST_MESH_SRC
 
 SET(TEMPEST_MESH_INC
    ${CMAKE_SOURCE_DIR}/include/tempest/mesh/obj-loader.hh
+   ${CMAKE_SOURCE_DIR}/include/tempest/mesh/obj-loader-parser.hh
    ${CMAKE_SOURCE_DIR}/include/tempest/mesh/obj-mtl-loader.hh
    ${CMAKE_SOURCE_DIR}/include/tempest/mesh/obj-loader-driver.hh
    ${CMAKE_SOURCE_DIR}/include/tempest/mesh/obj-mtl-loader-driver.hh
