@@ -28,7 +28,7 @@
 /////////////////////
 // USER MODIFIABLE //
 /////////////////////
-//#define TEMPEST_DISABLE_MDI_BINDLESS
+#define TEMPEST_DISABLE_MDI_BINDLESS
 //#define TEMPEST_DISABLE_MDI
 //#define TEMPEST_DISABLE_TEXTURE_BINDLESS
 

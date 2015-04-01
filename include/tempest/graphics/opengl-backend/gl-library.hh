@@ -1061,6 +1061,7 @@ DECLARE_GL_FUNCTION(void, glGetProgramiv, GLuint program, GLProgramParameter pna
 DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_430, void, glVertexAttribFormat, GLuint attribindex, GLint size, GLType type, GLboolean normalized, GLuint relativeoffset);
 DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_430, void, glVertexAttribBinding, GLuint attribindex, GLuint bindingindex);
 DECLARE_GL_FUNCTION(void, glEnableVertexAttribArray, GLuint index);
+DECLARE_GL_FUNCTION(void, glDisableVertexAttribArray, GLuint index);
 DECLARE_GL_FUNCTION(void, glEnableVertexAttribArrayARB, GLuint index);
 DECLARE_GL_FUNCTION(void, glUseProgram, GLuint program);
 DECLARE_GL_FUNCTION(void, glColorMaski, GLuint index, GLboolean r, GLboolean g, GLboolean b, GLboolean a);

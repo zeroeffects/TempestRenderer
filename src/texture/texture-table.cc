@@ -162,6 +162,7 @@ template<class TBackend> Vector4 TextureTable<TBackend>::loadTexture(const Path&
     {
         auto& slot_trait = SlotTraits[i];
         if(hdr.Format != slot_trait.Format ||
+           hdr.Tiling != TextureTiling::Flat ||
            biggest_side > slot_trait.Edge)
             continue;
         if(slot_trait.Edge < best_fit)
@@ -192,6 +193,94 @@ template<class TBackend> Vector4 TextureTable<TBackend>::loadTexture(const Path&
     }
 
     return Vector4(static_cast<float>(hdr.Width) / slot_trait.Edge, static_cast<float>(hdr.Height) / slot_trait.Edge,
+                   static_cast<float>(best_slot), static_cast<float>(slice));
+}
+
+template<class TBackend> Vector4 TextureTable<TBackend>::loadCube(const Path& posx_filename,
+                                                                  const Path& negx_filename,
+                                                                  const Path& posy_filename,
+                                                                  const Path& negy_filename,
+                                                                  const Path& posz_filename,
+                                                                  const Path& negz_filename)
+{
+    std::unique_ptr<Texture> textures[6] =
+    {
+        std::unique_ptr<Texture>(LoadImage(posx_filename)),
+        std::unique_ptr<Texture>(LoadImage(negx_filename)),
+        std::unique_ptr<Texture>(LoadImage(posy_filename)),
+        std::unique_ptr<Texture>(LoadImage(negy_filename)),
+        std::unique_ptr<Texture>(LoadImage(posz_filename)),
+        std::unique_ptr<Texture>(LoadImage(negz_filename))
+    };
+    
+    for(size_t i = 0; i < TGE_FIXED_ARRAY_SIZE(textures); ++i)
+    {
+        auto& tex = textures[i];
+        if(!tex)
+            return InvalidSlot;
+        tex->convertToRGBA();
+    }
+
+    uint32 slice, best_slot;
+
+    auto& hdr0 = textures[0]->getHeader();
+    {
+        auto& tex = textures[0];
+        auto biggest_side = std::max(hdr0.Width, hdr0.Height);
+        uint32 best_fit = std::numeric_limits<uint32>::max();
+        best_slot = 0;
+        for(uint32 i = 0; i < TEMPEST_TEXTURE_SLOTS; ++i)
+        {
+            auto& slot_trait = SlotTraits[i];
+            if(hdr0.Format != slot_trait.Format ||
+               slot_trait.Tiling != TextureTiling::Cube ||
+               biggest_side != slot_trait.Edge)
+               continue;
+            if(slot_trait.Edge < best_fit)
+            {
+                best_fit = slot_trait.Edge;
+                best_slot = i;
+            }
+        }
+
+        if(best_fit == std::numeric_limits<uint32>::max())
+        {
+            return InvalidSlot;
+        }
+    }
+
+    auto& slot_trait = SlotTraits[best_slot];
+    auto& subtable = m_Textures[best_slot];
+    slice = subtable.LastSlot;
+    if(slice == subtable.SlotCount)
+    {
+        return InvalidSlot;
+    }
+    ++subtable.LastSlot;
+
+    uint32 tex_size = hdr0.Width*hdr0.Height*DataFormatElementSize(hdr0.Format);
+    // Don't even bother
+    TGE_ASSERT(tex_size <= m_UploadHeapSize, "Upload heap too small");
+    if(tex_size > m_UploadHeapSize)
+        return InvalidSlot;
+
+    for(size_t i = 0; i < TGE_FIXED_ARRAY_SIZE(textures); ++i)
+    {
+        auto& tex = textures[i];
+        tex->convertToRGBA();
+        auto& hdr = tex->getHeader();
+        if(hdr.Width != hdr0.Width ||
+           hdr.Height != hdr0.Height)
+            return InvalidSlot;
+
+        if(!InsertIntoStorage(tex.get(), tex_size, m_UploadHeapSize, m_BufferIndex, m_UploadHeapBoundary, m_UploadHeap, m_IOCommandBuffer,
+                              slice*6 + i, m_Textures[best_slot].Texture))
+        {
+            m_PendingTextures.push_back(PendingTexture{ best_slot, slice*6 + i, tex.release() });
+        }
+    }
+
+    return Vector4(static_cast<float>(hdr0.Width) / slot_trait.Edge, static_cast<float>(hdr0.Height) / slot_trait.Edge,
                    static_cast<float>(best_slot), static_cast<float>(slice));
 }
 

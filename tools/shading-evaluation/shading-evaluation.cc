@@ -1,5 +1,6 @@
 #include "tempest/graphics/rendering-convenience.hh"
 #include "tempest/graphics/api-all.hh"
+#include "tempest/graphics/state-object.hh"
 #include "tempest/texture/texture-table.hh"
 #include "tempest/mesh/obj-loader.hh"
 #include "tempest/math/matrix4.hh"
@@ -60,7 +61,7 @@ int TempestMain(int argc, char** argv)
     auto const_buf = Tempest::CreateBuffer(&sys_obj->Backend, &scene_params, sizeof(SceneParams), Tempest::ResourceBufferType::ConstantBuffer);
 
     Tempest::CommandBufferDescription cmd_buffer_desc;
-    cmd_buffer_desc.CommandCount = mesh_blob->DrawBatchCount;
+    cmd_buffer_desc.CommandCount = mesh_blob->DrawBatchCount + 1;
     cmd_buffer_desc.ConstantsBufferSize = 16*1024*1024;
     auto command_buf = Tempest::CreateCommandBuffer(&sys_obj->Backend, cmd_buffer_desc);
 
@@ -72,13 +73,40 @@ int TempestMain(int argc, char** argv)
         TGE_ASSERT(mesh_blob->ResourceTables[i]->getResourceIndex("Globals.RotateTransform") == proj_trans_idx, "RotateTransform is not second!");
     }
 
+    auto background_shader = Tempest::CreateShader(&sys_obj->ShaderCompiler, CURRENT_SOURCE_DIR "/background.tfx");
+    TGE_ASSERT(background_shader, "Background shader can't be loaded");
+    auto background_res_table = Tempest::CreateResourceTable(background_shader.get(), "Globals", 1);
+    auto inv_proj_trans_idx = background_res_table->getResourceIndex("Globals.ViewProjectionInverseTransform");
+
+    Tempest::uint32 total_slots = TGE_FIXED_ARRAY_SIZE(tex_table_desc.Slots);
+
+    auto cube_idx = texture_table.loadCube(Tempest::Path(TEST_ASSETS_DIR "/Storforsen4/posx-256.png"),
+                                           Tempest::Path(TEST_ASSETS_DIR "/Storforsen4/negx-256.png"),
+                                           Tempest::Path(TEST_ASSETS_DIR "/Storforsen4/posy-256.png"),
+                                           Tempest::Path(TEST_ASSETS_DIR "/Storforsen4/negy-256.png"),
+                                           Tempest::Path(TEST_ASSETS_DIR "/Storforsen4/posz-256.png"),
+                                           Tempest::Path(TEST_ASSETS_DIR "/Storforsen4/negz-256.png"));
+
+    background_res_table->setResource("Globals.CubeID", cube_idx);
+
+    Tempest::DataFormat rt_fmt = Tempest::DataFormat::RGBA8UNorm;
+    Tempest::DepthStencilStates ds_state;
+    ds_state.DepthTestEnable = true;
+    ds_state.DepthWriteEnable = true;
+    auto bg_state_obj = Tempest::CreateStateObject(&sys_obj->Backend, &rt_fmt, 1, Tempest::DataFormat::Unknown, background_shader.get(), Tempest::DrawModes::TriangleList, nullptr, nullptr, &ds_state);
+
+    BackendType::CommandBufferType::DrawBatchType background_batch;
+    background_batch.VertexCount = 3;
+    background_batch.PipelineState = bg_state_obj.get();
+    background_batch.ResourceTable = background_res_table->getBakedTable();
+
+    command_buf->enqueueBatch(background_batch);
+
     texture_table.executeIOOperations();
     command_buf->prepareCommandBuffer();
     
     sys_obj->Window.show();
     
-    Tempest::uint32 total_slots = TGE_FIXED_ARRAY_SIZE(tex_table_desc.Slots);
-
     sys_obj->Backend.setActiveTextures(total_slots);
 
     float roll = 0.0f, yaw = 0.0f;
@@ -103,6 +131,9 @@ int TempestMain(int argc, char** argv)
         mat.rotateX(roll);
         mat.rotateY(yaw);
 
+        // Yeah, I am aware of faster alternatives.
+        Tempest::Matrix4 inverse_mat = mat.inverse();
+
         Tempest::Matrix4 rot_mat;
         rot_mat.identity();
 
@@ -116,6 +147,8 @@ int TempestMain(int argc, char** argv)
             res_table->setResource(world_trans_idx, mat);
             res_table->setResource(proj_trans_idx, rot_mat);
         }
+
+        background_res_table->setResource(inv_proj_trans_idx, inverse_mat);
 
         sys_obj->Backend.submitCommandBuffer(command_buf.get());
         

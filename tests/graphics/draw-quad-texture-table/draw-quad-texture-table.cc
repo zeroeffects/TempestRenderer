@@ -88,10 +88,10 @@ TGE_TEST("Testing texture tables")
         indices[ind++] = 0;
         indices[ind++] = 2;
         indices[ind++] = 3;
-        data[vert++] = VertexFormat{ Tempest::Vector2(0.0f, 0.0f), Tempest::Vector2(0.0f, 0.0f) };
-        data[vert++] = VertexFormat{ Tempest::Vector2(0.0f, 1.0f), Tempest::Vector2(0.0f, 1.0f) };
-        data[vert++] = VertexFormat{ Tempest::Vector2(1.0f, 1.0f), Tempest::Vector2(1.0f, 1.0f) };
-        data[vert++] = VertexFormat{ Tempest::Vector2(1.0f, 0.0f), Tempest::Vector2(1.0f, 0.0f) };
+        data[vert++] = VertexFormat{ Tempest::Vector2(0.0f, 0.0f), Tempest::Vector2(0.0f, 1.0f) };
+        data[vert++] = VertexFormat{ Tempest::Vector2(0.0f, 1.0f), Tempest::Vector2(0.0f, 0.0f) };
+        data[vert++] = VertexFormat{ Tempest::Vector2(1.0f, 1.0f), Tempest::Vector2(1.0f, 0.0f) };
+        data[vert++] = VertexFormat{ Tempest::Vector2(1.0f, 0.0f), Tempest::Vector2(1.0f, 1.0f) };
         tables.push_back(std::move(baked_table));
     }
 

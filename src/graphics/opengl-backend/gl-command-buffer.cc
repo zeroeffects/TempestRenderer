@@ -85,7 +85,8 @@ static GLDrawMode TranslateDrawMode(DrawModes mode)
 
 GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
     :   m_CommandBuffer(new GLDrawBatch[desc.CommandCount]),
-        m_ConstantBufferSize(desc.ConstantsBufferSize)
+        m_ConstantBufferSize(desc.ConstantsBufferSize),
+        m_CommandBufferSize(desc.ConstantsBufferSize)
 {
     GLuint cmd_buf_size = desc.CommandCount*sizeof(DrawElementsIndirectCommand);
 
@@ -105,7 +106,6 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
             cmd_buf_size += desc.CommandCount*(sizeof(GLuint) + MAX_LAYOUT_SIZE*sizeof(BindlessPtrNV));
         }
 #endif
-        m_CommandBufferSize = cmd_buf_size;
         glBufferStorage(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, cmd_buf_size, 0,
                         GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
         m_GPUCommandBufferPtr = glMapBufferRange(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, 0, cmd_buf_size,
@@ -127,10 +127,9 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
     {
         glGetIntegerv(GLParameterType::GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
         
-        auto const_buf_size = m_CommandBufferSize = cmd_buf_size;
         glGenBuffers(1, &m_ConstantBuffer);
         glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBuffer);
-        glBufferData(GLBufferTarget::GL_UNIFORM_BUFFER, const_buf_size, nullptr, GLUsageMode::GL_DYNAMIC_DRAW);
+        glBufferData(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBufferSize, nullptr, GLUsageMode::GL_DYNAMIC_DRAW);
         CheckOpenGL();
     }
 
@@ -241,7 +240,13 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
            vb_not_equal)
         {
             GLuint layout_size = (GLuint)(prev_state->getInputLayout() ? prev_state->getInputLayout()->getAttributeCount() : 0);
-            
+            /*
+            auto* cur_input_layout = cpu_cmd.PipelineState->getInputLayout();
+            for(size_t i = cur_input_layout ? cur_input_layout->getAttributeCount() : 0, iend = layout_size; i < iend; ++i)
+            {
+                glDisableVertexAttribArray(i);
+            }
+            */
             if(res_buf != res_start)
             {
                 glBindBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring, res_start - reinterpret_cast<char*>(const_buf_ptr), res_buf - res_start);
@@ -293,8 +298,16 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
         gpu_cmd.cmd.baseInstance = 0;
         gpu_cmd.indexBuffer.index = 0;
         gpu_cmd.indexBuffer.reserved = 0;
-        gpu_cmd.indexBuffer.address = cpu_cmd.IndexBuffer->getGPUAddress();
-        gpu_cmd.indexBuffer.length = cpu_cmd.IndexBuffer->getSize();
+        if(cpu_cmd.IndexBuffer)
+        {
+            gpu_cmd.indexBuffer.address = cpu_cmd.IndexBuffer->getGPUAddress();
+            gpu_cmd.indexBuffer.length = cpu_cmd.IndexBuffer->getSize();
+        }
+        else
+        {
+            gpu_cmd.indexBuffer.address = 0ULL;
+            gpu_cmd.indexBuffer.length = 0ULL;
+        }
         for(size_t i = 0; i < layout_size; ++i)
         {
             auto* attr = prev_state->getInputLayout()->getAttribute(i);
@@ -357,7 +370,10 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
     GLBufferTableEntry buffer_table[MAX_VERTEX_BUFFERS];
     memset(buffer_table, 0, sizeof(buffer_table));
 
-    prev_index_buffer->bindIndexBuffer();
+    if(prev_index_buffer)
+    {
+        prev_index_buffer->bindIndexBuffer();
+    }
     for(GLuint vb_idx = 0; vb_idx < MAX_VERTEX_BUFFERS; ++vb_idx)
     {
         auto& vb = prev_vert_buffers[vb_idx];
@@ -400,7 +416,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
             res_start = res_buf;
             cnt = 0;
             
-            if(prev_index_buffer != cpu_cmd.IndexBuffer)
+            if(prev_index_buffer != cpu_cmd.IndexBuffer && cpu_cmd.IndexBuffer)
             {
                 cpu_cmd.IndexBuffer->bindIndexBuffer();
                 prev_index_buffer = cpu_cmd.IndexBuffer;
@@ -411,9 +427,10 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
                 {
                     auto& prev_vb = prev_vert_buffers[vb_idx];
                     auto& cur_vb = cpu_cmd.VertexBuffers[vb_idx];
-                    if(prev_vb.VertexBuffer != cur_vb.VertexBuffer ||
+                    if((prev_vb.VertexBuffer != cur_vb.VertexBuffer ||
                        prev_vb.Offset != cur_vb.Offset ||
-                       prev_vb.Stride != cur_vb.Stride)
+                       prev_vb.Stride != cur_vb.Stride) &&
+                       cur_vb.VertexBuffer)
                     {
                         cur_vb.VertexBuffer->bindVertexBuffer(vb_idx, cur_vb.Offset, cur_vb.Stride);
                         buffer_table[vb_idx].Offset = cur_vb.Offset;
@@ -427,7 +444,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
                 cpu_cmd.PipelineState->setup(prev_state, buffer_table);
                 prev_state = cpu_cmd.PipelineState;
             }
-            else if(vb_not_equal)
+            else if(vb_not_equal && prev_state->getInputLayout())
             {
                 // Force rebind, if buffers changed.
                 prev_state->getInputLayout()->bind(buffer_table);
@@ -480,7 +497,10 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 ali
     GLBufferTableEntry buffer_table[MAX_VERTEX_BUFFERS];
     memset(buffer_table, 0, sizeof(buffer_table));
 
-    prev_index_buffer->bindIndexBuffer();
+    if(prev_index_buffer)
+    {
+        prev_index_buffer->bindIndexBuffer();
+    }
     for(GLuint vb_idx = 0; vb_idx < MAX_VERTEX_BUFFERS; ++vb_idx)
     {
         auto& vb = prev_vert_buffers[vb_idx];
@@ -508,7 +528,7 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 ali
                 lhs.Offset == rhs.Offset;
         });
       
-        if(prev_index_buffer != cpu_cmd.IndexBuffer)
+        if(prev_index_buffer != cpu_cmd.IndexBuffer && cpu_cmd.IndexBuffer)
         {
             cpu_cmd.IndexBuffer->bindIndexBuffer();
             prev_index_buffer = cpu_cmd.IndexBuffer;
@@ -519,9 +539,9 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 ali
             {
                 auto& prev_vb = prev_vert_buffers[vb_idx];
                 auto& cur_vb = cpu_cmd.VertexBuffers[vb_idx];
-                if(prev_vb.VertexBuffer != cur_vb.VertexBuffer ||
+                if((prev_vb.VertexBuffer != cur_vb.VertexBuffer ||
                     prev_vb.Offset != cur_vb.Offset ||
-                    prev_vb.Stride != cur_vb.Stride)
+                    prev_vb.Stride != cur_vb.Stride) && cur_vb.VertexBuffer)
                 {
                     cur_vb.VertexBuffer->bindVertexBuffer(vb_idx, cur_vb.Offset, cur_vb.Stride);
                     buffer_table[vb_idx].Offset = cur_vb.Offset;
@@ -598,7 +618,7 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
             if(cpu_cmd.ResourceTable)
             {
                 auto real_size = cpu_cmd.ResourceTable->getSize();
-                auto offset = AlignAddress(cpu_cmd.ResourceTable->getSize(), m_Alignment);
+                auto offset = AlignAddress(real_size, m_Alignment);
                 std::copy_n(cpu_cmd.ResourceTable->get(), real_size, res_buf);
                 res_buf += offset;
             }

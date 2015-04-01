@@ -234,7 +234,11 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
     }
 #endif
 
-    auto* input_layout = CreatePackedData<GLInputLayout>(effect.getVertexAttributeCount(), &effect.getVertexAttribute(0));
+    GLInputLayout* input_layout = nullptr;
+    if(input_param_count)
+    {
+        input_layout = CreatePackedData<GLInputLayout>(effect.getVertexAttributeCount(), &effect.getVertexAttribute(0));
+    }
 
     return new GLShaderProgram(prog.release(), input_layout, res_tables.release(), res_table_count);
 }

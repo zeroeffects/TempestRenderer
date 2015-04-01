@@ -118,7 +118,7 @@ Texture* LoadPNGImage(const Path& file_path)
     std::unique_ptr<uint8[]> imgdata(new uint8[height*rowbytes]);
     std::unique_ptr<uint8*[]> p_imgdata(new uint8*[height]);
     for(size_t i = 0; i < height; ++i)
-        p_imgdata[i] = imgdata.get() + (height - 1 - i)*rowbytes;
+        p_imgdata[i] = imgdata.get() + i*rowbytes;
     png_read_image(data.PNGStruct, reinterpret_cast<png_bytepp>(p_imgdata.get()));
     png_read_end(data.PNGStruct, data.PNGEndInfo);
 

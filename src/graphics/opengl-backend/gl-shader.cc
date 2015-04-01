@@ -132,6 +132,9 @@ GLResourceTable* GLShaderProgram::createResourceTable(const string& name, size_t
 void GLShaderProgram::bind(GLBufferTableEntry* table_entry) const
 {
     glUseProgram(m_Program);
-    m_InputLayout->bind(table_entry);
+    if(m_InputLayout)
+    {
+        m_InputLayout->bind(table_entry);
+    }
 }
 }

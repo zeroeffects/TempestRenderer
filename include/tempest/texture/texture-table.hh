@@ -112,6 +112,12 @@ public:
      ~TextureTable();
     
     Vector4 loadTexture(const Path& filename);
+    Vector4 loadCube(const Path& posx_filename,
+                     const Path& negx_filename,
+                     const Path& posy_filename,
+                     const Path& negy_filename,
+                     const Path& posz_filename,
+                     const Path& negz_filename);
 
     void setTextures(TBackend* backend);
 

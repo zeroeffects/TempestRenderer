@@ -47,6 +47,28 @@ void GLIOCommandBuffer::clear()
     m_IOCurrentCommand = 0;
 }
 
+GLTextureTarget ConvertTo3DTarget(TextureTiling tiling)
+{
+    switch(tiling)
+    {
+    default: TGE_ASSERT(false, "Unsupported type");
+    case TextureTiling::Array: return GLTextureTarget::GL_TEXTURE_2D_ARRAY;
+    case TextureTiling::Volume: return GLTextureTarget::GL_TEXTURE_3D;
+    case TextureTiling::Cube: return GLTextureTarget::GL_TEXTURE_CUBE_MAP_ARRAY;
+    }
+}
+
+GLTextureTarget ConvertTo2DTarget(TextureTiling tiling)
+{
+    switch(tiling)
+    {
+    default: TGE_ASSERT(false, "Unsupported type");
+    case TextureTiling::Flat: return GLTextureTarget::GL_TEXTURE_2D; break;
+    case TextureTiling::Array: return GLTextureTarget::GL_TEXTURE_1D_ARRAY;  break;
+    case TextureTiling::Cube: return GLTextureTarget::GL_TEXTURE_CUBE_MAP; break;
+    }
+}
+
 void GLIOCommandBuffer::_executeCommandBuffer()
 {
     for(uint32 i = 0, iend = m_IOCurrentCommand; i < iend; ++i)
@@ -74,8 +96,8 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            cmd.DestinationCoordinate.Y + cmd.Height <= dst_desc.Height &&
                            cmd.DestinationSlice + cmd.Depth <= dst_desc.Depth,
                            "Invalid coordinates specified");
-                GLTextureTarget dst_target = dst_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_2D_ARRAY : GLTextureTarget::GL_TEXTURE_3D;
-                GLTextureTarget src_target = src_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_2D_ARRAY : GLTextureTarget::GL_TEXTURE_3D;
+                GLTextureTarget dst_target = ConvertTo3DTarget(dst_desc.Tiling);
+                GLTextureTarget src_target = ConvertTo3DTarget(src_desc.Tiling);
                 for(uint16 cur_depth = 0, end_depth = cmd.Depth; cur_depth < end_depth; ++cur_depth)
                 {
                     glFramebufferTexture3D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), src_target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip, cmd.SourceSlice + cur_depth);
@@ -94,8 +116,8 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            cmd.DestinationCoordinate.X + cmd.Width <= dst_desc.Width &&
                            cmd.DestinationCoordinate.Y + cmd.Height <= dst_desc.Height,
                            "Invalid coordinates specified");
-                GLTextureTarget dst_target = dst_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_1D_ARRAY : GLTextureTarget::GL_TEXTURE_2D;
-                GLTextureTarget src_target = src_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_1D_ARRAY : GLTextureTarget::GL_TEXTURE_2D;
+                GLTextureTarget dst_target = ConvertTo2DTarget(dst_desc.Tiling);
+                GLTextureTarget src_target = ConvertTo2DTarget(src_desc.Tiling);
                 glFramebufferTexture2D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), src_target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip);
 #ifndef NDEBUG
                 auto status = glCheckFramebufferStatus(GLFramebufferTarget::GL_READ_FRAMEBUFFER);
@@ -144,7 +166,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            cmd.DestinationCoordinate.Y + cmd.Height <= dst_desc.Height &&
                            cmd.DestinationSlice + cmd.Depth <= dst_desc.Depth,
                            "Invalid coordinates specified");
-                GLTextureTarget target = dst_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_2D_ARRAY : GLTextureTarget::GL_TEXTURE_3D;
+                GLTextureTarget target = ConvertTo3DTarget(dst_desc.Tiling);
                 glBindTexture(target, cmd.Destination.Texture->getCPUHandle());
                 glTexSubImage3D(target, cmd.DestinationMip, cmd.DestinationCoordinate.X, cmd.DestinationCoordinate.Y, cmd.DestinationSlice, cmd.Width, cmd.Height, cmd.Depth, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.SourceOffset);
             }
@@ -154,7 +176,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            cmd.DestinationCoordinate.X + cmd.Width <= dst_desc.Width &&
                            cmd.DestinationCoordinate.Y + cmd.Height <= dst_desc.Height,
                            "Invalid coordinates specified");
-                GLTextureTarget target = dst_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_1D_ARRAY : GLTextureTarget::GL_TEXTURE_2D;
+                GLTextureTarget target = ConvertTo2DTarget(dst_desc.Tiling);
                 glBindTexture(target, cmd.Destination.Texture->getCPUHandle());
                 glTexSubImage2D(target, cmd.DestinationMip, cmd.DestinationCoordinate.X, cmd.DestinationCoordinate.Y, cmd.Width, cmd.Height, tex_info.Format, tex_info.Type, static_cast<char*>(nullptr) + cmd.SourceOffset);
             }
@@ -192,7 +214,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            cmd.SourceSlice + cmd.Depth <= src_desc.Depth &&
                            cmd.DestinationOffset + cmd.Height*cmd.Depth*line_size <= cmd.Destination.Storage->getSize(),
                            "Invalid coordinates specified");
-                GLTextureTarget target = src_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_2D_ARRAY : GLTextureTarget::GL_TEXTURE_3D;
+                GLTextureTarget target = ConvertTo3DTarget(src_desc.Tiling);
                 for(uint16 cur_depth = 0, end_depth = cmd.Depth; cur_depth < end_depth; ++cur_depth)
                 {
                     glFramebufferTexture3D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip, cmd.SourceSlice + cur_depth);
@@ -210,7 +232,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            cmd.SourceCoordinate.Y + cmd.Height <= src_desc.Height &&
                            cmd.DestinationOffset + cmd.Height*line_size <= cmd.Destination.Storage->getSize(),
                            "Invalid coordinates specified");
-                GLTextureTarget target = src_desc.Tiling == TextureTiling::Array ? GLTextureTarget::GL_TEXTURE_1D_ARRAY : GLTextureTarget::GL_TEXTURE_2D;
+                GLTextureTarget target = ConvertTo2DTarget(src_desc.Tiling);
                 glFramebufferTexture2D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip);
                 glReadBuffer(UINT_TO_GL_BUFFER_COLOR_ATTACHMENT(0));
 #ifndef NDEBUG
