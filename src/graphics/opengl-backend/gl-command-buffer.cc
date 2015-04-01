@@ -88,70 +88,82 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
         m_ConstantBufferSize(desc.ConstantsBufferSize),
         m_CommandBufferSize(desc.ConstantsBufferSize)
 {
+    memset(m_GPUFence, 0, sizeof(m_GPUFence));
+    memset(m_ConstantBuffer, 0, sizeof(m_ConstantBuffer));
+    memset(m_ConstantBufferPtr, 0, sizeof(m_ConstantBufferPtr));
+    memset(m_GPUCommandBuffer, 0, sizeof(m_GPUCommandBuffer));
+    memset(m_GPUCommandBufferPtr, 0, sizeof(m_GPUCommandBufferPtr));
+
     GLuint cmd_buf_size = desc.CommandCount*sizeof(DrawElementsIndirectCommand);
 
     GLint alignment;
 
 #ifndef TEMPEST_DISABLE_MDI
-    if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
+    GLuint buffers[2 * BufferCount];
+    glGenBuffers(2 * BufferCount, buffers);
+    for(uint32 i = 0; i < BufferCount; ++i)
     {
-        GLuint buffers[2];
-        glGenBuffers(2, buffers);
-        m_GPUCommandBuffer = buffers[0];
-        m_ConstantBuffer = buffers[1];
-        glBindBuffer(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, m_GPUCommandBuffer);
-#ifndef TEMPEST_DISABLE_MDI_BINDLESS
-        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
+        if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
         {
-            cmd_buf_size += desc.CommandCount*(sizeof(GLuint) + MAX_LAYOUT_SIZE*sizeof(BindlessPtrNV));
+            m_GPUCommandBuffer[i] = buffers[i*BufferCount + 0];
+            m_ConstantBuffer[i] = buffers[i*BufferCount + 1];
+            glBindBuffer(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, m_GPUCommandBuffer[i]);
+#ifndef TEMPEST_DISABLE_MDI_BINDLESS
+            if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
+            {
+                cmd_buf_size += desc.CommandCount*(sizeof(GLuint) + MAX_LAYOUT_SIZE*sizeof(BindlessPtrNV));
+            }
+#endif
+            glBufferStorage(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, cmd_buf_size, 0,
+                            GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+            m_GPUCommandBufferPtr[i] = glMapBufferRange(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, 0, cmd_buf_size,
+                                                        GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+            CheckOpenGL();
+            GLuint const_buf_size = desc.ConstantsBufferSize;
+            glBindBuffer(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, m_ConstantBuffer[i]);
+            glBufferStorage(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, const_buf_size, 0,
+                            GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+            m_ConstantBufferPtr[i] = glMapBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, 0, const_buf_size,
+                                                        GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+
+            glGetIntegerv(GLParameterType::GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &alignment);
+
+            CheckOpenGL();
         }
+        else
 #endif
-        glBufferStorage(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, cmd_buf_size, 0,
-                        GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-        m_GPUCommandBufferPtr = glMapBufferRange(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, 0, cmd_buf_size,
-                                                 GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
-        CheckOpenGL();
-        GLuint const_buf_size = desc.ConstantsBufferSize;
-        glBindBuffer(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, m_ConstantBuffer);
-        glBufferStorage(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, const_buf_size, 0,
-                        GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-        m_ConstantBufferPtr = glMapBufferRange(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, 0, const_buf_size,
-                                               GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+        {
+            glGetIntegerv(GLParameterType::GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
 
-        glGetIntegerv(GLParameterType::GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &alignment);
-        
-        CheckOpenGL();
-    }
-    else
-#endif
-    {
-        glGetIntegerv(GLParameterType::GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
-        
-        glGenBuffers(1, &m_ConstantBuffer);
-        glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBuffer);
-        glBufferData(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBufferSize, nullptr, GLUsageMode::GL_DYNAMIC_DRAW);
-        CheckOpenGL();
-    }
+            glGenBuffers(1, &m_ConstantBuffer[i]);
+            glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBuffer[i]);
+            glBufferData(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBufferSize, nullptr, GLUsageMode::GL_DYNAMIC_DRAW);
+            CheckOpenGL();
+        }
 
-    m_Alignment = alignment;
+        m_Alignment = alignment;
+    }
 }
 
 GLCommandBuffer::~GLCommandBuffer()
 {
-    if(m_GPUFence)
+    for(uint32 i = 0; i < BufferCount; ++i)
     {
-        glDeleteSync(m_GPUFence);
-    }
+        if(m_GPUFence[i])
+        {
+            glDeleteSync(m_GPUFence[i]);
+        }
 #ifndef TEMPEST_DISABLE_MDI
-    if(m_GPUCommandBuffer)
-    {
-        GLuint buffers[] = { m_GPUCommandBuffer, m_ConstantBuffer };
-        glDeleteBuffers(TGE_FIXED_ARRAY_SIZE(buffers), buffers);
-    }
-    else
+        if(m_GPUCommandBuffer[i])
+        {
+            GLuint buffers[] = { m_GPUCommandBuffer[i], m_ConstantBuffer[i] };
+            glDeleteBuffers(TGE_FIXED_ARRAY_SIZE(buffers), buffers);
+        }
+        else
 #endif
-    {
-        glDeleteBuffers(1, &m_ConstantBuffer);
+        {
+            glDeleteBuffers(1, &m_ConstantBuffer[i]);
+        }
     }
 }
 
@@ -583,33 +595,33 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
 #ifndef TEMPEST_DISABLE_MDI
     if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
     {
-        glBindBuffer(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, m_GPUCommandBuffer);
-        glBindBuffer(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, m_ConstantBuffer);
+        glBindBuffer(GLBufferTarget::GL_DRAW_INDIRECT_BUFFER, m_GPUCommandBuffer[m_Index]);
+        glBindBuffer(GLBufferTarget::GL_SHADER_STORAGE_BUFFER, m_ConstantBuffer[m_Index]);
 
         // Well, we pretty much wait forever, so don't bother with loops.
-        if(m_GPUFence)
+        if(m_GPUFence[m_Index])
         {
-            glClientWaitSync(m_GPUFence, GL_SYNC_FLUSH_COMMANDS_BIT, std::numeric_limits<uint64>::max());
-            glDeleteSync(m_GPUFence);
+            glClientWaitSync(m_GPUFence[m_Index], GL_SYNC_FLUSH_COMMANDS_BIT, std::numeric_limits<uint64>::max());
+            glDeleteSync(m_GPUFence[m_Index]);
         }
 #ifndef TEMPEST_DISABLE_MDI_BINDLESS
         if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_MDI_BINDLESS))
         {
-            ExecuteCommandBufferNV(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr, m_Alignment, m_ConstantBuffer, m_ConstantBufferPtr);
+            ExecuteCommandBufferNV(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr[m_Index], m_Alignment, m_ConstantBuffer[m_Index], m_ConstantBufferPtr[m_Index]);
         }
         else
 #endif
         {
-            ExecuteCommandBufferARB(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr, m_Alignment, m_ConstantBuffer, m_ConstantBufferPtr);
+            ExecuteCommandBufferARB(backend, m_CommandBuffer.get(), m_CommandCount, m_GPUCommandBufferPtr[m_Index], m_Alignment, m_ConstantBuffer[m_Index], m_ConstantBufferPtr[m_Index]);
         }
 
-        m_GPUFence = glFenceSync(GLSyncCondition::GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        m_GPUFence[m_Index] = glFenceSync(GLSyncCondition::GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     }
     else
 #endif
     {
         // Complete state dump for this version before scheduling
-        glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBuffer);
+        glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBuffer[m_Index]);
         auto* res_buf = reinterpret_cast<char*>(glMapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, GLAccessMode::GL_WRITE_ONLY));
         auto* cpu_cmd_buf = m_CommandBuffer.get();
         for(uint32 cmd_idx = 0, cmd_idx_end = m_CommandCount; cmd_idx < cmd_idx_end; ++cmd_idx)
@@ -625,7 +637,8 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
         }
         glUnmapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER);
 
-        ExecuteCommandBufferOldStyle(backend, m_Alignment, m_CommandBuffer.get(), m_CommandCount, m_ConstantBuffer);
+        ExecuteCommandBufferOldStyle(backend, m_Alignment, m_CommandBuffer.get(), m_CommandCount, m_ConstantBuffer[m_Index]);
     }
+    m_Index = (m_Index + 1) % BufferCount;
 }
 }

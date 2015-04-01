@@ -51,6 +51,8 @@ struct GLVertexBufferDescription
     uint32                  Offset = 0;
 };
 
+const size_t BufferCount = 2;
+
 // TODO: make it cache friendlier, by pool allocating and using offsets instead
 struct GLDrawBatch
 {
@@ -74,14 +76,15 @@ class GLCommandBuffer
     uint32                         m_CommandCount          = 0;
     uint32                         m_ConstantBufferReqSize = 0;
 
-    GLsync                         m_GPUFence              = 0;
+    GLsync                         m_GPUFence[BufferCount];
 
-    GLuint                         m_ConstantBuffer        = 0;
-    GLvoid*                        m_ConstantBufferPtr     = nullptr;
+    GLuint                         m_ConstantBuffer[BufferCount];
+    GLvoid*                        m_ConstantBufferPtr[BufferCount];
     
-    GLuint                         m_GPUCommandBuffer      = 0;
-    GLvoid*                        m_GPUCommandBufferPtr   = nullptr;
+    GLuint                         m_GPUCommandBuffer[BufferCount];
+    GLvoid*                        m_GPUCommandBufferPtr[BufferCount];
 
+    uint32                         m_Index                 = 0;
     uint32                         m_Alignment             = 0;
 public:
     typedef GLDrawBatch DrawBatchType;
