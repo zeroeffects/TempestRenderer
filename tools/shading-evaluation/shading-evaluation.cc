@@ -54,7 +54,9 @@ int TempestMain(int argc, char** argv)
         Tempest::Vector4 SunDirection;
     } scene_params;
 
-    scene_params.CameraPosition = Tempest::Vector4(0.0f, 0.0f, 100.0f, 1.0f);
+    Tempest::Vector3 initial_offset(0.0f, 0.0f, 100.0f);
+
+    scene_params.CameraPosition = Tempest::Vector4(initial_offset.x(), initial_offset.y(), initial_offset.z(), 1.0);
     scene_params.SunDirection = Tempest::Vector4(0.0f, 1.0f, 1.0f, 1.0f);
     scene_params.SunDirection.normalizePartial();
 
@@ -115,21 +117,38 @@ int TempestMain(int argc, char** argv)
 
     while(!sys_obj->Window.isDead())
     {
+        yaw += mouse_speed*sys_obj->Window.getMouseDeltaX();
+        roll += mouse_speed*sys_obj->Window.getMouseDeltaY();
+
+        roll = std::max(0.0f, std::min(Tempest::math_pi*0.5f, roll));
+
+        auto window_width = sys_obj->Window.getWidth();
+        auto window_height = sys_obj->Window.getHeight();
+        Tempest::Matrix4 mat = Tempest::PerspectiveMatrix(90.0f, (float)window_width / window_height, 0.1f, 1000.0f);
+
+        Tempest::Matrix4 view;
+        view.identity();
+        view.translate(-initial_offset);
+        view.rotateX(roll);
+        view.rotateY(yaw);
+
+        mat *= view;
+
+        Tempest::Matrix4 view_inv;
+        view_inv = view.inverse();
+
+        Tempest::Vector3 trans(view_inv.translation());
+        scene_params.CameraPosition = Tempest::Vector4(trans.x(), trans.y(), trans.z(), 1.0f);
+
+        Tempest::UploadConstantBuffer(const_buf.get(), scene_params);
+
         texture_table.setTextures(&sys_obj->Backend);
         sys_obj->Backend.setConstantBuffer(0, const_buf.get());
 
         sys_obj->Backend.clearColorBuffer(0, Tempest::Vector4(0, 0, 0, 0));
         sys_obj->Backend.clearDepthStencilBuffer();
 
-        yaw += mouse_speed*sys_obj->Window.getMouseDeltaX();
-        roll += mouse_speed*sys_obj->Window.getMouseDeltaY();
-
-        roll = std::max(0.0f, std::min(Tempest::math_pi*0.5f, roll));
-
-        Tempest::Matrix4 mat = Tempest::PerspectiveMatrix(90.0f, (float)sys_obj->Window.getWidth() / sys_obj->Window.getHeight(), 0.1f, 1000.0f);
-        mat.translate(-Tempest::ToVector3(scene_params.CameraPosition));
-        mat.rotateX(roll);
-        mat.rotateY(yaw);
+        sys_obj->Backend.setViewportRect(0, 0, window_width, window_height);
 
         // Yeah, I am aware of faster alternatives.
         Tempest::Matrix4 inverse_mat = mat.inverse();

@@ -50,6 +50,8 @@ public:
     void bindToTarget(GLBufferTarget target) { glBindBuffer(target, m_Buffer); }
     void bindConstantBuffer(GLuint index, GLintptr offset, GLsizeiptr size) const { glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, index, m_Buffer, offset, size); }
     
+    void uploadConstantBuffer(const void* data, size_t size);
+
     GLuint64 getGPUAddress() const { return m_GPUAddress; }
     size_t getSize() const { return m_Size; }
 

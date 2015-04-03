@@ -147,6 +147,12 @@ UniqueResource<TBackend, typename TBackend::BufferType> CreateBuffer(TBackend* b
     return CreateUniqueResource(backend, backend->createBuffer(size, buffer_type, flags, arr));
 }
 
+template<class TBufferType, class T>
+void UploadConstantBuffer(TBufferType* buffer, const T& data)
+{
+    buffer->uploadConstantBuffer(&data, sizeof(T));
+}
+
 template<class TBackend, class T, size_t TWidth, size_t THeight>
 UniqueResource<TBackend, typename TBackend::TextureType> CreateTexture(TBackend* backend, const T arr[TWidth][THeight], uint32 flags = RESOURCE_STATIC_DRAW)
 {

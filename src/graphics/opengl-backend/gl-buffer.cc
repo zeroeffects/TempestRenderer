@@ -88,4 +88,12 @@ void GLBuffer::bindIndexBuffer()
 {
     glBindBuffer(GLBufferTarget::GL_ELEMENT_ARRAY_BUFFER, m_Buffer);
 }
+
+void GLBuffer::uploadConstantBuffer(const void* data, size_t size)
+{
+    glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_Buffer);
+    auto* ptr = glMapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, GLAccessMode::GL_WRITE_ONLY);
+        memcpy(ptr, data, size);
+    glUnmapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER);
+}
 }

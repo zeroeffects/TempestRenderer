@@ -98,11 +98,11 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
 
     GLint alignment;
 
-#ifndef TEMPEST_DISABLE_MDI
     GLuint buffers[2 * BufferCount];
     glGenBuffers(2 * BufferCount, buffers);
     for(uint32 i = 0; i < BufferCount; ++i)
     {
+#ifndef TEMPEST_DISABLE_MDI
         if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
         {
             m_GPUCommandBuffer[i] = buffers[i*BufferCount + 0];
