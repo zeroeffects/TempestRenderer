@@ -60,7 +60,7 @@ int TempestMain(int argc, char** argv)
     scene_params.SunDirection = Tempest::Vector4(0.0f, 1.0f, 1.0f, 1.0f);
     scene_params.SunDirection.normalizePartial();
 
-    auto const_buf = Tempest::CreateBuffer(&sys_obj->Backend, &scene_params, sizeof(SceneParams), Tempest::ResourceBufferType::ConstantBuffer);
+    auto const_buf = Tempest::CreateBuffer(&sys_obj->Backend, &scene_params, sizeof(SceneParams), Tempest::ResourceBufferType::ConstantBuffer, Tempest::RESOURCE_DYNAMIC_DRAW);
 
     Tempest::CommandBufferDescription cmd_buffer_desc;
     cmd_buffer_desc.CommandCount = mesh_blob->DrawBatchCount + 1;
