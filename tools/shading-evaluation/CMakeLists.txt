@@ -23,6 +23,10 @@
 #   THE SOFTWARE.
 ##################################################################################
 
+SET(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+SET(CMAKE_AUTOMOC ON)
+
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_BINARY_DIR}/include
                     ${CMAKE_SOURCE_DIR}/external
@@ -33,6 +37,10 @@ ADD_DEFINITIONS("-DCURRENT_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\""
                 "-DSOURCE_SHADING_DIR=\"${CMAKE_SOURCE_DIR}/shading\""
                 "-DTEST_ASSETS_DIR=\"${CMAKE_SOURCE_DIR}/share/test_assets\"")
 
-ADD_EXECUTABLE(ShadingEvaluation WIN32 shading-evaluation.cc)
+SET(SHADING_EVALUATION_UI shading-evaluation.ui)
 
-TARGET_LINK_LIBRARIES(ShadingEvaluation tempest-static tempest-main)
+QT5_WRAP_UI(SHADING_EVALUATION_UI_H ${SHADING_EVALUATION_UI})
+
+ADD_EXECUTABLE(ShadingEvaluation WIN32 shading-evaluation.cc ${SHADING_EVALUATION_UI} ${SHADING_EVALUATION_UI_H})
+
+TARGET_LINK_LIBRARIES(ShadingEvaluation tempest-static tempest-main tempest-qt-widgets)

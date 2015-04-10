@@ -38,7 +38,7 @@ OSWindowSystem::OSWindowSystem()
 
     wclass.cbSize = sizeof(WNDCLASSEX);
     wclass.style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC;
-    wclass.lpfnWndProc = &TempestWindowProc;
+    wclass.lpfnWndProc = TempestWindowProc;
     wclass.cbClsExtra = 0;
     wclass.cbWndExtra = 0;
     wclass.hInstance = (HINSTANCE)GetModuleHandle(nullptr);

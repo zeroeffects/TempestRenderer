@@ -168,8 +168,8 @@ template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObj
 bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                TShaderProgram** progs, TBackend* backend,
                                TextureTable<TBackend>* tex_table,
-                               size_t* batch_count, TDrawBatch** batches,
-                               size_t* state_count, TStateObject*** states,
+                               uint32* batch_count, TDrawBatch** batches,
+                               uint32* state_count, TStateObject*** states,
                                TResourceTable*** res_tbl)
 {
     ObjLoader::Driver obj_loader_driver(Path(filename).directoryPath(), loader);
@@ -409,7 +409,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
 template bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                         GLShaderProgram** progs, GLRenderingBackend* backend,
                                         TextureTable<GLRenderingBackend>* tex_table,
-                                        size_t* batch_count, GLDrawBatch** batches,
-                                        size_t* num_states, GLStateObject*** states,
+                                        uint32* batch_count, GLDrawBatch** batches,
+                                        uint32* num_states, GLStateObject*** states,
                                         GLResourceTable*** res_tbl);
 }

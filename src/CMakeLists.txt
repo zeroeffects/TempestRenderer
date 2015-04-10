@@ -308,3 +308,16 @@ IF(UNIX)
 ENDIF()
 
 ADD_LIBRARY(tempest-main STATIC utils/tempest-main.cc)
+
+###################################################################################################
+
+SET(TEMPEST_QT_WIDGETS_SRC
+	qt/tempest-widget.cc)
+
+SET(TEMPEST_QT_WIDGETS_INC
+	${CMAKE_SOURCE_DIR}/include/tempest/qt/tempest-widget.hh)
+
+QT5_WRAP_CPP(TEMPEST_QT_WIDGETS_INC_MOC ${TEMPEST_QT_WIDGETS_INC})
+
+ADD_LIBRARY(tempest-qt-widgets STATIC ${TEMPEST_QT_WIDGETS_SRC} ${TEMPEST_QT_WIDGETS_INC} ${TEMPEST_QT_WIDGETS_INC_MOC})
+TARGET_LINK_LIBRARIES(tempest-qt-widgets Qt5::Widgets)

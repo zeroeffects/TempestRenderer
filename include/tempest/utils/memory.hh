@@ -250,7 +250,7 @@ struct Deleter
 };
 
 template<class T>
-inline T AlignAddress(T addr, T alignment) { return (addr + alignment - 1) & ~(alignment - 1); }
+inline T AlignAddress(T addr, size_t alignment) { return (addr + (T)alignment - 1) & ~((T)alignment - 1); }
 
 template<class T>
 inline T* AlignAddress(T* addr, size_t alignment) { return reinterpret_cast<T*>((reinterpret_cast<size_t>(addr) + alignment - 1) & ~(alignment - 1)); }

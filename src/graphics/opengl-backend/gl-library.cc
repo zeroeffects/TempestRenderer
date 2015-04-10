@@ -129,16 +129,16 @@ bool InitDummyContext(HDC hDC)
         int iPixelFormat = ChoosePixelFormat(hDC, &pfd);
         SetPixelFormat(hDC, iPixelFormat, &pfd);
 
-        s_RC = wglCreateContext(hDC);
+        s_RC = Tempest::wglCreateContext(hDC);
         TGE_ASSERT(s_RC, "Expecting valid context");
         if(!s_RC)
         {
             return false;
         }
-        wglMakeCurrent(hDC, s_RC);
+        Tempest::wglMakeCurrent(hDC, s_RC);
 
-        wglCreateContextAttribsARB = reinterpret_cast<decltype(wglCreateContextAttribsARB)>(GL_GET_PROC_ADDRESS("wglCreateContextAttribsARB"));
-        wglChoosePixelFormatARB = reinterpret_cast<decltype(wglChoosePixelFormatARB)>(GL_GET_PROC_ADDRESS("wglChoosePixelFormatARB"));
+        Tempest::wglCreateContextAttribsARB = reinterpret_cast<decltype(wglCreateContextAttribsARB)>(GL_GET_PROC_ADDRESS("wglCreateContextAttribsARB"));
+        Tempest::wglChoosePixelFormatARB = reinterpret_cast<decltype(wglChoosePixelFormatARB)>(GL_GET_PROC_ADDRESS("wglChoosePixelFormatARB"));
     }
     return true;
 }

@@ -31,8 +31,8 @@ template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObj
 bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                TShaderProgram** progs, TBackend* backend,
                                TextureTable<TBackend>* tex_table,
-                               size_t* batch_count, TDrawBatch** batches,
-                               size_t* num_states, TStateObject*** states,
+                               uint32* batch_count, TDrawBatch** batches,
+                               uint32* num_states, TStateObject*** states,
                                TResourceTable*** res_tbls);
 
 template<class TBackend>
@@ -43,21 +43,21 @@ struct MeshBlob
     TBackend*                            Backend;
     DrawBatchType*                       DrawBatches;
     typename TBackend::StateObjectType** StateObjects;
-    size_t                               DrawBatchCount;
-    size_t                               StateCount;
+    uint32                               DrawBatchCount;
+    uint32                               StateCount;
     ResourceTableType**                  ResourceTables;
 
     ~MeshBlob()
     {
         Backend->destroyRenderResource(DrawBatches[0].VertexBuffers[0].VertexBuffer);
         Backend->destroyRenderResource(DrawBatches[0].IndexBuffer);
-        for(size_t i = 0, iend = DrawBatchCount; i < iend; ++i)
+        for(uint32 i = 0, iend = DrawBatchCount; i < iend; ++i)
         {
             delete ResourceTables[i];
         }
         delete[] ResourceTables;
         delete[] DrawBatches;
-        for(size_t i = 0, iend = StateCount; i < iend; ++i)
+        for(uint32 i = 0, iend = StateCount; i < iend; ++i)
         {
             Backend->destroyRenderResource(StateObjects[i]);
         }

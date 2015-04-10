@@ -1,10 +1,10 @@
 #include "tempest/utils/testing.hh"
 #include "tempest/graphics/rendering-convenience.hh"
-#include "tempest/graphics/api-all.hh"
 #include "tempest/texture/texture-table.hh"
 #include "tempest/mesh/obj-loader.hh"
 #include "tempest/math/matrix4.hh"
 #include "tempest/math/vector3.hh"
+#include "tempest/graphics/preferred-backend.hh"
 
 #include <chrono>
 
@@ -16,14 +16,14 @@ TGE_TEST("Testing loading object files directly into the engine for testing purp
     wdesc.Width = 800;
     wdesc.Height = 600;
     wdesc.Title = "Test window";
-    auto sys_obj = Tempest::CreateSystemAndWindowSimple<Tempest::GLSystem>(wdesc);
+    auto sys_obj = Tempest::CreateSystemAndWindowSimple<Tempest::PreferredSystem>(wdesc);
     TGE_ASSERT(sys_obj, "GL initialization failed");
 
     typedef decltype(sys_obj->Backend) BackendType;
     typedef BackendType::ShaderProgramType ShaderProgramType;
     
-    const size_t base_layout = 2;
-    const size_t base_models = 3;
+    const Tempest::uint32 base_layout = 2;
+    const Tempest::uint32 base_models = 3;
     Tempest::string models[base_models - 1 + base_layout - 1] = { "MaterialTexture", "MaterialAmbient", "MaterialSpecular" };
     std::vector<Tempest::UniqueResource<decltype(sys_obj->ShaderCompiler), ShaderProgramType>> shader_table;
     shader_table.reserve(base_layout*base_models);

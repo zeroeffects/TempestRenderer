@@ -25,8 +25,8 @@
 #include "tempest/texture/texture-table.hh"
 #include "tempest/graphics/rendering-definitions.hh"
 #include "tempest/image/image.hh"
-#include "tempest/graphics/api-all.hh"
 #include "tempest/utils/memory.hh"
+#include "tempest/graphics/preferred-backend.hh"
 
 #include <numeric>
 
@@ -332,5 +332,5 @@ void TextureTable<TBackend>::setTextures(TBackend* backend)
     backend->setTextures(m_BakedTable.get());
 }
 
-template class TextureTable<GLRenderingBackend>;
+template class TextureTable<PreferredBackend>;
 }
