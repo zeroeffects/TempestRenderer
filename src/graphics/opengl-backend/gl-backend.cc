@@ -26,8 +26,8 @@
 #   pragma warning(disable : 4503)
 #endif
 
-#include "tempest/graphics/opengl-backend/gl-backend.hh"
 #include "tempest/graphics/opengl-backend/gl-library.hh"
+#include "tempest/graphics/opengl-backend/gl-backend.hh"
 #include "tempest/graphics/opengl-backend/gl-command-buffer.hh"
 #include "tempest/graphics/opengl-backend/gl-buffer.hh"
 #include "tempest/graphics/opengl-backend/gl-state-object.hh"

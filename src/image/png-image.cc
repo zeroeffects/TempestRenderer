@@ -29,6 +29,7 @@
 #include "tempest/graphics/texture.hh"
 
 #include <png.h>
+#include <cstring>
 #include <fstream>
 
 namespace Tempest

@@ -144,7 +144,7 @@ static void ConvertType(const string* opts, size_t opts_count, const string& bas
     } break;
     case Shader::ElementType::Struct:
     {
-        *offset = AlignAddress(*offset, 4 * sizeof(float));
+        *offset = AlignAddress(*offset, static_cast<uint32>(4 * sizeof(float)));
         uint32 struct_offset = 0; // members are in relative offset units
         auto* struct_type = _type->extract<Shader::StructType>();
         auto* struct_body = struct_type->getBody();
@@ -244,14 +244,14 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
             array_size = 0; // infinite
             if(uniform_type != UniformValueType::Texture || (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0)
             {
-                elem_size = AlignAddress(elem_size, 4 * sizeof(float));
+                elem_size = AlignAddress(elem_size, static_cast<uint32>(4 * sizeof(float)));
             }
             buf_desc->setResizablePart(elem_size);
         }
         
         if(uniform_type != UniformValueType::Texture || (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0)
         {
-            *offset = AlignAddress(*offset, 4 * sizeof(float));
+            *offset = AlignAddress(*offset, static_cast<uint32>(4 * sizeof(float)));
         }
     } break;
     case Shader::ElementType::Sampler:
@@ -283,7 +283,7 @@ static uint32 ConvertVariable(const string* opts, size_t opts_count, const strin
     {
         if(uniform_type != UniformValueType::Texture || (settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS) == 0)
         {
-            *offset += array_size*AlignAddress(elem_size, 4 * sizeof(float));
+            *offset += array_size*AlignAddress(elem_size, static_cast<uint32>(4 * sizeof(float)));
         }
     }
     else

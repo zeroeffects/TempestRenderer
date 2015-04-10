@@ -57,6 +57,7 @@ struct GLIOCommand
 {
     GLResourceUnion Source;
     GLResourceUnion Destination;
+
     union
     {
         struct
@@ -64,7 +65,7 @@ struct GLIOCommand
             uint16 X,
                    Y;
         } SourceCoordinate;
-        uint32 SourceOffset = 0;
+        uint32 SourceOffset;
     };
 
     union
@@ -74,7 +75,7 @@ struct GLIOCommand
             uint16 X,
                    Y;
         } DestinationCoordinate;
-        uint32 DestinationOffset = 0;
+        uint32 DestinationOffset;
     };
 
     uint16          SourceSlice = 0,

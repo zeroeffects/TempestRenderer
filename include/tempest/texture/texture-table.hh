@@ -72,6 +72,13 @@ struct TextureTableDescription
 #define TEMPTEST_TEXTURE_TABLE_BUFFER_COUNT 2
 const Vector4 InvalidSlot = Vector4(-1.0f, -1.0f, -1.0f, -1.0f);
 
+struct PendingTexture
+{
+    uint32   Slot;
+    uint32   Slice;
+    Texture* TexturePtr;
+};
+
 template<class TBackend>
 class TextureTable
 {
@@ -84,7 +91,7 @@ class TextureTable
     {
         uint32          SlotCount;
         uint32          LastSlot;
-        TextureType*    Texture;
+        TextureType*    TexturePtr;
     } m_Textures[TEMPEST_TEXTURE_SLOTS];
     StorageType*            m_UploadHeap;
     int32                   m_UploadHeapBoundary[TEMPTEST_TEXTURE_TABLE_BUFFER_COUNT];
@@ -92,13 +99,6 @@ class TextureTable
     uint32                  m_BufferIndex = 0;
 
     IOCommandBufferType*    m_IOCommandBuffer;
-
-    struct PendingTexture
-    {
-        uint32   Slot;
-        uint32   Slice;
-        Texture* Texture;
-    };
 
     typedef typename TBackend::FenceType FenceType;
     typedef std::vector<PendingTexture> TextureQueue;

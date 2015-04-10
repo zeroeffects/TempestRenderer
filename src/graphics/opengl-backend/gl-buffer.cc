@@ -28,6 +28,8 @@
 #include "tempest/graphics/rendering-definitions.hh"
 #include "tempest/utils/assert.hh"
 
+#include <cstring>
+
 namespace Tempest
 {
 GLUsageMode TranslateUsage(size_t usage)
@@ -87,6 +89,11 @@ void GLBuffer::bindVertexBuffer(GLuint bind_slot, GLintptr offset, GLsizei strid
 void GLBuffer::bindIndexBuffer()
 {
     glBindBuffer(GLBufferTarget::GL_ELEMENT_ARRAY_BUFFER, m_Buffer);
+}
+
+void GLBuffer::bindConstantBuffer(GLuint index, GLintptr offset, GLsizeiptr size) const
+{
+    glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, index, m_Buffer, offset, size);
 }
 
 void GLBuffer::uploadConstantBuffer(const void* data, size_t size)

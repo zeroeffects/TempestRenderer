@@ -27,10 +27,6 @@
 
 #include <memory>
 
-#ifdef LINUX
-    #include <GL/glx.h>
-#endif
-
 #include "tempest/utils/types.hh"
 #include "tempest/graphics/os-window.hh"
 #include "tempest/graphics/rendering-definitions.hh"

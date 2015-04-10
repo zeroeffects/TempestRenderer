@@ -71,7 +71,7 @@ template<class TBackend> TextureTable<TBackend>::TextureTable(TBackend* backend,
         auto& array_desc = m_Textures[i];
         array_desc.LastSlot = 0;
         array_desc.SlotCount = tex_desc.Depth = desc.Slots[i];
-        auto* tex = array_desc.Texture = backend->createTexture(tex_desc);
+        auto* tex = array_desc.TexturePtr = backend->createTexture(tex_desc);
         tex->setFilter(Tempest::FilterMode::Linear, Tempest::FilterMode::Linear, Tempest::FilterMode::Linear);
         tex->setWrapMode(Tempest::WrapMode::Clamp, Tempest::WrapMode::Clamp, Tempest::WrapMode::Clamp);
         *reinterpret_cast<uint64*>(baked_table_ptr) = tex->getHandle();
@@ -90,7 +90,7 @@ template<class TBackend> TextureTable<TBackend>::~TextureTable()
     m_Backend->destroyRenderResource(m_UploadHeap);
     for(size_t i = 0; i < TEMPEST_TEXTURE_SLOTS; ++i)
     {
-        m_Backend->destroyRenderResource(m_Textures[i].Texture);
+        m_Backend->destroyRenderResource(m_Textures[i].TexturePtr);
     }
     for(auto* fence : m_Fence)
     {
@@ -129,6 +129,7 @@ static bool InsertIntoStorage(Texture* tex, uint32 tex_size, uint32 heap_size, u
     cmd.Destination.Texture = tex_array;
     cmd.CommandType = IOCommandMode::CopyStorageToTexture;
     cmd.SourceOffset = start_offset;
+    cmd.DestinationCoordinate.X = cmd.DestinationCoordinate.Y = 0;
     cmd.DestinationSlice = slot;
     cmd.Width = hdr.Width;
     cmd.Height = hdr.Height;
@@ -187,7 +188,7 @@ template<class TBackend> Vector4 TextureTable<TBackend>::loadTexture(const Path&
     ++subtable.LastSlot;
 
     if(!InsertIntoStorage(tex.get(), tex_size, m_UploadHeapSize, m_BufferIndex, m_UploadHeapBoundary, m_UploadHeap, m_IOCommandBuffer,
-                          slice, m_Textures[best_slot].Texture))
+                          slice, m_Textures[best_slot].TexturePtr))
     {
         m_PendingTextures.push_back(PendingTexture{ best_slot, slice, tex.release() });
     }
@@ -274,7 +275,7 @@ template<class TBackend> Vector4 TextureTable<TBackend>::loadCube(const Path& po
             return InvalidSlot;
 
         if(!InsertIntoStorage(tex.get(), tex_size, m_UploadHeapSize, m_BufferIndex, m_UploadHeapBoundary, m_UploadHeap, m_IOCommandBuffer,
-                              slice*6 + i, m_Textures[best_slot].Texture))
+                              slice*6 + i, m_Textures[best_slot].TexturePtr))
         {
             m_PendingTextures.push_back(PendingTexture{ best_slot, slice*6 + i, tex.release() });
         }
@@ -303,10 +304,10 @@ template<class TBackend> void TextureTable<TBackend>::executeIOOperations()
         for(; m_ProcessedTextures < end_pending; ++m_ProcessedTextures)
         {
             auto& tex = m_PendingTextures[m_ProcessedTextures];
-            auto& hdr = tex.Texture->getHeader();
+            auto& hdr = tex.TexturePtr->getHeader();
             uint32 tex_size = hdr.Width*hdr.Height*DataFormatElementSize(hdr.Format);
-            if(!InsertIntoStorage(tex.Texture, tex_size, m_UploadHeapSize, m_BufferIndex, m_UploadHeapBoundary, m_UploadHeap, m_IOCommandBuffer,
-                                  tex.Slice, m_Textures[tex.Slot].Texture))
+            if(!InsertIntoStorage(tex.TexturePtr, tex_size, m_UploadHeapSize, m_BufferIndex, m_UploadHeapBoundary, m_UploadHeap, m_IOCommandBuffer,
+                                  tex.Slice, m_Textures[tex.Slot].TexturePtr))
                 break;
         }
     } while(m_ProcessedTextures < end_pending);
@@ -321,7 +322,7 @@ void TextureTable<TBackend>::clearPendingTextures()
 {
     for(auto& tex : m_PendingTextures)
     {
-        delete tex.Texture;
+        delete tex.TexturePtr;
     }
     m_PendingTextures.clear();
 }

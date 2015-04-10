@@ -48,7 +48,7 @@ public:
     void bindVertexBuffer(GLuint bind_slot, GLintptr offset, GLsizei stride);
     void bindIndexBuffer();
     void bindToTarget(GLBufferTarget target) { glBindBuffer(target, m_Buffer); }
-    void bindConstantBuffer(GLuint index, GLintptr offset, GLsizeiptr size) const { glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, index, m_Buffer, offset, size); }
+    void bindConstantBuffer(GLuint index, GLintptr offset, GLsizeiptr size) const;
     
     void uploadConstantBuffer(const void* data, size_t size);
 

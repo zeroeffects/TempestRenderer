@@ -25,6 +25,8 @@
 #include "tempest/graphics/texture.hh"
 #include "tempest/graphics/rendering-definitions.hh"
 
+#include <cstring>
+
 namespace Tempest
 {
 void Texture::convertToRGBA()

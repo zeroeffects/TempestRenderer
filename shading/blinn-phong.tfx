@@ -146,6 +146,6 @@ fragment shader
 	 //   Don't care enough about it
      //   @MaterialAmbient color += ambient.xyz;
         
-        FragmentColor = vec4(color, alpha);
+        FragmentColor = vec4(color + 1, alpha);
     }
 }

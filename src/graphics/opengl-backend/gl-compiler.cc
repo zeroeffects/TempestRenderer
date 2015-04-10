@@ -166,7 +166,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         }
         else
         {
-            res_table->BufferSize = AlignAddress(res_table->BufferSize, 4 * sizeof(float));
+            res_table->BufferSize = AlignAddress(res_table->BufferSize, (uint32)(4 * sizeof(float)));
         }
         res_table->BufferSize -= static_cast<Tempest::uint32>(buffer.getResiablePart());
     }

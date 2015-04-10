@@ -22,10 +22,8 @@
  *   THE SOFTWARE.
  */
 
-#include <GL/glx.h>
-
-#include "tempest/graphics/opengl-backend/gl-window.hh"
 #include "tempest/graphics/opengl-backend/gl-library.hh"
+#include "tempest/graphics/opengl-backend/gl-window.hh"
 #include "tempest/utils/assert.hh"
 #include "tempest/utils/logging.hh"
 

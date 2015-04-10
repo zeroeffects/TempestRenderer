@@ -30,6 +30,7 @@
 
 #include <vector>
 #include <limits>
+#include <cstring>
 
 namespace Tempest
 {
@@ -147,7 +148,7 @@ typedef std::vector<VertexAttributeDescription> VertexAttributeVector;
 
 class EffectDescription
 {
-    ShaderDescription*       m_Shaders[ShaderType::ShaderTypeCount];
+    ShaderDescription*       m_Shaders[(size_t)ShaderType::ShaderTypeCount];
     ImportedVector           m_Imported;
     BufferVector             m_Buffers;
     VertexAttributeVector    m_InputSignature;

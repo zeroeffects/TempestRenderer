@@ -66,7 +66,8 @@ TGE_TEST("Testing the rendering context")
 
     {
         std::unique_ptr<Tempest::Texture> tex(Tempest::LoadImage(Tempest::Path(CURRENT_SOURCE_DIR "/Mandrill.tga")));
-
+        TGE_ASSERT(tex, "Failed to load texture");
+        
         auto& hdr = tex->getHeader();
         Tempest::uint32 size = hdr.Width*hdr.Height*DataFormatElementSize(hdr.Format);
 
@@ -115,7 +116,9 @@ TGE_TEST("Testing the rendering context")
             io_cmd.Width = hdr.Width;
             io_cmd.Height = hdr.Height;
             io_cmd.DestinationSlice = 2;
+            io_cmd.SourceOffset = 0;
             io_cmd.Source.Storage = tex_storage_write.get();
+            io_cmd.DestinationCoordinate.X = io_cmd.DestinationCoordinate.Y = 0;
             io_cmd.Destination.Texture = texture_array.get();
             io_command_buffer->enqueueCommand(io_cmd);
 
@@ -123,7 +126,9 @@ TGE_TEST("Testing the rendering context")
             io_cmd.SourceSlice = io_cmd.DestinationSlice;
             io_cmd.DestinationSlice = 0;
             io_cmd.Source.Texture = texture_array.get();
+            io_cmd.SourceCoordinate.X = io_cmd.SourceCoordinate.Y = 0;
             io_cmd.Destination.Storage = tex_storage_read.get();
+            io_cmd.DestinationOffset = 0;
             io_command_buffer->enqueueCommand(io_cmd);
 
             sys_obj->Backend.submitCommandBuffer(io_command_buffer.get());

@@ -26,6 +26,7 @@
 #define _OSWINDOW_SYSTEM_HH
 
 #include "tempest/graphics/rendering-definitions.hh"
+#include "tempest/utils/types.hh"
 
 #ifdef LINUX
 #include <X11/Xlib.h>
@@ -54,23 +55,6 @@ typedef Window OSWindow;
 
 namespace Tempest
 {
-enum
-{
-    TEMPEST_WINDOW_STATE_DEAD = 1 << 0
-};
-
-struct WindowInformation
-{
-    uint32 Width = 0,
-           Height = 0,
-           MouseButtons = 0,
-           Flags = 0;
-    int32  MouseX = 0,
-           MouseY = 0,
-           MouseDeltaX = 0,
-           MouseDeltaY = 0;
-};
-
 class OSWindowSystem
 {
 public:
@@ -93,6 +77,24 @@ typedef HWND OSWindow;
 
 namespace Tempest
 {
+enum
+{
+    TEMPEST_WINDOW_STATE_DEAD = 1 << 0
+};
+
+struct WindowInformation
+{
+    uint32 Width = 0,
+           Height = 0,
+           MouseButtons = 0,
+           Flags = 0;
+    int32  MouseX = 0,
+           MouseY = 0,
+           MouseDeltaX = 0,
+           MouseDeltaY = 0;
+};
+
+    
 enum class BufferingType
 {
     Single = 1,

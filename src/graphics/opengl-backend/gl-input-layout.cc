@@ -129,7 +129,7 @@ void GLInputLayout::bind(GLBufferTableEntry* buffer_table) const
             }
             glVertexAttribPointer(i, vert_attr.Size, vert_attr.Type, vert_attr.Normalized,
                                   buffer_table[vert_attr.Binding].Stride,
-                                  reinterpret_cast<GLvoid*>(reinterpret_cast<GLchar*>(nullptr) + vert_attr.Offset + buffer_table[vert_attr.Binding].Offset));
+                                  reinterpret_cast<GLvoid*>(reinterpret_cast<GLchar*>(0) + vert_attr.Offset + buffer_table[vert_attr.Binding].Offset));
         }
         else
         {

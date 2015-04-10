@@ -59,6 +59,10 @@ struct GLTextureBindInfo
     };
 };
 
+#ifdef GL_R32F
+ it_is_broken
+#endif
+
 inline TextureInfo TranslateTextureInfo(DataFormat fmt)
 {
     switch(fmt)

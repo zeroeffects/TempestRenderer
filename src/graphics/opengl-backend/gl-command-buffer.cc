@@ -420,7 +420,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
             }
             
             glMultiDrawElementsIndirect(TranslateDrawMode(prev_mode), GLType::GL_UNSIGNED_SHORT,
-                                        reinterpret_cast<char*>(nullptr) + (cmd_start - reinterpret_cast<char*>(gpu_cmd_buf_ptr)),
+                                        reinterpret_cast<char*>(0) + (cmd_start - reinterpret_cast<char*>(gpu_cmd_buf_ptr)),
                                         cnt, 0);
             CheckOpenGL();
             cmd_start = cmd_buf;
@@ -484,7 +484,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
     
     if(cnt)
     {
-        auto* offset = reinterpret_cast<char*>(nullptr) + (cmd_start - reinterpret_cast<char*>(gpu_cmd_buf_ptr));
+        auto* offset = reinterpret_cast<char*>(0) + (cmd_start - reinterpret_cast<char*>(gpu_cmd_buf_ptr));
         
         if(res_buf != res_start)
         {
@@ -581,7 +581,7 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 ali
 
         auto mode = TranslateDrawMode(prev_state->getPrimitiveType());
         glDrawElementsBaseVertex(mode, cpu_cmd.VertexCount, GLType::GL_UNSIGNED_SHORT,
-                                 reinterpret_cast<char*>(nullptr) + cpu_cmd.BaseIndex*sizeof(GLushort), cpu_cmd.BaseVertex);
+                                 reinterpret_cast<char*>(0) + cpu_cmd.BaseIndex*sizeof(GLushort), cpu_cmd.BaseVertex);
         CheckOpenGL();
     }
 }
@@ -630,7 +630,7 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
             if(cpu_cmd.ResourceTable)
             {
                 auto real_size = cpu_cmd.ResourceTable->getSize();
-                auto offset = AlignAddress(real_size, m_Alignment);
+                auto offset = AlignAddress(real_size, (size_t)m_Alignment);
                 std::copy_n(cpu_cmd.ResourceTable->get(), real_size, res_buf);
                 res_buf += offset;
             }

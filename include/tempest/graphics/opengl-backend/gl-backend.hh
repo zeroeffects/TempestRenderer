@@ -32,10 +32,6 @@
 #include <unordered_set>
 #include <memory>
 
-#ifdef LINUX
-    #include <GL/glx.h>
-#endif
-
 namespace Tempest
 {
 /*! \brief The interface of the render device wrapper.

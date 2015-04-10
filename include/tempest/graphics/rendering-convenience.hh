@@ -233,7 +233,7 @@ UniqueResource<TCompiler, typename TCompiler::ShaderProgramType> CreateShader(TC
                                                                               const TContainer<Tempest::string, TOptAlloc>& opts)
 {
     BasicFileLoader loader;
-    return CreateUniqueResource(compiler, compiler->compileShaderProgram(filename, &loader, &opt.front(), opt.size()));
+    return CreateUniqueResource(compiler, compiler->compileShaderProgram(filename, &loader, &opts.front(), opts.size()));
 }
 
 template<class TShader>
