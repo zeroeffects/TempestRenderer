@@ -49,6 +49,8 @@ public:
     TempestWidget(QWidget* parent = nullptr);
     ~TempestWidget();
 
+    const PreferredWindow& getTempestWindow() const { return m_Window; }
+
     void attach(PreferredBackend* backend);
 
     virtual QSize sizeHint() const;
@@ -57,7 +59,7 @@ signals:
     void rendering();
 
 protected:
-    virtual void timerEvent(QTimerEvent* event) override;
+    virtual void timerEvent(QTimerEvent* evt) override;
     virtual void paintEvent(QPaintEvent* evt) override;
 };
 }

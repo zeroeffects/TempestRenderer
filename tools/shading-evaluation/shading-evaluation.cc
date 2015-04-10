@@ -53,6 +53,9 @@ class ShadingEvaluationWindow: public QMainWindow
 
     std::unique_ptr<ShaderCompilerType::ShaderProgramType*[]> m_MaterialShaderPrograms;
 
+    float                                                   m_Roll = 0.0f,
+                                                            m_Yaw = 0.0f;
+
 public:
     ShadingEvaluationWindow()
         :   m_MaterialShaderPrograms(new ShaderCompilerType::ShaderProgramType*[BaseLayout*BaseModels])
@@ -162,14 +165,12 @@ public:
 private slots:
     void on_MainView_rendering()
     {
-        float roll = 0.0f, yaw = 0.0f;
-
         const float mouse_speed = 0.01f;
 
-    //    yaw += mouse_speed*sys_obj->Window.getMouseDeltaX();
-    //    roll += mouse_speed*sys_obj->Window.getMouseDeltaY();
+        m_Yaw += mouse_speed*m_UI.MainView->getTempestWindow().getMouseDeltaX();
+        m_Roll += mouse_speed*m_UI.MainView->getTempestWindow().getMouseDeltaY();
 
-        roll = std::max(0.0f, std::min(Tempest::math_pi*0.5f, roll));
+        m_Roll = std::max(0.0f, std::min(Tempest::math_pi*0.5f, m_Roll));
 
         auto window_width = m_UI.MainView->width();
         auto window_height = m_UI.MainView->height();
@@ -178,8 +179,8 @@ private slots:
         Tempest::Matrix4 view;
         view.identity();
         view.translate(-InitialOffset);
-        view.rotateX(roll);
-        view.rotateY(yaw);
+        view.rotateX(m_Roll);
+        view.rotateY(m_Yaw);
 
         mat *= view;
 

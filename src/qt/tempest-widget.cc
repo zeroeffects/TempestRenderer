@@ -48,9 +48,6 @@ std::thread::id DebugThreadID;
 TempestWidget::TempestWidget(QWidget* parent)
     :   QWidget(parent, 0)
 {
-//    this->setAttribute(Qt::WA_PaintOnScreen);
-//    this->setAttribute(Qt::WA_NoSystemBackground);
-    this->setFocusPolicy(Qt::ClickFocus);
     this->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
     auto* layout = new QHBoxLayout(this);
