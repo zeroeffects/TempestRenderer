@@ -126,7 +126,7 @@ fragment shader
         vec3 half_refl_vec = normalize(refl_vec + eye);
 
         float dot_refl = max(0.0, dot(half_refl_vec, eye));
-        float fresnel = mix(pow(1.0 - dot_refl, 5.0), 1.0, environment.w);
+        float fresnel = mix(1.0, pow(1.0 - dot_refl, 5.0), environment.w);
 
         color += env_color*fresnel;
 
@@ -176,7 +176,7 @@ fragment shader
         vec3 half_refl_vec = normalize(refl_vec + eye);
 
         float dot_refl = max(0.0, dot(half_refl_vec, eye));
-        float fresnel = mix(pow(1.0 - dot_refl, 5.0), 1.0, environment.w);
+        float fresnel = mix(1.0, pow(1.0 - dot_refl, 5.0), environment.w);
 
         color += env_color*fresnel;
 
