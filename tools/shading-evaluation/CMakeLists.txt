@@ -41,6 +41,11 @@ SET(SHADING_EVALUATION_UI shading-evaluation.ui)
 
 QT5_WRAP_UI(SHADING_EVALUATION_UI_H ${SHADING_EVALUATION_UI})
 
-ADD_EXECUTABLE(ShadingEvaluation WIN32 shading-evaluation.cc ${SHADING_EVALUATION_UI} ${SHADING_EVALUATION_UI_H})
+SET(SHADING_EVALUATION_SRC
+    shading-evaluation.cc
+    color-picker.hh
+    color-picker.cc)
+
+ADD_EXECUTABLE(ShadingEvaluation WIN32 ${SHADING_EVALUATION_SRC} ${SHADING_EVALUATION_UI} ${SHADING_EVALUATION_UI_H})
 
 TARGET_LINK_LIBRARIES(ShadingEvaluation tempest-static tempest-main tempest-qt-widgets)
