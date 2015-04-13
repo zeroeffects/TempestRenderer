@@ -1,7 +1,7 @@
 /*
 *
 *   Tempest Engine
-*   Copyright(c) 2014 Zdravko Velinov
+*   Copyright(c) 2015 Zdravko Velinov
 *
 *   Permission is hereby granted, free of charge, to any person obtaining a copy
 *   of this software and associated documentation files(the "Software"), to deal
@@ -24,9 +24,8 @@
 
 options
 {
-    MaterialSpecular,
-    MaterialAmbient,
-    MaterialTexture
+    AdHocPhong,
+    AdHocBlinnPhong
 }
 
 constant buffer SceneParams
@@ -87,6 +86,8 @@ vertex shader
     }
 }
 
+@AdHocPhong
+{
 fragment shader
 {
     flat in int DrawIndex;
@@ -111,19 +112,71 @@ fragment shader
         specular.xyz = SRGBDecode(specular.xyz);
         environment.xyz = SRGBDecode(environment.xyz);
 
-        vec3 color = diffuse.xyz*max(0.0, dot(SunDirection, normal));
-
         vec3 refl_vec = normalize(reflect(-eye, normal));
-        vec3 env_color = environment.xyz*SRGBDecode(texture(TextureCubes, vec4(refl_vec, cube_tex.w)).xyz);
 
-        float dot_refl = max(0.0, dot(refl_vec, eye));
-        float fresnel = mix(pow(1.0 - dot_refl, 5.0), 1.0, environment.w);
-
-        color += env_color*fresnel;
+        vec3 color = diffuse.xyz;
 
         // The bad assumption that the sun is so powerful that it just adds its color
         color += specular.xyz*pow(clamp(dot(refl_vec, SunDirection), 0.0, 1.0), specular.w);
 
+        color *= max(0.0, dot(SunDirection, normal));
+
+        vec3 env_color = environment.xyz*SRGBDecode(texture(TextureCubes, vec4(refl_vec, cube_tex.w)).xyz);
+
+        float dot_refl = max(0.0, dot(normal, eye));
+        float fresnel = mix(pow(1.0 - dot_refl, 5.0), 1.0, environment.w);
+
+        color += env_color*fresnel;
+
         FragmentColor = vec4(SRGBEncode(color), alpha);
     }
+}
+}
+
+@AdHocBlinnPhong
+{
+fragment shader
+{
+    flat in int DrawIndex;
+
+    in vec3 InterpNormal;
+    in vec3 InterpView;
+
+    out vec4 FragmentColor;
+
+    void main()
+    {
+        vec3 eye = normalize(InterpView);
+        vec3 normal = normalize(InterpNormal);
+        float alpha = 1.0;
+
+        vec4 diffuse = Globals[DrawIndex].Diffuse;
+        vec4 specular = Globals[DrawIndex].Specular;
+        vec4 environment = Globals[DrawIndex].Environment;
+        vec4 cube_tex = Globals[DrawIndex].CubeID;
+
+        diffuse.xyz = SRGBDecode(diffuse.xyz);
+        specular.xyz = SRGBDecode(specular.xyz);
+        environment.xyz = SRGBDecode(environment.xyz);
+
+        vec3 refl_vec = normalize(reflect(-eye, normal));
+        vec3 half_vec = normalize(eye + SunDirection);
+
+        vec3 color = diffuse.xyz;
+
+        // The bad assumption that the sun is so powerful that it just adds its color
+        color += specular.xyz*pow(clamp(dot(half_vec, normal), 0.0, 1.0), specular.w);
+
+        color *= max(0.0, dot(SunDirection, normal));
+
+        vec3 env_color = environment.xyz*SRGBDecode(texture(TextureCubes, vec4(refl_vec, cube_tex.w)).xyz);
+
+        float dot_refl = max(0.0, dot(normal, eye));
+        float fresnel = mix(pow(1.0 - dot_refl, 5.0), 1.0, environment.w);
+
+        color += env_color*fresnel;
+
+        FragmentColor = vec4(SRGBEncode(color), alpha);
+    }
+}
 }

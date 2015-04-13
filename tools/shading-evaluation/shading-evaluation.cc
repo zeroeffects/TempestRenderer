@@ -30,6 +30,19 @@ Tempest::Vector4 QColorToVector4(QColor color)
     return Tempest::Vector4(color.red() * coef, color.green() * coef, color.blue() * coef, color.alpha() * coef);
 }
 
+enum ShadingModel
+{
+    ADHOC_PHONG,
+    ADHOC_BLINN_PHONG,
+    SHADING_MODEL_COUNT
+};
+
+static const std::string ShadingModelName[] =
+{
+    "AdHocPhong",
+    "AdHocBlinnPhong"
+};
+
 class ShadingEvaluationWindow: public QMainWindow
 {
     Q_OBJECT
@@ -47,14 +60,16 @@ class ShadingEvaluationWindow: public QMainWindow
 
     BackendType::BufferType                                *m_ConstantBuffer = nullptr;
     BackendType::CommandBufferType                         *m_CommandBuffer = nullptr;
-    BackendType::StateObjectType                           *m_PipelineState = nullptr;
     ShaderCompilerType::ShaderProgramType                  *m_BackgroundShaderProgram = nullptr;
-    ShaderCompilerType::ShaderProgramType                  *m_MeshShading = nullptr;
+    BackendType::StateObjectType                           *m_BackgroundStateObject = nullptr;
+
+    ShaderCompilerType::ShaderProgramType                  *m_MeshShading[SHADING_MODEL_COUNT];
+    BackendType::StateObjectType                           *m_PipelineState[SHADING_MODEL_COUNT];
+    ResourceTableType                                      *m_MeshResTable[SHADING_MODEL_COUNT];
 
     std::unique_ptr<Tempest::TextureTable<BackendType>>     m_TextureTable;
     std::unique_ptr<Tempest::MeshBlob<BackendType>>         m_Mesh;
     std::unique_ptr<ResourceTableType>                      m_BackgroundResTable;
-    std::unique_ptr<ResourceTableType>                      m_MeshResTable;
     
     float                                                   m_Roll = 0.0f,
                                                             m_Yaw = 0.0f;
@@ -63,9 +78,13 @@ class ShadingEvaluationWindow: public QMainWindow
                                                             m_RotTransIdx,
                                                             m_InvProjTransIdx;
 
+    size_t                                                  m_CurrentModel = 0;
+
 public:
     ShadingEvaluationWindow()
     {
+        std::fill(std::begin(m_MeshShading), std::end(m_MeshShading), nullptr);
+
         m_UI.setupUi(this);
 
         connect(m_UI.DiffuseIntensity, SIGNAL(colorChanged(const QColor&)), this, SLOT(shadingChanged()));
@@ -79,9 +98,23 @@ public:
     {
         FREE_MEMBER_RESOURCE(m_Backend, m_ConstantBuffer);
         FREE_MEMBER_RESOURCE(m_Backend, m_CommandBuffer);
-        FREE_MEMBER_RESOURCE(m_Backend, m_PipelineState);
+        FREE_MEMBER_RESOURCE(m_Backend, m_BackgroundStateObject);
         FREE_MEMBER_RESOURCE(m_ShaderCompiler, m_BackgroundShaderProgram);
-        FREE_MEMBER_RESOURCE(m_ShaderCompiler, m_MeshShading);
+
+        for(auto* pipeline : m_PipelineState)
+        {
+            FREE_MEMBER_RESOURCE(m_Backend, pipeline);
+        }
+        
+        for(auto* shader : m_MeshShading)
+        {
+            FREE_MEMBER_RESOURCE(m_ShaderCompiler, shader);
+        }
+
+        for(auto* res_table : m_MeshResTable)
+        {
+            delete res_table;
+        }
     }
 
     bool init(LibraryType& library)
@@ -101,18 +134,28 @@ public:
         m_Mesh.swap(Tempest::LoadObjFileStaticGeometryBlob(TEST_ASSETS_DIR "/teapot/teapot.obj", nullptr, nullptr, m_TextureTable.get(), &m_Backend));
         TGE_ASSERT(m_Mesh, "Failed to load test assets");
 
-        m_MeshShading = Tempest::CreateShader(&m_ShaderCompiler, CURRENT_SOURCE_DIR "/shading.tfx").release();
-        TGE_ASSERT(m_MeshShading, "Failed to compile mesh shader");
-
         auto rt_fmt = Tempest::DataFormat::RGBA8UNorm;
         Tempest::DepthStencilStates ds_state;
         ds_state.DepthTestEnable = true;
         ds_state.DepthWriteEnable = true;
-        m_PipelineState = m_Backend.createStateObject(&rt_fmt, 1, Tempest::DataFormat::D24S8, m_MeshShading, Tempest::DrawModes::TriangleList, nullptr, nullptr, &ds_state);
 
-        m_MeshResTable = Tempest::CreateResourceTable(m_MeshShading, "Globals", 1);
-        m_WorldTransIdx = m_MeshResTable->getResourceIndex("Globals.WorldViewProjectionTransform");
-        m_RotTransIdx = m_MeshResTable->getResourceIndex("Globals.RotateTransform");
+        static_assert(TGE_FIXED_ARRAY_SIZE(ShadingModelName) == SHADING_MODEL_COUNT &&
+                      TGE_FIXED_ARRAY_SIZE(m_MeshResTable) == SHADING_MODEL_COUNT &&
+                      TGE_FIXED_ARRAY_SIZE(m_PipelineState) == SHADING_MODEL_COUNT &&
+                      TGE_FIXED_ARRAY_SIZE(m_MeshShading) == SHADING_MODEL_COUNT, "Bad size");
+
+        for(size_t model_idx = 0, model_idx_end = SHADING_MODEL_COUNT; model_idx < model_idx_end; ++model_idx)
+        {
+            auto& shader = m_MeshShading[model_idx];
+            shader = Tempest::CreateShader(&m_ShaderCompiler, CURRENT_SOURCE_DIR "/shading.tfx", &ShadingModelName[model_idx], 1).release();
+            TGE_ASSERT(shader, "Failed to compile mesh shader");
+
+            m_PipelineState[model_idx] = m_Backend.createStateObject(&rt_fmt, 1, Tempest::DataFormat::D24S8, shader, Tempest::DrawModes::TriangleList, nullptr, nullptr, &ds_state);
+            m_MeshResTable[model_idx] = shader->createResourceTable("Globals", 1);
+        }
+
+        m_WorldTransIdx = m_MeshResTable[0]->getResourceIndex("Globals.WorldViewProjectionTransform");
+        m_RotTransIdx = m_MeshResTable[0]->getResourceIndex("Globals.RotateTransform");
 
         m_SceneParams.CameraPosition = Tempest::Vector4(InitialOffset.x(), InitialOffset.y(), InitialOffset.z(), 1.0);
         m_SceneParams.SunDirection = Tempest::Vector4(0.0f, 1.0f, 1.0f, 1.0f);
@@ -125,13 +168,11 @@ public:
         cmd_buffer_desc.ConstantsBufferSize = 16 * 1024 * 1024;
         m_CommandBuffer = m_Backend.createCommandBuffer(cmd_buffer_desc);
 
-        shadingChanged();
-
         for(Tempest::uint32 i = 0, iend = m_Mesh->DrawBatchCount; i < iend; ++i)
         {
             auto& draw_batch = m_Mesh->DrawBatches[i];
-            draw_batch.PipelineState = m_PipelineState;
-            draw_batch.ResourceTable = m_MeshResTable->getBakedTable();
+            draw_batch.PipelineState = m_PipelineState[m_CurrentModel];
+            draw_batch.ResourceTable = m_MeshResTable[m_CurrentModel]->getBakedTable();
             m_CommandBuffer->enqueueBatch(draw_batch);
         }
 
@@ -150,21 +191,20 @@ public:
 
         m_BackgroundResTable->setResource("Globals.CubeID", cube_idx);
         m_InvProjTransIdx = m_BackgroundResTable->getResourceIndex("Globals.ViewProjectionInverseTransform");
-        m_MeshResTable->setResource("Globals.CubeID", cube_idx);
 
-        auto bg_state_obj = Tempest::CreateStateObject(&m_Backend, &rt_fmt, 1, Tempest::DataFormat::Unknown, m_BackgroundShaderProgram, Tempest::DrawModes::TriangleList, nullptr, nullptr, &ds_state);
+        for(size_t model_idx = 0, model_idx_end = SHADING_MODEL_COUNT; model_idx < model_idx_end; ++model_idx)
+        {
+            m_MeshResTable[model_idx]->setResource("Globals.CubeID", cube_idx);
+        }
 
-        BackendType::CommandBufferType::DrawBatchType background_batch;
-        background_batch.VertexCount = 3;
-        background_batch.PipelineState = bg_state_obj.get();
-        background_batch.ResourceTable = m_BackgroundResTable->getBakedTable();
-
-        m_CommandBuffer->enqueueBatch(background_batch);
+        m_BackgroundStateObject = m_Backend.createStateObject(&rt_fmt, 1, Tempest::DataFormat::Unknown, m_BackgroundShaderProgram, Tempest::DrawModes::TriangleList, nullptr, nullptr, &ds_state);
 
         m_TextureTable->executeIOOperations();
-        m_CommandBuffer->prepareCommandBuffer();
 
         m_Backend.setActiveTextures(total_slots);
+
+        on_ShadingModel_currentIndexChanged(0);
+
         return true;
     }
 private slots:
@@ -177,9 +217,34 @@ private slots:
         specular.coordinate.w = m_UI.SpecularPower->value() + 1;
         env.coordinate.w = m_UI.Fresnel->value() / 100.0f;
 
-        m_MeshResTable->setResource("Globals.Diffuse", diffuse);
-        m_MeshResTable->setResource("Globals.Specular", specular);
-        m_MeshResTable->setResource("Globals.Environment", env);
+        auto* res_table = m_MeshResTable[m_CurrentModel];
+        res_table->setResource("Globals.Diffuse", diffuse);
+        res_table->setResource("Globals.Specular", specular);
+        res_table->setResource("Globals.Environment", env);
+    }
+
+    void on_ShadingModel_currentIndexChanged(int index)
+    {
+        m_CommandBuffer->clear();
+
+        m_CurrentModel = index;
+        for(Tempest::uint32 i = 0, iend = m_Mesh->DrawBatchCount; i < iend; ++i)
+        {
+            auto& draw_batch = m_Mesh->DrawBatches[i];
+            draw_batch.PipelineState = m_PipelineState[m_CurrentModel];
+            draw_batch.ResourceTable = m_MeshResTable[m_CurrentModel]->getBakedTable();
+            m_CommandBuffer->enqueueBatch(draw_batch);
+        }
+
+        BackendType::CommandBufferType::DrawBatchType background_batch;
+        background_batch.VertexCount = 3;
+        background_batch.PipelineState = m_BackgroundStateObject;
+        background_batch.ResourceTable = m_BackgroundResTable->getBakedTable();
+
+        m_CommandBuffer->enqueueBatch(background_batch);
+        m_CommandBuffer->prepareCommandBuffer();
+
+        shadingChanged();
     }
 
     void on_MainView_rendering()
@@ -228,8 +293,9 @@ private slots:
         mat *= rot_mat;
         mat.translate(Tempest::Vector2(0.0f, -50.0f));
 
-        m_MeshResTable->setResource(m_WorldTransIdx, mat);
-        m_MeshResTable->setResource(m_RotTransIdx, rot_mat);
+        auto* res_table = m_MeshResTable[m_CurrentModel];
+        res_table->setResource(m_WorldTransIdx, mat);
+        res_table->setResource(m_RotTransIdx, rot_mat);
 
         m_BackgroundResTable->setResource(m_InvProjTransIdx, inverse_mat);
 

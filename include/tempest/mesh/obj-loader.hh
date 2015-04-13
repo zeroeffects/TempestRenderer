@@ -51,17 +51,20 @@ struct MeshBlob
     {
         Backend->destroyRenderResource(DrawBatches[0].VertexBuffers[0].VertexBuffer);
         Backend->destroyRenderResource(DrawBatches[0].IndexBuffer);
-        for(uint32 i = 0, iend = DrawBatchCount; i < iend; ++i)
+        if(StateCount)
         {
-            delete ResourceTables[i];
+            for(uint32 i = 0, iend = DrawBatchCount; i < iend; ++i)
+            {
+                delete ResourceTables[i];
+            }
+            delete[] ResourceTables;
+            for(uint32 i = 0, iend = StateCount; i < iend; ++i)
+            {
+                Backend->destroyRenderResource(StateObjects[i]);
+            }
+            delete[] StateObjects;
         }
-        delete[] ResourceTables;
         delete[] DrawBatches;
-        for(uint32 i = 0, iend = StateCount; i < iend; ++i)
-        {
-            Backend->destroyRenderResource(StateObjects[i]);
-        }
-        delete[] StateObjects;
     }
 };
 
