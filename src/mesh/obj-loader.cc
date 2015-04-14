@@ -121,9 +121,8 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
             auto& prev = pos[prev_idx];
             auto& current = pos[current_idx];
             auto& next = pos[next_idx];
-            auto current_v3 = ToVector3(current);
-            auto d0 = ToVector3(prev) - current_v3;
-            auto d1 = ToVector3(next) - current_v3;
+            auto d0 = prev - current;
+            auto d1 = next - current;
             Vector3 norm = d1.cross(d0);
             gen_norms[prev_idx - min_ind] += norm;
             gen_norms[current_idx - min_ind] += norm;

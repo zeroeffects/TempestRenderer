@@ -4,6 +4,7 @@
 #include "tempest/mesh/obj-loader.hh"
 #include "tempest/math/matrix4.hh"
 #include "tempest/math/vector3.hh"
+#include "tempest/math/functions.hh"
 #include "tempest/graphics/preferred-backend.hh"
 #include "ui_shading-evaluation.h"
 
@@ -271,8 +272,12 @@ private slots:
         Tempest::Matrix4 view_inv;
         view_inv = view.inverse();
 
+        float azimuth = Tempest::to_radians(m_UI.SunAzimuth->value());
+        float altitude = Tempest::to_radians(m_UI.SunAltitude->value());
+
         Tempest::Vector3 trans(view_inv.translation());
         m_SceneParams.CameraPosition = Tempest::Vector4(trans.x(), trans.y(), trans.z(), 1.0f);
+        m_SceneParams.SunDirection = Tempest::Vector4(cosf(azimuth)*cosf(altitude), sinf(altitude), sinf(azimuth)*cosf(altitude), 1.0f);
 
         Tempest::UploadConstantBuffer(m_ConstantBuffer, m_SceneParams);
 

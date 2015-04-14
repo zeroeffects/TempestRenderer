@@ -68,7 +68,7 @@ vec3 SRGBEncode(vec3 color)
 
 vertex shader
 {
-    layout(vb_pack_align = 4, vb_format = RGBA32F) in vec4 Position;
+    layout(vb_pack_align = 4, vb_format = RGB32F) in vec3 Position;
     layout(vb_pack_align = 4, vb_format = RG32F) in vec2 TexCoord;
     layout(vb_pack_align = 4, vb_format = RGB32F) in vec3 Normal;
 
@@ -81,8 +81,8 @@ vertex shader
     {
         DrawIndex = tge_DrawID;
         InterpNormal = mat3(Globals[tge_DrawID].RotateTransform)*Normal;
-        InterpView = CameraPosition - Position.xyz / Position.w;
-        gl_Position = Globals[tge_DrawID].WorldViewProjectionTransform*Position;
+        InterpView = CameraPosition - Position.xyz;
+        gl_Position = Globals[tge_DrawID].WorldViewProjectionTransform*vec4(Position, 1.0);
     }
 }
 
