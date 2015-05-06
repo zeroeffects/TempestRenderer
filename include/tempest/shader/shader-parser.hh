@@ -57,7 +57,7 @@ class Parser: public DriverBase
     Shader::Driver&        m_Driver;
     ShaderToken            m_CurrentToken;
     AST::Node              m_CurrentNode;
-    Location               m_CurrentLocation = Location{ nullptr, 0, 0 };
+    Location               m_CurrentLocation = Location{ nullptr, 1, 1 };
     bool                   m_Reprocess = false;
 
     std::vector<AST::Node> m_NodeStack;
@@ -92,7 +92,7 @@ private:
     
     AST::Node statementList();
     AST::Node layoutHeader();
-    AST::Node variable();
+    AST::NodeT<VariableRef> variable();
     bool basicVariableDeclaration();
     bool expressionStatement();
     bool globalVariable();

@@ -97,7 +97,11 @@ AST::Node Parser::statementList()
                    //|| optionStatement()
                    ;
         if(!status)
+        {
+            m_Reprocess = true;
             break;
+        }
+        parseToken();
     }
 
     return collapseStackToList(ListType::SemicolonSeparated, top_element);
@@ -286,7 +290,8 @@ AST::NodeT<List> Parser::functionArgList()
         {
             m_Driver.error(loc, "Invalid function argument list");
             skipToToken(')');
-            return AST::NodeT<List>();
+            m_NodeStack.resize(top_element);
+            break;
         }
 
         m_NodeStack.push_back(std::move(expr));
@@ -304,16 +309,15 @@ AST::NodeT<Expression> Parser::paranthesesExpression()
     {
     case ShaderToken::Function:
     {
-        parseToken();
+        AST::NodeT<FunctionSetRef> func_node(std::move(m_CurrentNode));
         auto arg_list = functionArgList();
 
-        auto function_set = m_CurrentNode.extract<FunctionSet>();
-        auto* func = function_set->getFunction(arg_list);
+        auto* func = func_node->getFunction(arg_list);
         if(!func)
         {
             std::stringstream ss;
             Printer func_printer(ss, 0);
-            ss << "Invalid function call to undeclared function: " << function_set->getNodeName() << "(";
+            ss << "Invalid function call to undeclared function: " << func_node->getNodeName() << "(";
             for(List::iterator i = arg_list->current(), iend = arg_list->end(); i != iend; ++i)
             {
                 if(i != arg_list->current())
@@ -326,8 +330,8 @@ AST::NodeT<Expression> Parser::paranthesesExpression()
             }
             ss << ")\n"
                 "Candidates are:\n";
-            for(size_t i = 0, iend = function_set->getFunctionCount(); i != iend; ++i)
-                ss << "\t", func_printer.visit(function_set->getFunction(i)), ss << '\n';
+            for(size_t i = 0, iend = func_node->getFunctionCount(); i != iend; ++i)
+                ss << "\t", func_printer.visit(func_node->getFunction(i)), ss << '\n';
             m_Driver.error(par_loc, ss.str());
         }
 
@@ -757,20 +761,20 @@ bool Parser::basicVariableDeclaration()
 {
     auto var_loc = m_CurrentLocation;
     auto decl_loc = m_CurrentLocation;
-    AST::Node var_node = variable();
+    auto var_node = variable();
     if(!var_node)
         return UNHANDLED;
 
     AST::Node decl_list;
 
     auto top_element = m_NodeStack.size();
+    const Type* basic_type = var_node->getType();
+    const Type* cur_type = basic_type;
 
     parseToken();
 
     for(;;)
     {
-        auto* var = var_node.extract<Variable>();
-        
         if(IsCharacterToken(m_CurrentToken, '='))
         {
             parseToken();
@@ -780,27 +784,61 @@ bool Parser::basicVariableDeclaration()
             {
                 m_Driver.error(cond_loc, "Invalid assignment declaration");
             }
-            parseToken();
 
-            var_node = CreateNode<BinaryOperator>(var_loc, BinaryOperatorType::Assign, std::move(var_node), std::move(cond_node));
+            var_node = CreateNode<BinaryOperator>(var_loc, BinaryOperatorType::Assign, std::move(var_node), std::move(cond_node->getSecond()));
+            parseToken();
         }
-        
-        m_NodeStack.emplace_back(std::move(var_node));
 
         if(IsCharacterToken(m_CurrentToken, ';'))
-           break;
-
-        if(!IsCharacterToken(m_CurrentToken, ','))
+        {
+            break;
+        }
+        else if(!IsCharacterToken(m_CurrentToken, ','))
         {
             m_Reprocess = true;
             m_Driver.error(decl_loc, "Invalid declaration");
-            m_NodeStack.emplace_back(AST::Node());
-            return HANDLED;
+            m_NodeStack.resize(top_element);
+            break;
         }
 
+        m_NodeStack.emplace_back(std::move(var_node));
+
         var_loc = m_CurrentLocation;
-        AST::Node var_node = variable();
+        AST::Node ident = expectRedefCheck(ShaderToken::Identifier, ShaderToken::Variable);
+        if(!ident)
+        {
+            m_Driver.error(var_loc, "Invalid variable declaration");
+            m_NodeStack.resize(top_element);
+            break;
+        }
+
+        parseToken();
+        if(IsCharacterToken(m_CurrentToken, '['))
+        {
+            parseToken();
+            auto idx_expr = expression();
+            if(idx_expr)
+            {
+                parseToken();
+            }
+            auto status = expect(ToCharacterToken(']'));
+            if(!status)
+            {
+                m_Driver.error(var_loc, "Invalid array declaration");
+                skipToToken(']');
+                m_NodeStack.resize(top_element);
+                break;
+            }
+
+            cur_type = m_Driver.createInternalType<ArrayType>(var_loc, basic_type,
+                                                              idx_expr ? std::move(idx_expr->getSecond()) : AST::Node()).get();
+            parseToken();
+        }
+
+        var_node = m_Driver.createStackNode<Variable>(var_loc, cur_type, ident.extract<Identifier>()->getValue());
     }
+    m_NodeStack.emplace_back(std::move(var_node));
+
 
     if(m_NodeStack.size() - top_element == 1)
     {
@@ -817,17 +855,17 @@ bool Parser::basicVariableDeclaration()
     return HANDLED;
 }
 
-AST::Node Parser::variable()
+AST::NodeT<VariableRef> Parser::variable()
 {
     if(m_CurrentToken != ShaderToken::Type)
-        return AST::Node();
+        return AST::NodeT<VariableRef>();
 
     auto* _type = m_CurrentNode.extract<Shader::Type>();
 
     auto var_loc = m_CurrentLocation;
     AST::Node ident = expectRedefCheck(ShaderToken::Identifier, ShaderToken::Variable);
     if(!ident)
-        return AST::Node();
+        return AST::NodeT<VariableRef>();
     parseToken();
     if(IsCharacterToken(m_CurrentToken, '['))
     {
@@ -844,7 +882,7 @@ AST::Node Parser::variable()
         {
             m_Driver.error(var_loc, "Invalid array declaration");
             skipToToken(']');
-            return AST::Node();
+            return AST::NodeT<VariableRef>();
         }
 
         auto arr_type = m_Driver.createInternalType<ArrayType>(var_loc, _type, expr ? std::move(expr.extract<Shader::Expression>()->getSecond()) : AST::Node());
@@ -1304,11 +1342,10 @@ bool Parser::globalVariable()
         return HANDLED;
     }
 
-    Variable* variable = var_node.extract<Variable>();
-    variable->setInterpolation(interp);
-    variable->setStorage(storage);
-    variable->setLayout(std::move(layout));
-    variable->setInvariant(invariant);
+    var_node->setInterpolation(interp);
+    var_node->setStorage(storage);
+    var_node->setLayout(std::move(layout));
+    var_node->setInvariant(invariant);
 
     m_NodeStack.emplace_back(CreateNode<Declaration>(decl_loc, std::move(var_node)));
 
@@ -1654,7 +1691,8 @@ bool Parser::bufferDeclaration()
         {
             m_Driver.error(var_loc, "Invalid declaration. Buffers should be comprised of variables.");
             skipToToken(';');
-            m_NodeStack.emplace_back(AST::Node());
+            m_NodeStack.resize(top_element);
+            break;
         }
 
         status = expect(ToCharacterToken(';'));
@@ -1672,6 +1710,7 @@ bool Parser::bufferDeclaration()
     AST::Node child = collapseStackToList(ListType::SemicolonSeparated, top_element);
 
     auto buffer = CreateNodeTyped<Shader::Buffer>(buf_decl_loc, ident.extract<Identifier>()->getValue(), std::move(child));
+    buffer->setBufferType(buf_type);
     m_NodeStack.emplace_back(std::move(buffer));
 
     return HANDLED;
