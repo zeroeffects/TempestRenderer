@@ -671,10 +671,10 @@ inline void PrintLocation(PrinterInfrastructure* printer, const Location& loc, c
 
 template<class T> class ListIterator;
 
-enum ListType
+enum class ListType: uint32
 {
-    TGE_AST_COMMA_SEPARATED_LIST,
-    TGE_AST_SEMICOLON_SEPARATED_LIST
+    CommaSeparated,
+    SemicolonSeparated
 };
 
 class ListElement

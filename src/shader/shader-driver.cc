@@ -22,7 +22,7 @@
  *   THE SOFTWARE.
  */
 
-#include "shader-parser.hh"
+#include "tempest/shader/shader-parser.hh"
 #include "tempest/shader/shader-driver.hh"
 
 #include "tempest/utils/logging.hh"
@@ -652,7 +652,7 @@ struct GenList
 {
     inline static NodeT<List> generate(AST::ObjectPoolType& obj_pool, AST::StackType& _stack)
     {
-        return CreateNodeTyped<ListElement>(TGE_DEFAULT_LOCATION, TGE_AST_SEMICOLON_SEPARATED_LIST, CreateDeclaration<T, idx>::pointer(obj_pool, _stack),
+        return CreateNodeTyped<ListElement>(TGE_DEFAULT_LOCATION, ListType::SemicolonSeparated, CreateDeclaration<T, idx>::pointer(obj_pool, _stack),
                                             GenList<idx, TArgs...>::generate(obj_pool, _stack));
     }
 };
@@ -668,7 +668,7 @@ struct GenList<idx, T>
 {
     inline static NodeT<List> generate(AST::ObjectPoolType& obj_pool, AST::StackType& _stack)
     {
-        return CreateNodeTyped<ListElement>(TGE_DEFAULT_LOCATION, TGE_AST_SEMICOLON_SEPARATED_LIST, CreateDeclaration<T, idx>::pointer(obj_pool, _stack),
+        return CreateNodeTyped<ListElement>(TGE_DEFAULT_LOCATION, ListType::SemicolonSeparated, CreateDeclaration<T, idx>::pointer(obj_pool, _stack),
                                             NodeT<List>());
     }
 };

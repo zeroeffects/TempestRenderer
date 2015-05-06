@@ -126,13 +126,8 @@ public:
     virtual void visit(const Shader::Type* type_stmt) final { Shader::PrintNode(this, type_stmt); }
     virtual void visit(const Shader::Buffer* buffer) final { PrintBuffer(this, &m_Printer, buffer); }
     // Some types that should not appear in AST
-    virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::Expression*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::FuncDeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::DeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::VarDeclList*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::Value<Shader::ShaderType>*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     
 private:
     bool TranslateTexelFetch(const Shader::FunctionCall* func_call);
@@ -192,13 +187,8 @@ public:
     virtual void visit(const Shader::Type* type_stmt) final { TGE_ASSERT(false, "Types should not be entered.Catching up a variable should be enough"); }
     virtual void visit(const Shader::Buffer* buffer) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     // Some types that should not appear in AST
-    virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Shader::Expression*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::FuncDeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::DeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::VarDeclList*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Shader::Value<Shader::ShaderType>*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
 };
 
 void TypeDeducer::visit(const AST::Value<float>* value)
@@ -285,7 +275,7 @@ const Shader::Type* DeduceType(Shader::Driver& driver, const AST::Node* _node)
 
 void ShaderPrinter::visit(const Shader::BinaryOperator* binop)
 {
-    if(binop->getOperation() == Shader::TGE_EFFECT_MULTIPLY &&
+    if(binop->getOperation() == Shader::BinaryOperatorType::Multiply &&
        binop->getLHSOperand())
     {
         auto* lhs_operand = binop->getLHSOperand();
@@ -582,11 +572,6 @@ public:
     // Some types that should not appear in AST
     virtual void visit(const Shader::FunctionSet*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
     virtual void visit(const Shader::Expression*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
-    virtual void visit(const Shader::IntermFuncNode*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
-    virtual void visit(const Shader::FuncDeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
-    virtual void visit(const Shader::DeclarationInfo*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
-    virtual void visit(const Shader::VarDeclList*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
-    virtual void visit(const Shader::Value<Shader::ShaderType>*) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code."); }
 
     bool isValid() const { return m_Valid; }
 };
@@ -702,7 +687,7 @@ void Generator::visit(const Shader::Import* _import)
     {
         TGE_ASSERT(j->getNodeType() == Shader::TGE_EFFECT_BINARY_OPERATOR, "Binary operator expected as part of import statement definitions list");
         auto* binop = j->extract<Shader::BinaryOperator>();
-        TGE_ASSERT(binop->getOperation() == Shader::TGE_EFFECT_ASSIGN, "Assignment operator expected as part of import statement definitions list");
+        TGE_ASSERT(binop->getOperation() == Shader::BinaryOperatorType::Assign, "Assignment operator expected as part of import statement definitions list");
         raw_import_stream << "#define ";
         binop->getLHSOperand()->accept(&m_RawImport);
         raw_import_stream << " ";

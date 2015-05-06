@@ -166,14 +166,9 @@ SET(TEMPEST_INPUT_INC
 
 FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/shader)
    
-BISON_TARGET(TempestParser "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader-parser.y"
-             "${CMAKE_CURRENT_BINARY_DIR}/shader/shader-parser.cc"
-             VERBOSE "${CMAKE_CURRENT_BINARY_DIR}/shader/shader-parser.output"
-             COMPILE_FLAGS "--report=state")
 FLEX_TARGET(TempestScanner "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader-lexer.l"
             "${CMAKE_CURRENT_BINARY_DIR}/shader/shader-lexer.cc"
             COMPILE_FLAGS "-Pshader_")
-ADD_FLEX_BISON_DEPENDENCY(TempestScanner TempestParser)
 
 SET(TEMPEST_SHADER_SRC
     shader/shader-parser.y
@@ -184,7 +179,7 @@ SET(TEMPEST_SHADER_SRC
     shader/shader-common.cc
     shader/shader-driver.cc
     shader/shader-ast.cc
-    ${BISON_TempestParser_OUTPUTS}
+    shader/shader-parser.cc
     ${FLEX_TempestScanner_OUTPUTS}
    )
 
@@ -194,6 +189,7 @@ SET(TEMPEST_SHADER_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-convert-common.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-common.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-driver.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-parser.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-ast.hh
    )
 
