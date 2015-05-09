@@ -667,6 +667,8 @@ AST::NodeT<Expression> Parser::binaryExpression()
         loc = rhs_loc;
     }
 
+    last_op = _op;
+
     TGE_ASSERT(!expr_stack.empty(), "Broken stack");
     auto rhs_expr = std::move(expr_stack.back());
     expr_stack.pop_back();
