@@ -612,9 +612,9 @@ AST::NodeT<Expression> Parser::binaryExpression()
     for(;;)
     {
         auto rhs_loc = m_CurrentLocation;
-        auto rhs_expr = prefixExpression();
+        auto expr = prefixExpression();
 
-        if(!rhs_expr)
+        if(!expr)
         {
             m_Driver.error(rhs_loc, "Invalid right-hand side operand");
         }
@@ -622,7 +622,8 @@ AST::NodeT<Expression> Parser::binaryExpression()
         // Collapse the operator stack
         if(precedence > last_prec)
         {
-            TGE_ASSERT(oper_stack.size() - oper_stack.back().start >= 2, "Stack does not contain at least two expression to create binary operation");
+            size_t start = oper_stack.empty() ? 0 : oper_stack.back().start;
+            TGE_ASSERT(expr_stack.size() - start >= 2, "Stack does not contain at least two expression to create binary operation");
             auto rhs_expr = std::move(expr_stack.back());
             expr_stack.pop_back();
             while(!expr_stack.empty() && precedence > last_prec)
@@ -630,7 +631,7 @@ AST::NodeT<Expression> Parser::binaryExpression()
                 auto lhs_expr = std::move(expr_stack.back());
                 const Type* _type = lhs_expr->getFirst()->binaryOperatorResultType(m_Driver, last_op, rhs_expr->getFirst());
                 auto binop_loc = lhs_expr.getDeclarationLocation();
-                rhs_expr = CreateNodeTyped<Expression>(binop_loc, _type, CreateNode<BinaryOperator>(binop_loc, last_op, std::move(lhs_expr), std::move(rhs_expr)));
+                rhs_expr = CreateNodeTyped<Expression>(binop_loc, _type, CreateNode<BinaryOperator>(binop_loc, last_op, std::move(lhs_expr->getSecond()), std::move(rhs_expr->getSecond())));
                 expr_stack.pop_back();
                 if(!oper_stack.empty())
                 {
@@ -646,12 +647,12 @@ AST::NodeT<Expression> Parser::binaryExpression()
             expr_stack.push_back(std::move(rhs_expr));
         }
 
-        if(last_prec < precedence)
+        if(precedence < last_prec)
         {
             oper_stack.push_back(OperationStart{ expr_stack.size() - 1, precedence, _op });
         }
 
-        expr_stack.push_back(std::move(rhs_expr));
+        expr_stack.push_back(std::move(expr));
 
         parseToken();
         if(!IsBinaryOperator(m_CurrentToken))
@@ -817,10 +818,6 @@ bool Parser::basicVariableDeclaration()
         {
             parseToken();
             auto idx_expr = expression();
-            if(idx_expr)
-            {
-                parseToken();
-            }
             auto status = expect(ToCharacterToken(']'));
             if(!status)
             {
@@ -869,14 +866,8 @@ AST::NodeT<VariableRef> Parser::variable()
     parseToken();
     if(IsCharacterToken(m_CurrentToken, '['))
     {
-        TGE_ASSERT(false, "Stub");
-        AST::Node expr = expression();
-        if(expr)
-        {
-            parseToken();
-            expr = std::move(m_NodeStack.back());
-            m_NodeStack.pop_back();
-        }
+        parseToken();
+        auto expr = expression();
         auto result = expect(ToCharacterToken(']'));
         if(!result)
         {
@@ -885,7 +876,7 @@ AST::NodeT<VariableRef> Parser::variable()
             return AST::NodeT<VariableRef>();
         }
 
-        auto arr_type = m_Driver.createInternalType<ArrayType>(var_loc, _type, expr ? std::move(expr.extract<Shader::Expression>()->getSecond()) : AST::Node());
+        auto arr_type = m_Driver.createInternalType<ArrayType>(var_loc, _type, expr ? std::move(expr->getSecond()) : AST::Node());
         return m_Driver.createStackNode<Variable>(var_loc, arr_type.get(), ident.extract<Identifier>()->getValue());
     }
     else
@@ -1128,6 +1119,7 @@ AST::Node Parser::expectRedefCheck(ShaderToken expected, ShaderToken redef)
 
 AST::NodeT<List> Parser::collapseStackToList(ListType _type, size_t top_element)
 {
+    TGE_ASSERT(top_element <= m_NodeStack.size(), "Broken stack");
     if(top_element == m_NodeStack.size())
         return AST::Node();
 
