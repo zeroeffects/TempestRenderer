@@ -90,19 +90,25 @@ private:
     bool shader();
     bool function();
     
+    bool statement();
     AST::Node statementList();
     AST::Node layoutHeader();
     AST::NodeT<VariableRef> variable();
     bool basicVariableDeclaration();
     bool expressionStatement();
     bool globalVariable();
+    bool shaderExtDeclaration();
+    bool selectionStatement();
+    bool blockStatement();
+    bool structMembers();
+    AST::NodeT<List> structBody();
 
     bool buffer();
     bool bufferDeclaration();
     bool structBufferDeclaration();
 
     bool structDeclaration();
-    bool optionalExtDeclaration();
+    bool optional(bool (Parser::*func)());
 };
 }
 }

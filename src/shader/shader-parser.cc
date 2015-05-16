@@ -80,6 +80,108 @@ void Parser::parseToken()
     m_CurrentToken = ShaderLexer(&m_CurrentNode, &m_CurrentLocation, m_Driver);
 }
 
+bool Parser::selectionStatement()
+{
+    auto if_loc = m_CurrentLocation;
+    if(m_CurrentToken != ShaderToken::If)
+    {
+        return UNHANDLED;
+    }
+
+    AST::NodeT<Expression> cond_expr;
+    AST::Node true_statement;
+    auto status = expect(ToCharacterToken('('));
+    if(status)
+    {
+        parseToken();
+        cond_expr = expression();
+        status = cond_expr;
+        if(status)
+        {
+            status = expect(ToCharacterToken(')'));
+            if(status)
+            {
+                m_Driver.beginBlock();
+                    parseToken();
+                    status = statement();
+                m_Driver.endBlock();
+            }
+            true_statement = std::move(m_NodeStack.back());
+            m_NodeStack.pop_back();
+        }
+    }
+
+    if(!status || cond_expr->getFirst()->getNodeName() != "bool")
+    {
+        m_Driver.error(if_loc, "Invalid if statement");
+        skipDeclarationOrDefinition();
+        m_NodeStack.emplace_back(AST::Node());
+        return HANDLED;
+    }
+
+    parseToken();
+    AST::Node false_statement;
+    if(m_CurrentToken == ShaderToken::Else)
+    {
+        m_Driver.beginBlock();
+            status = statement();
+        m_Driver.endBlock();
+        if(!status)
+        {
+            m_Driver.error(if_loc, "Invalid else statement");
+            skipDeclarationOrDefinition();
+            m_NodeStack.emplace_back(AST::Node());
+            return HANDLED;
+        }
+        false_statement = std::move(m_NodeStack.back());
+        m_NodeStack.pop_back();
+    }
+    else
+    {
+        m_Reprocess = true;
+    }
+
+    m_NodeStack.emplace_back(CreateNode<IfStatement>(if_loc, cond_expr ? std::move(cond_expr->getSecond()) : AST::Node(),
+                                                     std::move(true_statement), std::move(false_statement)));
+    return HANDLED;
+}
+
+bool Parser::blockStatement()
+{
+    auto block_loc = m_CurrentLocation;
+    if(!IsCharacterToken(m_CurrentToken, '{'))
+        return UNHANDLED;
+
+    m_Driver.beginBlock();
+        parseToken();
+        auto statement_list = statementList();
+    m_Driver.endBlock();
+
+    auto status = expect(ToCharacterToken('}'));
+    if(!status)
+    {
+        m_Driver.error(block_loc, "Invalid block statement");
+        skipDefinition();
+        m_NodeStack.emplace_back(AST::Node());
+        return HANDLED;
+    }
+
+    m_NodeStack.emplace_back(CreateNode<Block>(block_loc, std::move(statement_list)));
+    return HANDLED;
+}
+
+bool Parser::statement()
+{
+    return basicVariableDeclaration()
+        || selectionStatement()
+        //|| switchStatement()
+        //|| iterationStatement()
+        || expressionStatement()
+        || blockStatement()
+        //|| jumpStatement()
+        || optional(&Parser::statement)
+        ;
+}
 
 AST::Node Parser::statementList()
 {
@@ -87,15 +189,7 @@ AST::Node Parser::statementList()
 
     for(;;)
     {
-        auto status = basicVariableDeclaration()
-                   //|| selectionStatement()
-                   //|| switchStatement()
-                   //|| iterationStatement()
-                   || expressionStatement()
-                   //|| blockStatement()
-                   //|| jumpStatement()
-                   //|| optionStatement()
-                   ;
+        auto status = statement();
         if(!status)
         {
             m_Reprocess = true;
@@ -312,7 +406,7 @@ AST::NodeT<Expression> Parser::paranthesesExpression()
         AST::NodeT<FunctionSetRef> func_node(std::move(m_CurrentNode));
         auto arg_list = functionArgList();
 
-        auto* func = func_node->getFunction(arg_list);
+        auto* func = func_node->getFunction(arg_list.get());
         if(!func)
         {
             std::stringstream ss;
@@ -892,7 +986,7 @@ bool Parser::function()
 {
     // Basically, we can't declare regular variables in global space, so it is definitely a function
     if(m_CurrentToken != ShaderToken::Type && m_CurrentToken != ShaderToken::VoidType)
-        return HANDLED;
+        return UNHANDLED;
 
     auto* return_type = m_CurrentNode.extract<Shader::Type>();
 
@@ -910,7 +1004,7 @@ bool Parser::function()
     }
     auto ident = std::move(m_CurrentNode);
     bool status = ident;
-    AST::Node args;
+    AST::NodeT<List> args;
 
     {
         m_Driver.beginBlock();
@@ -1006,7 +1100,7 @@ bool Parser::function()
             else
             {
                 auto func_set = ident.extract<FunctionSet>();
-                func_decl_ptr = func_set->getFunction(args.extract<List>());
+                func_decl_ptr = func_set->getFunction(args.get());
                 if(!func_decl_ptr)
                 {
                     auto func_decl_node = CreateNodeTyped<FunctionDeclaration>(func_decl_loc, return_type, func_set->getNodeName(), std::move(args));
@@ -1054,7 +1148,7 @@ bool Parser::function()
             else
             {
                 auto func_set = ident.extract<FunctionSet>();
-                func_decl_ptr = func_set->getFunction(args.extract<List>());
+                func_decl_ptr = func_set->getFunction(args.get());
                 if(!func_decl_ptr)
                 {
                     auto func_decl_node = CreateNodeTyped<FunctionDeclaration>(func_decl_loc, return_type, func_set->getNodeName(), std::move(args));
@@ -1346,6 +1440,15 @@ bool Parser::globalVariable()
     return HANDLED;
 }
 
+bool Parser::shaderExtDeclaration()
+{
+    return globalVariable()
+        || function()
+        // || invariantDeclaration() TODO
+        || structDeclaration()
+        || optional(&Parser::shaderExtDeclaration);
+}
+
 bool Parser::shader()
 {
     ShaderType shader_type;
@@ -1380,11 +1483,7 @@ bool Parser::shader()
         for(;;)
         {
             auto loc = m_CurrentLocation;
-            auto status = globalVariable()
-                || function()
-                // || invariantDeclaration() TODO
-                || structDeclaration();
-            // || optionalShaderExtDeclaration(); TODO
+            auto status = shaderExtDeclaration();
 
             if(!status)
             {
@@ -1482,6 +1581,44 @@ bool Parser::import()
     return HANDLED;
 }
 
+bool Parser::structMembers()
+{
+    return basicVariableDeclaration()
+        || optional(&Parser::structMembers);
+}
+
+AST::NodeT<List> Parser::structBody()
+{
+    auto top_element = m_NodeStack.size();
+
+    for(;;)
+    {
+        auto var_loc = m_CurrentLocation;
+        auto status = structMembers();
+
+        if(!status)
+        {
+            skipToToken('}');
+            skipToToken(';');
+            return AST::NodeT<List>();
+        }
+
+        parseToken();
+
+        if(IsCharacterToken(m_CurrentToken, '}'))
+            break;
+    }
+
+    auto status = expect(ToCharacterToken(';'));
+    if(!status)
+    {
+        skipToToken(';');
+        return AST::NodeT<List>();
+    }
+
+    return collapseStackToList(ListType::SemicolonSeparated, top_element);
+}
+
 bool Parser::structDeclaration()
 {
     if(m_CurrentToken != ShaderToken::StructQualifier)
@@ -1509,41 +1646,15 @@ bool Parser::structDeclaration()
 
     parseToken();
 
-    auto top_element = m_NodeStack.size();
+    AST::Node child;
     {
         m_Driver.beginBlock();
         auto& driver = m_Driver;
         auto at_exit = CreateAtScopeExit([&driver]() { driver.endBlock(); });
 
-        for(;;)
-        {
-            auto var_loc = m_CurrentLocation;
-            auto status = basicVariableDeclaration();
-
-            if(!status)
-            {
-                m_NodeStack.push_back(AST::Node());
-                skipToToken('}');
-                skipToToken(';');
-                return HANDLED;
-            }
-
-            parseToken();
-
-            if(IsCharacterToken(m_CurrentToken, '}'))
-                break;
-        }
-
-        status = expect(ToCharacterToken(';'));
-        if(!status)
-        {
-            m_NodeStack.push_back(AST::Node());
-            skipToToken(';');
-            return HANDLED;
-        }
+        child = structBody();
     }
 
-    AST::Node child = collapseStackToList(ListType::SemicolonSeparated, top_element);
     m_NodeStack.emplace_back(CreateNode<Declaration>(struct_decl_loc, m_Driver.createStackType<StructType>(struct_decl_loc, ident ? ident.extract<Identifier>()->getValue() : string(), std::move(child))));
 
     return HANDLED;
@@ -1765,7 +1876,7 @@ bool Parser::buffer()
         || structBufferDeclaration();
 }
 
-bool Parser::optionalExtDeclaration()
+bool Parser::optional(bool (Parser::*func)())
 {
     if(!IsCharacterToken(m_CurrentToken, '@'))
         return UNHANDLED;
@@ -1780,13 +1891,14 @@ bool Parser::optionalExtDeclaration()
 
     AST::Node child;
     {
-        m_Driver.beginOptionBlock(m_CurrentNode.extract<Shader::Option>());
+        m_Driver.beginOptionBlock(opt.extract<Shader::Option>());
         auto& driver = m_Driver;
         auto at_exit = CreateAtScopeExit([&driver]() { driver.endOptionBlock(); });
 
         parseToken();
         if(IsCharacterToken(m_CurrentToken, '{'))
         {
+            auto block_loc = m_CurrentLocation;
             auto top_element = m_NodeStack.size();
             bool status = true;
             Location decl_loc;
@@ -1794,9 +1906,20 @@ bool Parser::optionalExtDeclaration()
             {
                 parseToken();
                 decl_loc = m_CurrentLocation;
-                status &= removableExtDeclaration();
+                status &= (this->*func)();
                 if(!status)
-                    break;
+                {
+                    if(IsCharacterToken(m_CurrentToken, '}'))
+                    {
+                        status = true;
+                        break;
+                    }
+                    else
+                    {
+                        skipDefinition();
+                        break;
+                    }
+                }
             }
             if(!status)
             {
@@ -1804,11 +1927,11 @@ bool Parser::optionalExtDeclaration()
                 skipDefinition();
             }
 
-            child = collapseStackToList(ListType::SemicolonSeparated, top_element);
+            child = CreateNode<Block>(block_loc, collapseStackToList(ListType::SemicolonSeparated, top_element));
         }
         else
         {
-            bool status = removableExtDeclaration();
+            bool status = (this->*func)();
             if(status)
             {
                 child = std::move(m_NodeStack.back());
@@ -1830,14 +1953,13 @@ bool Parser::removableExtDeclaration()
         || structDeclaration()
         || shader()
         || function()
-        || optionalExtDeclaration();
+        || optional(&Parser::removableExtDeclaration);
 }
 
 bool Parser::options()
 {
     if(m_CurrentToken != ShaderToken::Options)
         return UNHANDLED;
-    parseToken();
     if(!expect(ToCharacterToken('{')))
     {
         std::stringstream ss;
@@ -1873,9 +1995,9 @@ bool Parser::options()
         parseToken();
         if(IsCharacterToken(m_CurrentToken, '}'))
             break;
-        bool status = expect(ToCharacterToken(','));
-        if(!status)
+        else if(!IsCharacterToken(m_CurrentToken, ','))
         {
+            m_Driver.error(m_CurrentLocation, "Options should be separated by ','");
             skipToToken('}');
             break;
         }

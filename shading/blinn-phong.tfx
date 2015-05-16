@@ -63,8 +63,6 @@ resource buffer ResourcesTable
 
 structbuffer GlobalsDesc Globals;
 
-// TODO: Position should be vec3
-
 vertex shader
 {
     layout(vb_pack_align = 4, vb_format = RGB32F) in vec3 Position;
