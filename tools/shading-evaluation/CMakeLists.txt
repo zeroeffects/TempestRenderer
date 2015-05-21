@@ -48,4 +48,4 @@ SET(SHADING_EVALUATION_SRC
 
 ADD_EXECUTABLE(ShadingEvaluation WIN32 ${SHADING_EVALUATION_SRC} ${SHADING_EVALUATION_UI} ${SHADING_EVALUATION_UI_H})
 
-TARGET_LINK_LIBRARIES(ShadingEvaluation tempest-static tempest-main tempest-qt-widgets)
+TARGET_LINK_LIBRARIES(ShadingEvaluation tempest-qt-widgets tempest-static tempest-main)

@@ -56,7 +56,7 @@ TempestWidget::TempestWidget(QWidget* parent)
     wdesc.Width = 800;
     wdesc.Height = 600;
     wdesc.Title = "Tempest Widget";
-    m_Window.init(GetWindowSystem(), reinterpret_cast<Tempest::OSWindow>(this->winId()), wdesc);
+    m_Window.init(GetWindowSystem(), (Tempest::OSWindow)(this->winId()), wdesc);
     auto* embed = QWidget::createWindowContainer(QWindow::fromWinId((WId)m_Window.getWindowId()), this, Qt::MSWindowsOwnDC);
     embed->setMinimumSize(QSize(200, 200));
     embed->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);

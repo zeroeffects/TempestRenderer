@@ -1,3 +1,4 @@
+#include "ui_shading-evaluation.h"
 #include "tempest/graphics/rendering-convenience.hh"
 #include "tempest/graphics/state-object.hh"
 #include "tempest/texture/texture-table.hh"
@@ -6,7 +7,6 @@
 #include "tempest/math/vector3.hh"
 #include "tempest/math/functions.hh"
 #include "tempest/graphics/preferred-backend.hh"
-#include "ui_shading-evaluation.h"
 
 #include <QApplication>
 #include <QMainWindow>
@@ -132,7 +132,7 @@ public:
         Tempest::TextureTableDescription tex_table_desc;
         m_TextureTable = std::unique_ptr<Tempest::TextureTable<BackendType>>(new Tempest::TextureTable<BackendType>(&m_Backend, tex_table_desc));
 
-        m_Mesh.swap(Tempest::LoadObjFileStaticGeometryBlob(TEST_ASSETS_DIR "/teapot/teapot.obj", nullptr, nullptr, m_TextureTable.get(), &m_Backend));
+        m_Mesh = Tempest::LoadObjFileStaticGeometryBlob(TEST_ASSETS_DIR "/teapot/teapot.obj", nullptr, nullptr, m_TextureTable.get(), &m_Backend);
         TGE_ASSERT(m_Mesh, "Failed to load test assets");
 
         auto rt_fmt = Tempest::DataFormat::RGBA8UNorm;
