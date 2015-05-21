@@ -137,16 +137,13 @@ bool Parser::iterationStatement()
             status = loop_cond;
             if(status)
             {
-                status = expect(ToCharacterToken(')'));
+                status = expect(ToCharacterToken(')')) &&
+                         statement();
                 if(status)
                 {
-                    status = statement();
-                    if(status)
-                    {
-                        stmt = std::move(m_NodeStack.back());
-                        m_NodeStack.pop_back();
-                        status = stmt;
-                    }
+                    stmt = std::move(m_NodeStack.back());
+                    m_NodeStack.pop_back();
+                    status = stmt;
                 }
             }
         }
@@ -190,16 +187,13 @@ bool Parser::iterationStatement()
                             status = loop_incr;
                             if(status)
                             {
-                                status = expect(ToCharacterToken(')'));
+                                status = expect(ToCharacterToken(')')) &&
+                                         statement();
                                 if(status)
                                 {
-                                    status = statement();
-                                    if(status)
-                                    {
-                                        stmt = std::move(m_NodeStack.back());
-                                        m_NodeStack.pop_back();
-                                        status = stmt;
-                                    }
+                                    stmt = std::move(m_NodeStack.back());
+                                    m_NodeStack.pop_back();
+                                    status = stmt;
                                 }
                             }
                         }
