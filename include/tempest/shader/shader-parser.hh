@@ -99,7 +99,9 @@ private:
     bool globalVariable();
     bool shaderExtDeclaration();
     bool selectionStatement();
+    bool iterationStatement();
     bool blockStatement();
+    bool jumpStatement();
     bool structMembers();
     AST::NodeT<List> structBody();
 

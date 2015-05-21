@@ -80,14 +80,156 @@ void Parser::parseToken()
     m_CurrentToken = ShaderLexer(&m_CurrentNode, &m_CurrentLocation, m_Driver);
 }
 
+bool Parser::iterationStatement()
+{
+    switch(m_CurrentToken)
+    {
+    default: return UNHANDLED;
+    case ShaderToken::Do:
+    {
+        AST::NodeT<Expression> loop_cond;
+        auto loc = m_CurrentLocation;
+        auto status = statement();
+        AST::Node stmt;
+        if(status)
+        {
+            stmt = std::move(m_NodeStack.back());
+            m_NodeStack.pop_back();
+            status = stmt;
+            if(status)
+            {
+                status = expect(ShaderToken::While);
+                if(status)
+                {
+                    status = expect(ToCharacterToken('('));
+                    if(status)
+                    {
+                        loop_cond = expression();
+                        status = loop_cond;
+                        if(status)
+                        {
+                            status = expect(ToCharacterToken(')')) &&
+                                     expect(ToCharacterToken(';'));
+                        }
+                    }
+                }
+            }
+        }
+
+        if(!status)
+        {
+            m_Driver.error(loc, "Invalid do-while statement");
+            m_NodeStack.emplace_back(AST::Node());
+            return HANDLED;
+        }
+
+        m_NodeStack.emplace_back(CreateNode<WhileStatement>(loc, loop_cond ? std::move(loop_cond->getSecond()) : AST::Node(), std::move(stmt), true));
+    } break;
+    case ShaderToken::While:
+    {
+        auto loc = m_CurrentLocation;
+        auto status = expect(ToCharacterToken('('));
+        AST::NodeT<Expression> loop_cond;
+        AST::Node stmt;
+        if(status)
+        {
+            loop_cond = expression();
+            status = loop_cond;
+            if(status)
+            {
+                status = expect(ToCharacterToken(')'));
+                if(status)
+                {
+                    status = statement();
+                    if(status)
+                    {
+                        stmt = std::move(m_NodeStack.back());
+                        m_NodeStack.pop_back();
+                        status = stmt;
+                    }
+                }
+            }
+        }
+
+        if(!status)
+        {
+            m_Driver.error(loc, "Invalid while statement");
+            m_NodeStack.emplace_back(AST::Node());
+            return HANDLED;
+        }
+
+        m_NodeStack.emplace_back(CreateNode<WhileStatement>(loc, loop_cond ? std::move(loop_cond->getSecond()) : AST::Node(), std::move(stmt)));
+    } break;
+    case ShaderToken::For:
+    {
+        auto loc = m_CurrentLocation;
+        auto status = expect(ToCharacterToken('('));
+
+        AST::NodeT<Expression> loop_cond, loop_incr;
+        AST::Node decl_stmt, stmt;
+
+        if(status)
+        {
+            status = basicVariableDeclaration()
+                  || expressionStatement();
+            if(status)
+            {
+                decl_stmt = std::move(m_NodeStack.back());
+                m_NodeStack.pop_back();
+                status = expect(ToCharacterToken(';'));
+                if(status)
+                {
+                    loop_cond = expression();
+                    status = loop_cond;
+                    if(status)
+                    {
+                        status = expect(ToCharacterToken(';'));
+                        if(status)
+                        {
+                            loop_incr = expression();
+                            status = loop_incr;
+                            if(status)
+                            {
+                                status = expect(ToCharacterToken(')'));
+                                if(status)
+                                {
+                                    status = statement();
+                                    if(status)
+                                    {
+                                        stmt = std::move(m_NodeStack.back());
+                                        m_NodeStack.pop_back();
+                                        status = stmt;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if(!status)
+        {
+            m_Driver.error(loc, "Invalid while statement");
+            m_NodeStack.emplace_back(AST::Node());
+            return HANDLED;
+        }
+
+        m_NodeStack.emplace_back(CreateNode<ForStatement>(loc, std::move(decl_stmt), loop_cond ? std::move(loop_cond->getSecond()) : AST::Node(),
+                                                          loop_incr ? std::move(loop_incr->getSecond()) : AST::Node(), std::move(stmt)));
+    } break;
+    }
+
+    return HANDLED;
+}
+
 bool Parser::selectionStatement()
 {
-    auto if_loc = m_CurrentLocation;
     if(m_CurrentToken != ShaderToken::If)
     {
         return UNHANDLED;
     }
-
+    auto if_loc = m_CurrentLocation;
     AST::NodeT<Expression> cond_expr;
     AST::Node true_statement;
     auto status = expect(ToCharacterToken('('));
@@ -175,12 +317,58 @@ bool Parser::statement()
     return basicVariableDeclaration()
         || selectionStatement()
         //|| switchStatement()
-        //|| iterationStatement()
+        || iterationStatement()
         || expressionStatement()
         || blockStatement()
-        //|| jumpStatement()
+        || jumpStatement()
         || optional(&Parser::statement)
         ;
+}
+
+bool Parser::jumpStatement()
+{
+
+    JumpStatementType jump_type;
+    const char* jump_statement_name = nullptr;
+    switch(m_CurrentToken)
+    {
+    default: return UNHANDLED;
+    case ShaderToken::Break: jump_type = JumpStatementType::Break; jump_statement_name = "break";  break;
+    case ShaderToken::Continue: jump_type = JumpStatementType::Continue; jump_statement_name = "continue"; break;
+    case ShaderToken::Return:
+    {
+        auto statement_loc = m_CurrentLocation;
+        parseToken();
+        AST::Node expr = expression();
+        auto status = expect(ToCharacterToken(';'));
+        if(status)
+        {
+            m_NodeStack.emplace_back(CreateNode<ReturnStatement>(statement_loc, std::move(expr)));
+        }
+        else
+        {
+            m_Driver.error(statement_loc, "Invalid return statement");
+            skipDeclarationOrDefinition();
+            m_NodeStack.emplace_back(AST::Node());
+        }
+        
+        return HANDLED;
+    } break;
+    }
+
+    auto statement_loc = m_CurrentLocation;
+
+    auto status = expect(ToCharacterToken(';'));
+    if(!status)
+    {
+        m_Driver.error(statement_loc, string("Invalid ") + jump_statement_name + " statement");
+        skipDeclarationOrDefinition();
+        m_NodeStack.emplace_back(AST::Node());
+        return HANDLED;
+    }
+
+    m_NodeStack.emplace_back(CreateNode<JumpStatement>(statement_loc, jump_type));
+    return HANDLED;
 }
 
 AST::Node Parser::statementList()
