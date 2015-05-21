@@ -1,13 +1,11 @@
 #include "tempest/utils/testing.hh"
 #include "tempest/graphics/rendering-convenience.hh"
-#include "tempest/graphics/api-all.hh"
+#include "tempest/graphics/preferred-backend.hh"
 #include "tempest/texture/texture-table.hh"
 #include "tempest/utils/file-system.hh"
 #include "tempest/math/matrix4.hh"
 
 #include <numeric>
-
-#define TEMPEST_RENDERING_SYSTEM Tempest::GLSystem
 
 TGE_TEST("Testing texture tables")
 {
@@ -16,7 +14,7 @@ TGE_TEST("Testing texture tables")
     wdesc.Height = 600;
     wdesc.Title = "Test";
     
-    auto sys_obj = Tempest::CreateSystemAndWindowSimple<TEMPEST_RENDERING_SYSTEM>(wdesc);
+    auto sys_obj = Tempest::CreateSystemAndWindowSimple<Tempest::PreferredSystem>(wdesc);
     TGE_ASSERT(sys_obj, "GL initialization failed");
 
     typedef decltype(sys_obj->Backend) BackendType;

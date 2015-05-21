@@ -230,7 +230,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
     {
         auto& input_param = effect.getVertexAttribute(iparam_idx);
         auto actual_idx = glGetAttribLocation(prog.get(), input_param.Name.c_str());
-        TGE_ASSERT(actual_idx == iparam_idx, "This driver is broken");
+        TGE_ASSERT(actual_idx == -1 || actual_idx == iparam_idx, "This driver is broken");
     }
 #endif
 

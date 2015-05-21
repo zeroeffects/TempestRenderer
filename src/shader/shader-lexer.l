@@ -26,12 +26,12 @@
 #include "tempest/utils/memory.hh"
 #include "tempest/utils//logging.hh"
 #include "tempest/shader/shader-driver.hh"
-#include "shader-parser.hh"
+#include "tempest/shader/shader-parser.hh"
 
 #undef yywrap
 #define yywrap() 1
 
-#define yyterminate() return Parser::token::T_END
+#define yyterminate() return ShaderToken::EndOfFile
 %}
 
 %option noyywrap nounput batch
@@ -39,7 +39,7 @@
 %option prefix="shader_"
 
 %{
-#define YY_USER_ACTION  yylloc->columns(yyleng);
+#define YY_USER_ACTION  yylloc->startColumn += yyleng;
 
 using namespace Tempest::Shader;
 using namespace Tempest;
@@ -53,109 +53,106 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 %x CPP_COMMENT
 
 %%
-%{
-    yylloc->step();
-%}
 
 {INTEGER}"."[0-9]+{MANTISA}?              |
-{INTEGER}{MANTISA}                      *yylval = CreateNode<Value<float>>(ToLocation(*yylloc), static_cast<float>(atof(yytext))); return Parser::token::T_FLOAT;
-{INTEGER}u                              *yylval = CreateNode<Value<unsigned>>(ToLocation(*yylloc), strtoul(yytext, 0, 0)); return Parser::token::T_UNSIGNED;
-{INTEGER}                               *yylval = CreateNode<Value<int>>(ToLocation(*yylloc), atoi(yytext)); return Parser::token::T_INTEGER;
-"0x"[0-9A-F]+                           *yylval = CreateNode<Value<int>>(ToLocation(*yylloc), strtol(yytext, nullptr, 16)); return Parser::token::T_INTEGER;
-"0x"[0-9A-F]+u                          *yylval = CreateNode<Value<int>>(ToLocation(*yylloc), strtoul(yytext, nullptr, 16)); return Parser::token::T_UNSIGNED;
-"import"                                *yylval = AST::Node(); return Parser::token::T_IMPORT;
-"if"                                    *yylval = AST::Node(); return Parser::token::T_IF;
-"else"                                  *yylval = AST::Node(); return Parser::token::T_ELSE;
-"break"                                 *yylval = AST::Node(); return Parser::token::T_BREAK;
-"return"                                *yylval = AST::Node(); return Parser::token::T_RETURN;
-"continue"                              *yylval = AST::Node(); return Parser::token::T_CONTINUE;
-"do"                                    *yylval = AST::Node(); return Parser::token::T_DO;
-"for"                                   *yylval = AST::Node(); return Parser::token::T_FOR;
-"while"                                 *yylval = AST::Node(); return Parser::token::T_WHILE;
-"switch"                                *yylval = AST::Node(); return Parser::token::T_SWITCH;
-"case"                                  *yylval = AST::Node(); return Parser::token::T_CASE;
-"default"                               *yylval = AST::Node(); return Parser::token::T_DEFAULT;
-"true"                                  *yylval = CreateNode<Value<bool>>(ToLocation(*yylloc), true); return Parser::token::T_BOOLEAN;
-"false"                                 *yylval = CreateNode<Value<bool>>(ToLocation(*yylloc), false); return Parser::token::T_BOOLEAN;
-"void"                                  *yylval = AST::Node(); return Parser::token::T_TYPE_VOID;
-"shader"                                *yylval = AST::Node(); return Parser::token::T_SHADER;
-"vertex"                                *yylval = AST::Node(); return Parser::token::T_VERTEX_QUALIFIER;
-"fragment"                              *yylval = AST::Node(); return Parser::token::T_FRAGMENT_QUALIFIER;
-"layout"                                *yylval = AST::Node(); return Parser::token::T_LAYOUT_QUALIFIER;
-"inout"                                 *yylval = AST::Node(); return Parser::token::T_INOUT_QUALIFIER;
-"in"                                    *yylval = AST::Node(); return Parser::token::T_IN_QUALIFIER;
-"out"                                   *yylval = AST::Node(); return Parser::token::T_OUT_QUALIFIER;
-"centroid"                              *yylval = AST::Node(); return Parser::token::T_CENTROID_QUALIFIER;
-"sample"                                *yylval = AST::Node(); return Parser::token::T_SAMPLE_QUALIFIER;
-"invariant"                             *yylval = AST::Node(); return Parser::token::T_INVARIANT_QUALIFIER;
-"buffer"                                *yylval = AST::Node(); return Parser::token::T_BUFFER_QUALIFIER;
-"constant"                              *yylval = AST::Node(); return Parser::token::T_CONSTANT_QUALIFIER;
-"const"                                 *yylval = AST::Node(); return Parser::token::T_CONST_QUALIFIER;
-"uniform"                               *yylval = AST::Node(); return Parser::token::T_UNIFORM_QUALIFIER;
-"struct"                                *yylval = AST::Node(); return Parser::token::T_STRUCT_QUALIFIER;
-"highp"                                 *yylval = AST::Node(); return Parser::token::T_HIGHP_QUALIFIER;
-"mediump"                               *yylval = AST::Node(); return Parser::token::T_MEDIUMP_QUALIFIER;
-"lowp"                                  *yylval = AST::Node(); return Parser::token::T_LOWP_QUALIFIER;
-"flat"                                  *yylval = AST::Node(); return Parser::token::T_FLAT_QUALIFIER;
-"smooth"                                *yylval = AST::Node(); return Parser::token::T_SMOOTH_QUALIFIER;
-"noperspective"                         *yylval = AST::Node(); return Parser::token::T_NOPERSPECTIVE_QUALIFIER;
-"resource"                              *yylval = AST::Node(); return Parser::token::T_RESOURCE_QUALIFIER;
-"structbuffer"                          *yylval = AST::Node(); return Parser::token::T_STRUCTBUFFER_QUALIFIER;
-"options"                               *yylval = AST::Node(); return Parser::token::T_OPTIONS;
+{INTEGER}{MANTISA}                      *yylval = CreateNode<Value<float>>(*yylloc, static_cast<float>(atof(yytext))); return ShaderToken::Float;
+{INTEGER}u                              *yylval = CreateNode<Value<unsigned>>(*yylloc, strtoul(yytext, 0, 0)); return ShaderToken::Unsigned;
+{INTEGER}                               *yylval = CreateNode<Value<int>>(*yylloc, strtol(yytext, nullptr, 0)); return ShaderToken::Integer;
+"0x"[0-9A-F]+                           *yylval = CreateNode<Value<int>>(*yylloc, strtol(yytext, nullptr, 16)); return ShaderToken::Integer;
+"0x"[0-9A-F]+u                          *yylval = CreateNode<Value<int>>(*yylloc, strtoul(yytext, nullptr, 16)); return ShaderToken::Unsigned;
+"import"                                *yylval = AST::Node(); return ShaderToken::Import;
+"if"                                    *yylval = AST::Node(); return ShaderToken::If;
+"else"                                  *yylval = AST::Node(); return ShaderToken::Else;
+"break"                                 *yylval = AST::Node(); return ShaderToken::Break;
+"return"                                *yylval = AST::Node(); return ShaderToken::Return;
+"continue"                              *yylval = AST::Node(); return ShaderToken::Continue;
+"do"                                    *yylval = AST::Node(); return ShaderToken::Do;
+"for"                                   *yylval = AST::Node(); return ShaderToken::For;
+"while"                                 *yylval = AST::Node(); return ShaderToken::While;
+"switch"                                *yylval = AST::Node(); return ShaderToken::Switch;
+"case"                                  *yylval = AST::Node(); return ShaderToken::Case;
+"default"                               *yylval = AST::Node(); return ShaderToken::Default;
+"true"                                  *yylval = CreateNode<Value<bool>>(*yylloc, true); return ShaderToken::Boolean;
+"false"                                 *yylval = CreateNode<Value<bool>>(*yylloc, false); return ShaderToken::Boolean;
+"void"                                  *yylval = AST::Node(); return ShaderToken::VoidType;
+"shader"                                *yylval = AST::Node(); return ShaderToken::Shader;
+"vertex"                                *yylval = AST::Node(); return ShaderToken::VertexQualifier;
+"fragment"                              *yylval = AST::Node(); return ShaderToken::FragmentQualifier;
+"layout"                                *yylval = AST::Node(); return ShaderToken::LayoutQualifier;
+"inout"                                 *yylval = AST::Node(); return ShaderToken::InOutQualifier;
+"in"                                    *yylval = AST::Node(); return ShaderToken::InQualifier;
+"out"                                   *yylval = AST::Node(); return ShaderToken::OutQualifier;
+"centroid"                              *yylval = AST::Node(); return ShaderToken::CentroidQualifier;
+"sample"                                *yylval = AST::Node(); return ShaderToken::SampleQualifier;
+"invariant"                             *yylval = AST::Node(); return ShaderToken::InvariantQualifier;
+"buffer"                                *yylval = AST::Node(); return ShaderToken::BufferQualifier;
+"constant"                              *yylval = AST::Node(); return ShaderToken::ConstantQualifier;
+"const"                                 *yylval = AST::Node(); return ShaderToken::ConstQualifier;
+"uniform"                               *yylval = AST::Node(); return ShaderToken::UniformQualifier;
+"struct"                                *yylval = AST::Node(); return ShaderToken::StructQualifier;
+"highp"                                 *yylval = AST::Node(); return ShaderToken::HighpQualifier;
+"mediump"                               *yylval = AST::Node(); return ShaderToken::MediumpQualifier;
+"lowp"                                  *yylval = AST::Node(); return ShaderToken::LowpQualifier;
+"flat"                                  *yylval = AST::Node(); return ShaderToken::FlatQualifier;
+"smooth"                                *yylval = AST::Node(); return ShaderToken::SmoothQualifier;
+"noperspective"                         *yylval = AST::Node(); return ShaderToken::NoPerspectiveQualifier;
+"resource"                              *yylval = AST::Node(); return ShaderToken::ResourceQualifier;
+"structbuffer"                          *yylval = AST::Node(); return ShaderToken::StructBufferQualifier;
+"options"                               *yylval = AST::Node(); return ShaderToken::Options;
 {IDENTIFIER}                            {
                                             auto node = driver.findIdentifier(yytext);
                                             if(node)
                                             {
                                                 switch(node->getNodeType())
                                                 {
-                                                case TGE_EFFECT_FUNCTION_SET: *yylval = CreateNode<FunctionSetRef>(ToLocation(*yylloc), node->extract<FunctionSet>()); return Parser::token::T_FUNCTION;
-                                                case TGE_EFFECT_VARIABLE: *yylval = CreateNode<VariableRef>(ToLocation(*yylloc), node->extract<Variable>()); return Parser::token::T_VARIABLE;
-                                                case TGE_EFFECT_TYPE: *yylval = CreateNode<TypeRef>(ToLocation(*yylloc), node->extract<Type>()); return Parser::token::T_TYPE;
-                                                case TGE_EFFECT_TYPEDEF: *yylval = CreateNode<TypeRef>(ToLocation(*yylloc), node->extract<Typedef>()->getType()); return Parser::token::T_TYPE;
-                                                case TGE_EFFECT_OPTION: *yylval = CreateNode<OptionRef>(ToLocation(*yylloc), node->extract<Option>()); return Parser::token::T_OPTION;
+                                                case TGE_EFFECT_FUNCTION_SET: *yylval = CreateNode<FunctionSetRef>(*yylloc, node->extract<FunctionSet>()); return ShaderToken::Function;
+                                                case TGE_EFFECT_VARIABLE: *yylval = CreateNode<VariableRef>(*yylloc, node->extract<Variable>()); return ShaderToken::Variable;
+                                                case TGE_EFFECT_TYPE: *yylval = CreateNode<TypeRef>(*yylloc, node->extract<Type>()); return ShaderToken::Type;
+                                                case TGE_EFFECT_TYPEDEF: *yylval = CreateNode<TypeRef>(*yylloc, node->extract<Typedef>()->getType()); return ShaderToken::Type;
+                                                case TGE_EFFECT_OPTION: *yylval = CreateNode<OptionRef>(*yylloc, node->extract<Option>()); return ShaderToken::Option;
                                                 default:
                                                     TGE_ASSERT(false, "Unexpected type bound to identifier"); break;
                                                 }
                                             }
-                                            *yylval = CreateNode<Value<string>>(ToLocation(*yylloc), yytext);
-                                            return Parser::token::T_IDENTIFIER;
+                                            *yylval = CreateNode<Value<string>>(*yylloc, yytext);
+                                            return ShaderToken::Identifier;
                                         }
-"+="                                    *yylval = AST::Node(); return Parser::token::T_ADD_ASSIGN;
-"-="                                    *yylval = AST::Node(); return Parser::token::T_SUB_ASSIGN;
-"*="                                    *yylval = AST::Node(); return Parser::token::T_MUL_ASSIGN;
-"/="                                    *yylval = AST::Node(); return Parser::token::T_DIV_ASSIGN;
-"%="                                    *yylval = AST::Node(); return Parser::token::T_BITWISE_MOD_ASSIGN;
-"&="                                    *yylval = AST::Node(); return Parser::token::T_BITWISE_AND_ASSIGN;
-"^="                                    *yylval = AST::Node(); return Parser::token::T_BITWISE_XOR_ASSIGN;
-"|="                                    *yylval = AST::Node(); return Parser::token::T_BITWISE_OR_ASSIGN;
-"||"                                    *yylval = AST::Node(); return Parser::token::T_OR;
-"&&"                                    *yylval = AST::Node(); return Parser::token::T_AND;
-"=="                                    *yylval = AST::Node(); return Parser::token::T_EQUAL;
-"!="                                    *yylval = AST::Node(); return Parser::token::T_NEQUAL;
-"<="                                    *yylval = AST::Node(); return Parser::token::T_LEQUAL;
-">="                                    *yylval = AST::Node(); return Parser::token::T_GEQUAL;
-"++"                                    *yylval = AST::Node(); return Parser::token::T_INCR;
-"--"                                    *yylval = AST::Node(); return Parser::token::T_DECR;
-"^^"                                    *yylval = AST::Node(); return Parser::token::T_XOR;
-">>"                                    *yylval = AST::Node(); return Parser::token::T_SHIFT_RIGHT;
-"<<"                                    *yylval = AST::Node(); return Parser::token::T_SHIFT_LEFT;
+"+="                                    *yylval = AST::Node(); return ShaderToken::AddAssign;
+"-="                                    *yylval = AST::Node(); return ShaderToken::SubAssign;
+"*="                                    *yylval = AST::Node(); return ShaderToken::MulAssign;
+"/="                                    *yylval = AST::Node(); return ShaderToken::DivAssign;
+"%="                                    *yylval = AST::Node(); return ShaderToken::ModAssign;
+"&="                                    *yylval = AST::Node(); return ShaderToken::BitwiseAndAssign;
+"^="                                    *yylval = AST::Node(); return ShaderToken::BitwiseXorAssign;
+"|="                                    *yylval = AST::Node(); return ShaderToken::BitwiseOrAssign;
+"||"                                    *yylval = AST::Node(); return ShaderToken::LogicalOr;
+"&&"                                    *yylval = AST::Node(); return ShaderToken::LogicalAnd;
+"=="                                    *yylval = AST::Node(); return ShaderToken::Equal;
+"!="                                    *yylval = AST::Node(); return ShaderToken::NotEqual;
+"<="                                    *yylval = AST::Node(); return ShaderToken::LessEqual;
+">="                                    *yylval = AST::Node(); return ShaderToken::GreaterEqual;
+"++"                                    *yylval = AST::Node(); return ShaderToken::Increment;
+"--"                                    *yylval = AST::Node(); return ShaderToken::Decrement;
+"^^"                                    *yylval = AST::Node(); return ShaderToken::LogicalXor;
+">>"                                    *yylval = AST::Node(); return ShaderToken::ShiftRight;
+"<<"                                    *yylval = AST::Node(); return ShaderToken::ShiftLeft;
 \"(\\.|[^\\"])*\"                       {
                                             yytext[strlen(yytext)-1] = 0;
-                                            *yylval = CreateNode<StringLiteral>(ToLocation(*yylloc), yytext+1);
-                                            return Parser::token::T_STRING_LITERAL;
+                                            *yylval = CreateNode<StringLiteral>(*yylloc, yytext+1);
+                                            return ShaderToken::StringLiteral;
                                         }
-[,;:?=|\^&>\@<\+\-\*/%!~\.\(\)\[\]\{\}] *yylval = AST::Node(); return static_cast<Parser::token_type>(yytext[0]);
+[,;:?=|\^&>\@<\+\-\*/%!~\.\(\)\[\]\{\}] *yylval = AST::Node(); return ToCharacterToken(yytext[0]);
 "//"                                    { BEGIN(CPP_COMMENT); }
-<CPP_COMMENT>\n                         { BEGIN(INITIAL); yylloc->lines(yyleng); }
+<CPP_COMMENT>\n                         { BEGIN(INITIAL); yylloc->startLine += yyleng; yylloc->startColumn = 1; }
 <CPP_COMMENT>.                          { }
 "/*"                                    { BEGIN(C_COMMENT); }
 <C_COMMENT>"*/"                         { BEGIN(INITIAL); }
-<C_COMMENT>\n                           yylloc->lines(yyleng);
+<C_COMMENT>\n                           yylloc->startLine += yyleng;
 <C_COMMENT>.                            { }
-[ \t]+                                  yylloc->step();
-[\r\n]+                                 yylloc->lines(yyleng); yylloc->step();
+[ \t]+                                  
+[\r\n]+                                 yylloc->startLine += yyleng; yylloc->startColumn = 1;
 
-.                                       driver.error(ToLocation(*yylloc), string("invalid character: ") + yytext);
+.                                       driver.error(*yylloc, string("invalid character: ") + yytext);
 
 %%
 

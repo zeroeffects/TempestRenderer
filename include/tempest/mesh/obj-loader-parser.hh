@@ -60,7 +60,6 @@ public:
 
     int parse();
 
-    void error(const Tempest::Location& loc, const std::string& msg);
 private:
     void skipToEndOfLine(ObjFileToken cur_token);
     bool expect(ObjFileToken expected, ObjFileToken* res_token);

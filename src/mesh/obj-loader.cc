@@ -1,7 +1,7 @@
 /*   The MIT License
  *   
  *   Tempest Engine
- *   Copyright (c) 2009 2010 2011 2012 Zdravko Velinov
+ *   Copyright (c) 2015 Zdravko Velinov
  *   
  *   Permission is hereby granted, free of charge, to any person obtaining a copy
  *   of this software and associated documentation files (the "Software"), to deal
@@ -121,9 +121,8 @@ static void InterleaveInterm(ObjLoader::Driver& obj_loader_driver, const ObjLoad
             auto& prev = pos[prev_idx];
             auto& current = pos[current_idx];
             auto& next = pos[next_idx];
-            auto current_v3 = ToVector3(current);
-            auto d0 = ToVector3(prev) - current_v3;
-            auto d1 = ToVector3(next) - current_v3;
+            auto d0 = prev - current;
+            auto d1 = next - current;
             Vector3 norm = d1.cross(d0);
             gen_norms[prev_idx - min_ind] += norm;
             gen_norms[current_idx - min_ind] += norm;
@@ -168,8 +167,8 @@ template<class TBackend, class TShaderProgram, class TDrawBatch, class TStateObj
 bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                TShaderProgram** progs, TBackend* backend,
                                TextureTable<TBackend>* tex_table,
-                               size_t* batch_count, TDrawBatch** batches,
-                               size_t* state_count, TStateObject*** states,
+                               uint32* batch_count, TDrawBatch** batches,
+                               uint32* state_count, TStateObject*** states,
                                TResourceTable*** res_tbl)
 {
     ObjLoader::Driver obj_loader_driver(Path(filename).directoryPath(), loader);
@@ -223,7 +222,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
     
     size_t group_count = groups.size();
 
-    auto gen_res_tbl = CreateScoped<TResourceTable**>(new TResourceTable*[group_count]{}, [group_count](TResourceTable** res_tbl)
+    auto gen_res_tbl = CreateScoped<TResourceTable**>(progs ? new TResourceTable*[group_count]{} : nullptr, [group_count](TResourceTable** res_tbl)
     {
         if(res_tbl)
         {
@@ -265,117 +264,120 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
         batch.VertexBuffers[0].Offset = static_cast<uint32>(prev_vert_size);
         batch.VertexBuffers[0].Stride = vb_stride;
 
-        auto& material = obj_loader_driver.getMaterials().at(groups[i].MaterialIndex);
+        if(progs)
+        {
+            auto& material = obj_loader_driver.getMaterials().at(groups[i].MaterialIndex);
 
-        enum
-        {
-            AmbientAvailable = 1 << 0,
-            SpecularAvailable = 1 << 1
-        };
-
-        size_t model = 0;
-        size_t flags = 0;
-
-        switch(material.IllumModel)
-        {
-        default: TGE_ASSERT(false, "Unsupported illumination model");
-        case ObjMtlLoader::IlluminationModel::Diffuse: model = 0; break;
-        case ObjMtlLoader::IlluminationModel::DiffuseAndAmbient: model = 1; flags = AmbientAvailable; break;
-        case ObjMtlLoader::IlluminationModel::SpecularDiffuseAmbient: model = 2; flags = AmbientAvailable | SpecularAvailable;  break;
-        }
-
-        if(tc_size)
-        {
-            model += 3;
-        }
-
-        auto begin_state_iter = std::begin(pstates),
-             end_state_iter = std::end(pstates);
-        auto iter = std::find_if(begin_state_iter, end_state_iter, [&model](const StateDescription& st_desc) { return st_desc.model == model; });
-        auto* shader_prog = progs[model];
-        if(iter == end_state_iter)
-        {
-            DepthStencilStates ds_state;
-            ds_state.DepthTestEnable = true;
-            ds_state.DepthWriteEnable = true;
-            auto pipeline_state = backend->createStateObject(&rt_fmt, 1, DataFormat::D24S8, shader_prog, DrawModes::TriangleList, nullptr, nullptr, &ds_state);
-            batch.PipelineState = pipeline_state;
-            pstates.emplace_back(model, pipeline_state);
-        }
-        else
-        {
-            batch.PipelineState = iter->state;
-        }
-        
-        Matrix4 Imat;
-        Imat.identity();
-        
-        auto& ambient = material.AmbientReflectivity;
-        auto& diffuse = material.DiffuseReflectivity;
-        auto& specular = material.SpecularReflectivity;
-    
-        auto globals_res_table = CreateResourceTable(shader_prog, "Globals", 1);
-        TGE_ASSERT(globals_res_table, "Expecting valid table");
-        globals_res_table->setResource("Globals.WorldViewProjectionTransform", Imat);
-        globals_res_table->setResource("Globals.RotateTransform", Imat);
-        if(flags & AmbientAvailable)
-        {
-            globals_res_table->setResource("Globals.AmbientDissolve", Vector4(ambient.x(), ambient.y(), ambient.z(), material.Dissolve));
-        }
-        globals_res_table->setResource("Globals.DiffuseReflectivity", Vector4(diffuse.x(), diffuse.y(), diffuse.z(), material.ReflectionSharpness));
-        if(flags & SpecularAvailable)
-        {
-            globals_res_table->setResource("Globals.Specular", Vector4(specular.x(), specular.y(), specular.z(), material.SpecularExponent));
-        }
-
-        if(tc_size)
-        {
-            if(!material.DiffuseReflectivityMap.empty())
+            enum
             {
-                auto diff_map = tex_table->loadTexture(Path(base_dir + material.DiffuseReflectivityMap));
-                globals_res_table->setResource("Globals.DiffuseReflectivityMap", diff_map);
+                AmbientAvailable = 1 << 0,
+                SpecularAvailable = 1 << 1
+            };
+
+            size_t model = 0;
+            size_t flags = 0;
+
+            switch(material.IllumModel)
+            {
+            default: TGE_ASSERT(false, "Unsupported illumination model");
+            case ObjMtlLoader::IlluminationModel::Diffuse: model = 0; break;
+            case ObjMtlLoader::IlluminationModel::DiffuseAndAmbient: model = 1; flags = AmbientAvailable; break;
+            case ObjMtlLoader::IlluminationModel::SpecularDiffuseAmbient: model = 2; flags = AmbientAvailable | SpecularAvailable;  break;
+            }
+
+            if(tc_size)
+            {
+                model += 3;
+            }
+
+            auto begin_state_iter = std::begin(pstates),
+                end_state_iter = std::end(pstates);
+            auto iter = std::find_if(begin_state_iter, end_state_iter, [&model](const StateDescription& st_desc) { return st_desc.model == model; });
+            auto* shader_prog = progs[model];
+            if(iter == end_state_iter)
+            {
+                DepthStencilStates ds_state;
+                ds_state.DepthTestEnable = true;
+                ds_state.DepthWriteEnable = true;
+                auto pipeline_state = backend->createStateObject(&rt_fmt, 1, DataFormat::D24S8, shader_prog, DrawModes::TriangleList, nullptr, nullptr, &ds_state);
+                batch.PipelineState = pipeline_state;
+                pstates.emplace_back(model, pipeline_state);
             }
             else
             {
-                globals_res_table->setResource("Globals.DiffuseReflectivityMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+                batch.PipelineState = iter->state;
             }
+
+            Matrix4 Imat;
+            Imat.identity();
+
+            auto& ambient = material.AmbientReflectivity;
+            auto& diffuse = material.DiffuseReflectivity;
+            auto& specular = material.SpecularReflectivity;
+
+            auto globals_res_table = CreateResourceTable(shader_prog, "Globals", 1);
+            TGE_ASSERT(globals_res_table, "Expecting valid table");
+            globals_res_table->setResource("Globals.WorldViewProjectionTransform", Imat);
+            globals_res_table->setResource("Globals.RotateTransform", Imat);
             if(flags & AmbientAvailable)
             {
-                if(!material.AmbientReflectivityMap.empty())
-                {
-                    auto amb_map = tex_table->loadTexture(Path(base_dir + material.AmbientReflectivityMap));
-                    globals_res_table->setResource("Globals.AmbientReflectivityMap", amb_map);
-                }
-                else
-                {
-                    globals_res_table->setResource("Globals.AmbientReflectivityMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
-                }
+                globals_res_table->setResource("Globals.AmbientDissolve", Vector4(ambient.x(), ambient.y(), ambient.z(), material.Dissolve));
             }
+            globals_res_table->setResource("Globals.DiffuseReflectivity", Vector4(diffuse.x(), diffuse.y(), diffuse.z(), material.ReflectionSharpness));
             if(flags & SpecularAvailable)
             {
-                if(!material.SpecularExponentMap.empty())
+                globals_res_table->setResource("Globals.Specular", Vector4(specular.x(), specular.y(), specular.z(), material.SpecularExponent));
+            }
+
+            if(tc_size)
+            {
+                if(!material.DiffuseReflectivityMap.empty())
                 {
-                    auto exp_map = tex_table->loadTexture(Path(base_dir + material.SpecularExponentMap));
-                    globals_res_table->setResource("Globals.SpecularExponentMap", exp_map);
+                    auto diff_map = tex_table->loadTexture(Path(base_dir + material.DiffuseReflectivityMap));
+                    globals_res_table->setResource("Globals.DiffuseReflectivityMap", diff_map);
                 }
                 else
                 {
-                    globals_res_table->setResource("Globals.SpecularExponentMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+                    globals_res_table->setResource("Globals.DiffuseReflectivityMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
                 }
-                if(!material.SpecularReflectivityMap.empty())
+                if(flags & AmbientAvailable)
                 {
-                    auto spec_map = tex_table->loadTexture(Path(base_dir + material.SpecularReflectivityMap));
-                    globals_res_table->setResource("Globals.SpecularReflectivityMap", spec_map);
+                    if(!material.AmbientReflectivityMap.empty())
+                    {
+                        auto amb_map = tex_table->loadTexture(Path(base_dir + material.AmbientReflectivityMap));
+                        globals_res_table->setResource("Globals.AmbientReflectivityMap", amb_map);
+                    }
+                    else
+                    {
+                        globals_res_table->setResource("Globals.AmbientReflectivityMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+                    }
                 }
-                else
+                if(flags & SpecularAvailable)
                 {
-                    globals_res_table->setResource("Globals.SpecularReflectivityMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+                    if(!material.SpecularExponentMap.empty())
+                    {
+                        auto exp_map = tex_table->loadTexture(Path(base_dir + material.SpecularExponentMap));
+                        globals_res_table->setResource("Globals.SpecularExponentMap", exp_map);
+                    }
+                    else
+                    {
+                        globals_res_table->setResource("Globals.SpecularExponentMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+                    }
+                    if(!material.SpecularReflectivityMap.empty())
+                    {
+                        auto spec_map = tex_table->loadTexture(Path(base_dir + material.SpecularReflectivityMap));
+                        globals_res_table->setResource("Globals.SpecularReflectivityMap", spec_map);
+                    }
+                    else
+                    {
+                        globals_res_table->setResource("Globals.SpecularReflectivityMap", Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+                    }
                 }
             }
+
+            batch.ResourceTable = globals_res_table->getBakedTable();
+            gen_res_tbl[i] = globals_res_table.release();
         }
-        
-        batch.ResourceTable = globals_res_table->getBakedTable();        
-        gen_res_tbl[i] = globals_res_table.release();
 
         prev_ind_size = res_inds.size();
         prev_vert_size = res_data.size();
@@ -409,7 +411,7 @@ bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
 template bool LoadObjFileStaticGeometry(const string& filename, FileLoader* loader,
                                         GLShaderProgram** progs, GLRenderingBackend* backend,
                                         TextureTable<GLRenderingBackend>* tex_table,
-                                        size_t* batch_count, GLDrawBatch** batches,
-                                        size_t* num_states, GLStateObject*** states,
+                                        uint32* batch_count, GLDrawBatch** batches,
+                                        uint32* num_states, GLStateObject*** states,
                                         GLResourceTable*** res_tbl);
 }

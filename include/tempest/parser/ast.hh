@@ -244,85 +244,6 @@ typedef void (*NodeDeleter)(void* ptr);
 
 void GenericDeleter(void* ptr);
 
-//! \brief Raw pointers with some code sugar to make interfacing with the preferred way of memory management.
-struct UnmanagedNode
-{
-    NodeImpl*	m_Impl;
-    NodeDeleter m_Deleter; //! Used for deleting the content carried by this node and also for marking node as incomplete, aka already released or never being managed.
-    
-    UnmanagedNode()
-        :   m_Impl(nullptr),
-            m_Deleter(nullptr) {}
-    
-    UnmanagedNode(NodeImpl* ptr, NodeDeleter _deleter)
-        :   m_Impl(ptr),
-            m_Deleter(_deleter != nullptr ? _deleter : &GenericDeleter) {}
-        
-    UnmanagedNode(const UnmanagedNode& _node)
-        :   m_Impl(_node.m_Impl),
-            m_Deleter(_node.m_Deleter) {}
-
-    UnmanagedNode& operator=(const UnmanagedNode& _node)
-    {
-        m_Impl = _node.m_Impl;
-        m_Deleter = _node.m_Deleter;
-        return *this;
-    }
-
-    void destroy()
-    {
-        if(m_Deleter)
-            m_Deleter(m_Impl);
-        else
-            TGE_ASSERT(m_Impl == nullptr, "Possible memory leak.");
-        m_Impl = nullptr;
-        m_Deleter = nullptr;
-    }
-    
-    void release()
-    {
-        m_Impl = nullptr;
-        m_Deleter = nullptr;
-    }
-
-    /*! \remarks This was introduced as some way to fix the Bison parser without resorting to some assumptions
-     *           which would inevitably get forgotten
-     */
-    bool isIncomplete()
-    {
-        TGE_ASSERT((m_Impl == nullptr && (m_Deleter == nullptr || m_Deleter == GenericDeleter)) || (m_Impl != nullptr && m_Deleter != &GenericDeleter), "Unexpected combination ");
-        return m_Deleter == nullptr;
-    }
-
-    template<class TOther>
-    UnmanagedNode(NodeT<TOther>&& _node);
-    
-     template<class TOther>
-    UnmanagedNode& operator=(NodeT<TOther>&& _node);
-
-    // It is an error to move unmanaged nodes. They are supposed to be copied and
-    // manually managed. The main reason why they were created was the Bison parser
-    // and its current implementation. If in the future I come up with better
-    // parser in mind I am going to replace it.
-
-#ifdef _MSC_VER
-    // Here they are defined because containers insist to move stuff around.
-    UnmanagedNode(UnmanagedNode&& _node)
-        :   m_Impl(_node.m_Impl),
-            m_Deleter(_node.m_Deleter) {}
-
-    UnmanagedNode& operator=(UnmanagedNode&& _node)
-    {
-        m_Impl = _node.m_Impl;
-        m_Deleter = _node.m_Deleter;
-        return *this;
-    }
-#else
-    UnmanagedNode(UnmanagedNode&& _node)=delete;
-    UnmanagedNode& operator=(UnmanagedNode&& _node)=delete;
-#endif
-};
-
 template<class T>
 struct NodeT
 {
@@ -351,17 +272,6 @@ struct NodeT
           , m_Robbed(false)
 #endif
         {}
-
-    NodeT(UnmanagedNode&& _node)
-        :   m_Impl(static_cast<typename node_model_details::node_model*>(_node.m_Impl)),
-            m_Deleter(_node.m_Deleter == &GenericDeleter ? nullptr : _node.m_Deleter)
-#ifdef TGE_DEBUG_AST_NODE
-          , m_Robbed(false)
-#endif
-    {
-        _node.m_Impl = nullptr;
-        _node.m_Deleter = nullptr;
-    }
 
     NodeT(NodeT&& _node)
         :   m_Impl(_node.m_Impl),
@@ -538,25 +448,6 @@ struct NodeT
 
 typedef NodeT<void> Node;
 
-template<class TOther>
-UnmanagedNode::UnmanagedNode(NodeT<TOther>&& _node)
-    :   m_Impl(_node.m_Impl),
-        m_Deleter(_node.m_Deleter != nullptr ? _node.m_Deleter : &GenericDeleter)
-{
-    _node.m_Impl = nullptr;
-    _node.m_Deleter = nullptr;
-}
-
-template<class TOther>
-UnmanagedNode& UnmanagedNode::operator=(NodeT<TOther>&& _node)
-{
-    m_Impl = _node.m_Impl;
-    m_Deleter = _node.m_Deleter != nullptr ? _node.m_Deleter : &GenericDeleter;
-    _node.m_Impl = nullptr;
-    _node.m_Deleter = nullptr;
-    return *this;
-}
-
 template<class TNode, class... TArgs>
 NodeT<TNode> CreateNodeTyped(Location loc, TArgs&&... args)
 {
@@ -671,10 +562,10 @@ inline void PrintLocation(PrinterInfrastructure* printer, const Location& loc, c
 
 template<class T> class ListIterator;
 
-enum ListType
+enum class ListType: uint32
 {
-    TGE_AST_COMMA_SEPARATED_LIST,
-    TGE_AST_SEMICOLON_SEPARATED_LIST
+    CommaSeparated,
+    SemicolonSeparated
 };
 
 class ListElement

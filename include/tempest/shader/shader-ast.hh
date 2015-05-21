@@ -75,49 +75,51 @@ enum NodeType
     TGE_EFFECT_OPTION
 };
 
-enum BinaryOperatorType
+enum class BinaryOperatorType: uint32
 {
-    TGE_EFFECT_ASSIGN,
-    TGE_EFFECT_ADD_ASSIGN,
-    TGE_EFFECT_SUB_ASSIGN,
-    TGE_EFFECT_MUL_ASSIGN,
-    TGE_EFFECT_DIV_ASSIGN,
-    TGE_EFFECT_MOD_ASSIGN,
-    TGE_EFFECT_BITWISE_AND_ASSIGN,
-    TGE_EFFECT_BITWISE_XOR_ASSIGN,
-    TGE_EFFECT_BITWISE_OR_ASSIGN,
-    TGE_EFFECT_ADD,
-    TGE_EFFECT_SUBTRACT,
-    TGE_EFFECT_MULTIPLY,
-    TGE_EFFECT_DIVIDE,
-    TGE_EFFECT_MODULUS,
-    TGE_EFFECT_BITWISE_AND,
-    TGE_EFFECT_BITWISE_OR,
-    TGE_EFFECT_BITWISE_XOR,
-    TGE_EFFECT_BITWISE_SHIFT_RIGHT,
-    TGE_EFFECT_BITWISE_SHIFT_LEFT,
-    TGE_EFFECT_LESS,
-    TGE_EFFECT_GREATER,
-    TGE_EFFECT_LEQUAL,
-    TGE_EFFECT_GEQUAL,
-    TGE_EFFECT_OR,
-    TGE_EFFECT_AND,
-    TGE_EFFECT_XOR,
-    TGE_EFFECT_EQUAL,
-    TGE_EFFECT_NEQUAL,
-    TGE_EFFECT_COMMA
+    Unknown,
+    Assign,
+    AddAssign,
+    SubtractAssign,
+    MultiplyAssign,
+    DivideAssign,
+    ModulusAssign,
+    BitwiseAndAssign,
+    BitwiseXorAssign,
+    BitwiseOrAssign,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulus,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseShiftRight,
+    BitwiseShiftLeft,
+    Less,
+    Greater,
+    LessEqual,
+    GreaterEqual,
+    Or,
+    And,
+    Xor,
+    Equal,
+    NotEqual,
+    Comma
 };
 
-enum UnaryOperatorType
+enum class UnaryOperatorType: uint32
 {
-    TGE_EFFECT_POSITIVE,
-    TGE_EFFECT_NEGATE,
-    TGE_EFFECT_NOT,
-    TGE_EFFECT_COMPLEMENT,
-    TGE_EFFECT_PRE_INCR,
-    TGE_EFFECT_PRE_DECR,
-    TGE_EFFECT_POST_INCR,
-    TGE_EFFECT_POST_DECR
+    Unknown,
+    Positive,
+    Negative,
+    Not,
+    Complement,
+    PreIncrement,
+    PreDecrement,
+    PostIncrement,
+    PostDecrement
 };
 
 class Type;
@@ -155,11 +157,6 @@ class Buffer;
 class Option;
 class ShaderDeclaration;
 typedef Value<string> Identifier;
-typedef Intermediate<const Type*, NodeT<Identifier>> DeclarationInfo;
-typedef Intermediate<const Type*, FunctionSet*> FuncDeclarationInfo;
-typedef Intermediate<AST::Node, FunctionDeclaration*> IntermFuncNode;
-typedef Intermediate<const Type*, NodeT<List>> VarDeclList;
-typedef Value<ShaderType> ValueShaderType;
 
 typedef AST::Reference<FunctionSet> FunctionSetRef;
 typedef AST::Reference<Variable> VariableRef;
@@ -198,11 +195,6 @@ TGE_AST_NODE_INFO(Shader::Parentheses, Shader::TGE_EFFECT_PARENTHESES_STATEMENT,
 TGE_AST_NODE_INFO(Shader::JumpStatement, Shader::TGE_EFFECT_JUMP_STATEMENT, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::Expression, Shader::TGE_EFFECT_EXPRESSION, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::ReturnStatement, Shader::TGE_EFFECT_RETURN_STATEMENT, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Shader::FuncDeclarationInfo, TGE_AST_UNKNOWN, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Shader::IntermFuncNode, TGE_AST_UNKNOWN, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Shader::DeclarationInfo, TGE_AST_UNKNOWN, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Shader::VarDeclList, TGE_AST_UNKNOWN, Shader::VisitorInterface)
-TGE_AST_NODE_INFO(Value<Shader::ShaderType>, TGE_AST_UNKNOWN, Shader::VisitorInterface)
 TGE_AST_NODE_INFO(Shader::Buffer, Shader::TGE_EFFECT_BUFFER, Shader::VisitorInterface)
 }
 
@@ -786,6 +778,8 @@ public:
     BinaryOperator(BinaryOperatorType _type, AST::Node _first, AST::Node _second);
     ~BinaryOperator();
 
+    void setSecond(AST::Node _node) { m_Second = std::move(_node); }
+
     string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "binary operation"; }
     
     BinaryOperatorType getOperation() const;
@@ -1142,12 +1136,6 @@ public:
     virtual void visit(const StructType*)=0;
     virtual void visit(const IfStatement*)=0;
     virtual void visit(const Buffer*)=0;
-    // Some types that should not appear in AST
-    virtual void visit(const IntermFuncNode*)=0;
-    virtual void visit(const FuncDeclarationInfo*)=0;
-    virtual void visit(const DeclarationInfo*)=0;
-    virtual void visit(const VarDeclList*)=0;
-    virtual void visit(const Value<ShaderType>*)=0;
     virtual void visit(const Type* type_stmt)=0;
 };
 
@@ -1248,11 +1236,6 @@ public:
     // Some types that should not appear in AST
     virtual void visit(const FunctionSet*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const Expression*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const IntermFuncNode*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const FuncDeclarationInfo*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const DeclarationInfo*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const VarDeclList*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
-    virtual void visit(const Value<ShaderType>*) override { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
 };
 }
 }

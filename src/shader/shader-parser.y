@@ -816,10 +816,10 @@ function_variables_non_empty_list
 
 function_variable
     : variable                                              { $$ = $1; }
-    | "in qualifier" function_variable                      { auto var = $2; if(var) var->setStorage(StorageQualifier::In); $$ = std::move(var); }
-    | "out qualifier" function_variable                     { auto var = $2; if(var) var->setStorage(StorageQualifier::Out); $$ = std::move(var); }
-    | "inout qualifier" function_variable                   { auto var = $2; if(var) var->setStorage(StorageQualifier::InOut); $$ = std::move(var); }
-    | "const qualifier" function_variable                   { auto var = $2; if(var) var->setStorage(StorageQualifier::Const); $$ = std::move(var); }
+    | "in qualifier" variable                               { auto var = $2; if(var) var->setStorage(StorageQualifier::In); $$ = std::move(var); }
+    | "out qualifier" variable                              { auto var = $2; if(var) var->setStorage(StorageQualifier::Out); $$ = std::move(var); }
+    | "inout qualifier" variable                            { auto var = $2; if(var) var->setStorage(StorageQualifier::InOut); $$ = std::move(var); }
+    | "const qualifier" variable                            { auto var = $2; if(var) var->setStorage(StorageQualifier::Const); $$ = std::move(var); }
     ;
 
 variable

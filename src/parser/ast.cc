@@ -252,7 +252,7 @@ void PrintNode(AST::VisitorInterface* visitor, PrinterInfrastructure* printer, c
     auto format = ptr->getFormat();
     for(auto i = ptr->current(), iend = ptr->end(); i != iend;)
     {
-        if(format == TGE_AST_SEMICOLON_SEPARATED_LIST)
+        if(format == ListType::SemicolonSeparated)
         {
             if(printer->hasFlags(TGE_AST_PRINT_LINE_LOCATION))
             {
@@ -265,7 +265,7 @@ void PrintNode(AST::VisitorInterface* visitor, PrinterInfrastructure* printer, c
         TGE_ASSERT(*i, "Valid node expected. Bad parsing beforehand.");
         i->accept(visitor);
 
-        if(format == TGE_AST_COMMA_SEPARATED_LIST)
+        if(format == ListType::CommaSeparated)
         {
             if(++i != ptr->end())
                 os << ", ";

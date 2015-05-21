@@ -205,39 +205,39 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
     {
         switch(binop)
         {
-        case TGE_EFFECT_ADD:
-        case TGE_EFFECT_SUBTRACT:
-        case TGE_EFFECT_MULTIPLY:
-        case TGE_EFFECT_DIVIDE:
+        case BinaryOperatorType::Add:
+        case BinaryOperatorType::Subtract:
+        case BinaryOperatorType::Multiply:
+        case BinaryOperatorType::Divide:
         {
             if(this_type->hasImplicitConversionTo(operandB))
                 return operandB;
             else if(operandB->hasImplicitConversionTo(this_type))
                 return this_type;
         } break;
-        case TGE_EFFECT_ASSIGN:
-        case TGE_EFFECT_ADD_ASSIGN:
-        case TGE_EFFECT_SUB_ASSIGN:
-        case TGE_EFFECT_DIV_ASSIGN:
-        case TGE_EFFECT_MUL_ASSIGN:
+        case BinaryOperatorType::Assign:
+        case BinaryOperatorType::AddAssign:
+        case BinaryOperatorType::SubtractAssign:
+        case BinaryOperatorType::DivideAssign:
+        case BinaryOperatorType::MultiplyAssign:
         {
             if(operandB->hasImplicitConversionTo(this_type))
                 return this_type;
         } break;
-        case TGE_EFFECT_AND:
-        case TGE_EFFECT_OR:
-        case TGE_EFFECT_XOR:
-        case TGE_EFFECT_LESS:
-        case TGE_EFFECT_GREATER:
-        case TGE_EFFECT_GEQUAL:
-        case TGE_EFFECT_LEQUAL:
-        case TGE_EFFECT_EQUAL:
-        case TGE_EFFECT_NEQUAL:
+        case BinaryOperatorType::And:
+        case BinaryOperatorType::Or:
+        case BinaryOperatorType::Xor:
+        case BinaryOperatorType::Less:
+        case BinaryOperatorType::Greater:
+        case BinaryOperatorType::GreaterEqual:
+        case BinaryOperatorType::LessEqual:
+        case BinaryOperatorType::Equal:
+        case BinaryOperatorType::NotEqual:
         {
             if(operandB->hasImplicitConversionTo(this_type) || this_type->hasImplicitConversionTo(operandB))
                 return driver.find("bool");
         } break;
-        case TGE_EFFECT_COMMA:
+        case BinaryOperatorType::Comma:
             return operandB;
             break;
         default:
@@ -249,10 +249,10 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
         const VectorType* opBtype = operandB->extract<VectorType>();
         switch(binop)
         {
-        case TGE_EFFECT_ADD:
-        case TGE_EFFECT_SUBTRACT:
-        case TGE_EFFECT_MULTIPLY:
-        case TGE_EFFECT_DIVIDE:
+        case BinaryOperatorType::Add:
+        case BinaryOperatorType::Subtract:
+        case BinaryOperatorType::Multiply:
+        case BinaryOperatorType::Divide:
         {
             if(this_type->hasImplicitConversionTo(operandB->extract<VectorType>()->getBasicType()))
                 return operandB;
@@ -270,7 +270,7 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
                     return operandB;
             }
         } break;
-        case TGE_EFFECT_COMMA:
+        case BinaryOperatorType::Comma:
             return operandB;
             break;
         default:
@@ -281,14 +281,14 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
     {
         switch(binop)
         {
-        case TGE_EFFECT_ADD:
-        case TGE_EFFECT_SUBTRACT:
-        case TGE_EFFECT_MULTIPLY:
-        case TGE_EFFECT_DIVIDE:
+        case BinaryOperatorType::Add:
+        case BinaryOperatorType::Subtract:
+        case BinaryOperatorType::Multiply:
+        case BinaryOperatorType::Divide:
             if(this_type->hasImplicitConversionTo(operandB->extract<MatrixType>()->getBasicType()))
                 return operandB;
             break;
-        case TGE_EFFECT_COMMA:
+        case BinaryOperatorType::Comma:
             return operandB;
             break;
         default:
@@ -309,19 +309,19 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
     {
         switch(binop)
         {
-        case TGE_EFFECT_BITWISE_AND_ASSIGN:
-        case TGE_EFFECT_BITWISE_XOR_ASSIGN:
-        case TGE_EFFECT_BITWISE_OR_ASSIGN:
-        case TGE_EFFECT_BITWISE_AND:
-        case TGE_EFFECT_BITWISE_OR:
-        case TGE_EFFECT_BITWISE_XOR:
-        case TGE_EFFECT_MODULUS:
+        case BinaryOperatorType::BitwiseAndAssign:
+        case BinaryOperatorType::BitwiseXorAssign:
+        case BinaryOperatorType::BitwiseOrAssign:
+        case BinaryOperatorType::BitwiseAnd:
+        case BinaryOperatorType::BitwiseOr:
+        case BinaryOperatorType::BitwiseXor:
+        case BinaryOperatorType::Modulus:
         {
             if(operandB == this_type)
                 return operandB;
         } break;
-        case TGE_EFFECT_BITWISE_SHIFT_RIGHT:
-        case TGE_EFFECT_BITWISE_SHIFT_LEFT:
+        case BinaryOperatorType::BitwiseShiftRight:
+        case BinaryOperatorType::BitwiseShiftLeft:
         {
             string basic_type = operandB->getNodeName();
             if(basic_type == "uint" || basic_type == "int")
@@ -336,10 +336,10 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
         const VectorType* opBtype = operandB->extract<VectorType>();
         switch(binop)
         {
-        case TGE_EFFECT_BITWISE_AND:
-        case TGE_EFFECT_BITWISE_OR:
-        case TGE_EFFECT_BITWISE_XOR:
-        case TGE_EFFECT_MODULUS:
+        case BinaryOperatorType::BitwiseAnd:
+        case BinaryOperatorType::BitwiseOr:
+        case BinaryOperatorType::BitwiseXor:
+        case BinaryOperatorType::Modulus:
         {
             const Type* basic_type = opBtype->getBasicType();
             if(basic_type == this_type)
@@ -357,15 +357,15 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
 
 const Type* ScalarType::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const
 {
-    if(uniop == TGE_EFFECT_POSITIVE ||
-       uniop == TGE_EFFECT_NEGATE ||
-       uniop == TGE_EFFECT_PRE_INCR ||
-       uniop == TGE_EFFECT_PRE_DECR ||
-       uniop == TGE_EFFECT_POST_INCR ||
-       uniop == TGE_EFFECT_POST_DECR ||
-       uniop == TGE_EFFECT_NOT)
+    if(uniop == UnaryOperatorType::Positive ||
+       uniop == UnaryOperatorType::Negative ||
+       uniop == UnaryOperatorType::PreIncrement ||
+       uniop == UnaryOperatorType::PreDecrement ||
+       uniop == UnaryOperatorType::PostIncrement ||
+       uniop == UnaryOperatorType::PostDecrement ||
+       uniop == UnaryOperatorType::Not)
         return this_type;
-    if(m_Integer && uniop == TGE_EFFECT_COMPLEMENT)
+    if(m_Integer && uniop == UnaryOperatorType::Complement)
         return this_type;
     return nullptr;
 }
@@ -460,10 +460,10 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
     {
         switch(binop)
         {
-        case TGE_EFFECT_ADD:
-        case TGE_EFFECT_SUBTRACT:
-        case TGE_EFFECT_MULTIPLY:
-        case TGE_EFFECT_DIVIDE:
+        case BinaryOperatorType::Add:
+        case BinaryOperatorType::Subtract:
+        case BinaryOperatorType::Multiply:
+        case BinaryOperatorType::Divide:
         {
             if(operandB->hasImplicitConversionTo(getBasicType()))
                 return this_type;
@@ -481,14 +481,14 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
                     return this_type;
             }
         } break;
-        case TGE_EFFECT_ADD_ASSIGN:
-        case TGE_EFFECT_SUB_ASSIGN:
-        case TGE_EFFECT_DIV_ASSIGN:
-        case TGE_EFFECT_MUL_ASSIGN:
+        case BinaryOperatorType::AddAssign:
+        case BinaryOperatorType::SubtractAssign:
+        case BinaryOperatorType::DivideAssign:
+        case BinaryOperatorType::MultiplyAssign:
             if(operandB->hasImplicitConversionTo(getBasicType()))
                 return this_type;
             break;
-        case TGE_EFFECT_COMMA:
+        case BinaryOperatorType::Comma:
             return operandB;
         default:
             break;
@@ -498,32 +498,32 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
     {
         switch(binop)
         {
-        case TGE_EFFECT_MULTIPLY:
-        case TGE_EFFECT_ADD:
-        case TGE_EFFECT_SUBTRACT:
-        case TGE_EFFECT_DIVIDE:
+        case BinaryOperatorType::Add:
+        case BinaryOperatorType::Subtract:
+        case BinaryOperatorType::Divide:
+        case BinaryOperatorType::Multiply:
         {
             if(this_type->hasImplicitConversionTo(operandB))
                 return operandB;
             else if(operandB->hasImplicitConversionTo(this_type))
                 return this_type;
         } break;
-        case TGE_EFFECT_ASSIGN:
-        case TGE_EFFECT_ADD_ASSIGN:
-        case TGE_EFFECT_SUB_ASSIGN:
-        case TGE_EFFECT_DIV_ASSIGN:
-        case TGE_EFFECT_MUL_ASSIGN:
+        case BinaryOperatorType::Assign:
+        case BinaryOperatorType::AddAssign:
+        case BinaryOperatorType::SubtractAssign:
+        case BinaryOperatorType::DivideAssign:
+        case BinaryOperatorType::MultiplyAssign:
         {
             if(operandB->hasImplicitConversionTo(this_type))
                 return this_type;
         } break;
-        case TGE_EFFECT_EQUAL:
-        case TGE_EFFECT_NEQUAL:
+        case BinaryOperatorType::Equal:
+        case BinaryOperatorType::NotEqual:
             if(operandB->hasImplicitConversionTo(this_type) ||
                this_type->hasImplicitConversionTo(operandB))
                 return driver.find("bool");
             break;
-        case TGE_EFFECT_COMMA:
+        case BinaryOperatorType::Comma:
             return operandB;
             break;
         default:
@@ -535,7 +535,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
         const MatrixType* opBtype = operandB->extract<MatrixType>();
         switch(binop)
         {
-        case TGE_EFFECT_MULTIPLY:
+        case BinaryOperatorType::Multiply:
             if(m_VecDim == opBtype->getRows())
             {
                 std::stringstream ss;
@@ -543,7 +543,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
                 return driver.find(ss.str());
             }
             break;
-        case TGE_EFFECT_COMMA:
+        case BinaryOperatorType::Comma:
             return operandB;
             break;
         default:
@@ -564,19 +564,19 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
     {
         switch(binop)
         {
-        case TGE_EFFECT_BITWISE_AND_ASSIGN:
-        case TGE_EFFECT_BITWISE_XOR_ASSIGN:
-        case TGE_EFFECT_BITWISE_OR_ASSIGN:
-        case TGE_EFFECT_BITWISE_AND:
-        case TGE_EFFECT_BITWISE_OR:
-        case TGE_EFFECT_BITWISE_XOR:
-        case TGE_EFFECT_MODULUS:
+        case BinaryOperatorType::BitwiseAndAssign:
+        case BinaryOperatorType::BitwiseXorAssign:
+        case BinaryOperatorType::BitwiseOrAssign:
+        case BinaryOperatorType::BitwiseAnd:
+        case BinaryOperatorType::BitwiseOr:
+        case BinaryOperatorType::BitwiseXor:
+        case BinaryOperatorType::Modulus:
         {
             if(operandB == m_Type)
                 return this_type;
         } break;
-        case TGE_EFFECT_BITWISE_SHIFT_RIGHT:
-        case TGE_EFFECT_BITWISE_SHIFT_LEFT:
+        case BinaryOperatorType::BitwiseShiftRight:
+        case BinaryOperatorType::BitwiseShiftLeft:
         {
             string basic_type = operandB->getNodeName();
             if(basic_type == "uint" || basic_type == "int")
@@ -591,19 +591,19 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
         const VectorType* opBtype = operandB->extract<VectorType>();
         switch(binop)
         {
-        case TGE_EFFECT_BITWISE_AND_ASSIGN:
-        case TGE_EFFECT_BITWISE_XOR_ASSIGN:
-        case TGE_EFFECT_BITWISE_OR_ASSIGN:
-        case TGE_EFFECT_BITWISE_AND:
-        case TGE_EFFECT_BITWISE_OR:
-        case TGE_EFFECT_BITWISE_XOR:
-        case TGE_EFFECT_MODULUS:
+        case BinaryOperatorType::BitwiseAndAssign:
+        case BinaryOperatorType::BitwiseXorAssign:
+        case BinaryOperatorType::BitwiseOrAssign:
+        case BinaryOperatorType::BitwiseAnd:
+        case BinaryOperatorType::BitwiseOr:
+        case BinaryOperatorType::BitwiseXor:
+        case BinaryOperatorType::Modulus:
         {
             if(operandB == this_type)
                 return this_type;
         } break;
-        case TGE_EFFECT_BITWISE_SHIFT_RIGHT:
-        case TGE_EFFECT_BITWISE_SHIFT_LEFT:
+        case BinaryOperatorType::BitwiseShiftRight:
+        case BinaryOperatorType::BitwiseShiftLeft:
         {
             string basic_type = opBtype->getBasicType()->getNodeName();
             if(opBtype->getDimension() == m_VecDim && (basic_type == "uint" || basic_type == "int"))
@@ -621,14 +621,14 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
 
 const Type* VectorType::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const
 {
-    if(uniop == TGE_EFFECT_POSITIVE ||
-       uniop == TGE_EFFECT_NEGATE ||
-       uniop == TGE_EFFECT_PRE_INCR ||
-       uniop == TGE_EFFECT_PRE_DECR ||
-       uniop == TGE_EFFECT_POST_INCR ||
-       uniop == TGE_EFFECT_POST_DECR)
+    if(uniop == UnaryOperatorType::Positive ||
+       uniop == UnaryOperatorType::Negative ||
+       uniop == UnaryOperatorType::PreIncrement ||
+       uniop == UnaryOperatorType::PreDecrement ||
+       uniop == UnaryOperatorType::PostIncrement ||
+       uniop == UnaryOperatorType::PostDecrement)
         return this_type;
-    return m_Type->extract<ScalarType>()->isInteger() && uniop == TGE_EFFECT_COMPLEMENT ?
+    return m_Type->extract<ScalarType>()->isInteger() && uniop == UnaryOperatorType::Complement ?
                 this_type : nullptr;
 }
 
@@ -759,18 +759,18 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
     {
         switch(binop)
         {
-        case TGE_EFFECT_ADD:
-        case TGE_EFFECT_SUBTRACT:
-        case TGE_EFFECT_MULTIPLY:
-        case TGE_EFFECT_DIVIDE:
-        case TGE_EFFECT_ADD_ASSIGN:
-        case TGE_EFFECT_SUB_ASSIGN:
-        case TGE_EFFECT_DIV_ASSIGN:
-        case TGE_EFFECT_MUL_ASSIGN:
+        case BinaryOperatorType::Add:
+        case BinaryOperatorType::Subtract:
+        case BinaryOperatorType::Multiply:
+        case BinaryOperatorType::Divide:
+        case BinaryOperatorType::AddAssign:
+        case BinaryOperatorType::SubtractAssign:
+        case BinaryOperatorType::DivideAssign:
+        case BinaryOperatorType::MultiplyAssign:
             if(operandB->hasImplicitConversionTo(getBasicType()))
                 result_type = this_type;
             break;
-        case TGE_EFFECT_COMMA:
+        case BinaryOperatorType::Comma:
             result_type = operandB;
             break;
         default:
@@ -782,7 +782,7 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
         const VectorType* opBtype = operandB->extract<VectorType>();
         switch(binop)
         {
-        case TGE_EFFECT_MULTIPLY:
+        case BinaryOperatorType::Multiply:
             if(getColumns() == opBtype->getDimension())
             {
                 std::stringstream ss;
@@ -790,7 +790,7 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
                 result_type = driver.find(ss.str());
             }
             break;
-        case TGE_EFFECT_COMMA:
+        case BinaryOperatorType::Comma:
             result_type = operandB;
             break;
         default:
@@ -802,7 +802,7 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
         const MatrixType* opBtype = operandB->extract<MatrixType>();
         switch(binop)
         {
-        case TGE_EFFECT_MULTIPLY:
+        case BinaryOperatorType::Multiply:
         {
             if(getColumns() == opBtype->getRows())
             {
@@ -811,23 +811,23 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
                 result_type = driver.find(ss.str());
             }
         } break;
-        case TGE_EFFECT_ADD:
-        case TGE_EFFECT_SUBTRACT:
-        case TGE_EFFECT_DIVIDE:
-        case TGE_EFFECT_ASSIGN:
-        case TGE_EFFECT_ADD_ASSIGN:
-        case TGE_EFFECT_SUB_ASSIGN:
-        case TGE_EFFECT_DIV_ASSIGN:
+        case BinaryOperatorType::Add:
+        case BinaryOperatorType::Subtract:
+        case BinaryOperatorType::Divide:
+        case BinaryOperatorType::Assign:
+        case BinaryOperatorType::AddAssign:
+        case BinaryOperatorType::SubtractAssign:
+        case BinaryOperatorType::DivideAssign:
         {
             if(getColumns() == opBtype->getColumns() && getRows() == opBtype->getRows())
                 result_type = this_type;
         } break;
-        case TGE_EFFECT_EQUAL:
-        case TGE_EFFECT_NEQUAL:
+        case BinaryOperatorType::Equal:
+        case BinaryOperatorType::NotEqual:
             if(getColumns() == opBtype->getColumns() && getRows() == opBtype->getRows())
                 result_type = driver.find("bool");
             break;
-        case TGE_EFFECT_COMMA:
+        case BinaryOperatorType::Comma:
             result_type = operandB;
             break;
         default:
@@ -843,12 +843,12 @@ const Type* MatrixType::binaryOperatorResultType(Driver& driver, const Type* thi
 
 const Type* MatrixType::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const
 {
-    return uniop == TGE_EFFECT_POSITIVE ||
-           uniop == TGE_EFFECT_NEGATE ||
-           uniop == TGE_EFFECT_PRE_INCR ||
-           uniop == TGE_EFFECT_PRE_DECR ||
-           uniop == TGE_EFFECT_POST_INCR ||
-           uniop == TGE_EFFECT_POST_DECR ?
+    return uniop == UnaryOperatorType::Positive ||
+           uniop == UnaryOperatorType::Negative ||
+           uniop == UnaryOperatorType::PreIncrement ||
+           uniop == UnaryOperatorType::PreDecrement ||
+           uniop == UnaryOperatorType::PostIncrement ||
+           uniop == UnaryOperatorType::PostDecrement ?
                 this_type : nullptr;
 }
 
@@ -1663,63 +1663,63 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
     string binary_operator;
     switch(binop->getOperation())
     {
-    case TGE_EFFECT_ASSIGN:
+    case BinaryOperatorType::Assign:
         binary_operator = "="; break;
-    case TGE_EFFECT_ADD_ASSIGN:
+    case BinaryOperatorType::AddAssign:
         binary_operator = "+="; break;
-    case TGE_EFFECT_SUB_ASSIGN:
+    case BinaryOperatorType::SubtractAssign:
         binary_operator = "-="; break;
-    case TGE_EFFECT_MUL_ASSIGN:
+    case BinaryOperatorType::MultiplyAssign:
         binary_operator = "*="; break;
-    case TGE_EFFECT_DIV_ASSIGN:
+    case BinaryOperatorType::DivideAssign:
         binary_operator = "/="; break;
-    case TGE_EFFECT_MOD_ASSIGN:
+    case BinaryOperatorType::ModulusAssign:
         binary_operator = "%="; break;
-    case TGE_EFFECT_BITWISE_AND_ASSIGN:
+    case BinaryOperatorType::BitwiseAndAssign:
         binary_operator = "&="; break;
-    case TGE_EFFECT_BITWISE_XOR_ASSIGN:
+    case BinaryOperatorType::BitwiseXorAssign:
         binary_operator = "^="; break;
-    case TGE_EFFECT_BITWISE_OR_ASSIGN:
+    case BinaryOperatorType::BitwiseOrAssign:
         binary_operator = "|="; break;
-    case TGE_EFFECT_ADD:
+    case BinaryOperatorType::Add:
         binary_operator = "+"; break;
-    case TGE_EFFECT_SUBTRACT:
+    case BinaryOperatorType::Subtract:
         binary_operator = "-"; break;
-    case TGE_EFFECT_MULTIPLY:
+    case BinaryOperatorType::Multiply:
         binary_operator = "*"; break;
-    case TGE_EFFECT_DIVIDE:
+    case BinaryOperatorType::Divide:
         binary_operator = "/"; break;
-    case TGE_EFFECT_MODULUS:
+    case BinaryOperatorType::Modulus:
         binary_operator = "%"; break;
-    case TGE_EFFECT_BITWISE_AND:
+    case BinaryOperatorType::BitwiseAnd:
         binary_operator = "&"; break;
-    case TGE_EFFECT_BITWISE_OR:
+    case BinaryOperatorType::BitwiseOr:
         binary_operator = "|"; break;
-    case TGE_EFFECT_BITWISE_XOR:
+    case BinaryOperatorType::BitwiseXor:
         binary_operator = "^"; break;
-    case TGE_EFFECT_BITWISE_SHIFT_RIGHT:
+    case BinaryOperatorType::BitwiseShiftRight:
         binary_operator = ">>"; break;
-    case TGE_EFFECT_BITWISE_SHIFT_LEFT:
+    case BinaryOperatorType::BitwiseShiftLeft:
         binary_operator = "<<"; break;
-    case TGE_EFFECT_LESS:
+    case BinaryOperatorType::Less:
         binary_operator = "<"; break;
-    case TGE_EFFECT_GREATER:
+    case BinaryOperatorType::Greater:
         binary_operator = ">"; break;
-    case TGE_EFFECT_LEQUAL:
+    case BinaryOperatorType::LessEqual:
         binary_operator = "<="; break;
-    case TGE_EFFECT_GEQUAL:
+    case BinaryOperatorType::GreaterEqual:
         binary_operator = ">="; break;
-    case TGE_EFFECT_OR:
+    case BinaryOperatorType::Or:
         binary_operator = "||"; break;
-    case TGE_EFFECT_AND:
+    case BinaryOperatorType::And:
         binary_operator = "&&"; break;
-    case TGE_EFFECT_XOR:
+    case BinaryOperatorType::Xor:
         binary_operator = "^^"; break;
-    case TGE_EFFECT_EQUAL:
+    case BinaryOperatorType::Equal:
         binary_operator = "=="; break;
-    case TGE_EFFECT_NEQUAL:
+    case BinaryOperatorType::NotEqual:
         binary_operator = "!="; break;
-    case TGE_EFFECT_COMMA:
+    case BinaryOperatorType::Comma:
         binary_operator = ","; break;
     }
     binop->getLHSOperand()->accept(visitor);
@@ -1733,21 +1733,21 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
     bool is_post;
     switch(unaryop->getOperation())
     {
-    case TGE_EFFECT_POSITIVE:
+    case UnaryOperatorType::Positive:
         unary_operator = "+"; is_post = false; break;
-    case TGE_EFFECT_NEGATE:
+    case UnaryOperatorType::Negative:
         unary_operator = "-"; is_post = false; break;
-    case TGE_EFFECT_NOT:
+    case UnaryOperatorType::Not:
         unary_operator = "!"; is_post = false; break;
-    case TGE_EFFECT_COMPLEMENT:
+    case UnaryOperatorType::Complement:
         unary_operator = "~"; is_post = false; break;
-    case TGE_EFFECT_PRE_INCR:
+    case UnaryOperatorType::PreIncrement:
         unary_operator = "++"; is_post = false; break;
-    case TGE_EFFECT_PRE_DECR:
+    case UnaryOperatorType::PreDecrement:
         unary_operator = "--"; is_post = false; break;
-    case TGE_EFFECT_POST_INCR:
+    case UnaryOperatorType::PostIncrement:
         unary_operator = "++"; is_post = true; break;
-    case TGE_EFFECT_POST_DECR:
+    case UnaryOperatorType::PostDecrement:
         unary_operator = "--"; is_post = true; break;
     }
     if(is_post)

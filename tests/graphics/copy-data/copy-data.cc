@@ -1,8 +1,6 @@
 #include "tempest/utils/testing.hh"
 #include "tempest/graphics/rendering-convenience.hh"
-#include "tempest/graphics/api-all.hh"
-
-#define TEMPEST_RENDERING_SYSTEM Tempest::GLSystem
+#include "tempest/graphics/preferred-backend.hh"
 
 TGE_TEST("Testing the rendering context")
 {
@@ -10,7 +8,7 @@ TGE_TEST("Testing the rendering context")
     wdesc.Width = 800;
     wdesc.Height = 600;
     wdesc.Title = "Test window";
-    auto sys_obj = Tempest::CreateSystemAndWindowSimple<TEMPEST_RENDERING_SYSTEM>(wdesc);
+    auto sys_obj = Tempest::CreateSystemAndWindowSimple<Tempest::PreferredSystem>(wdesc);
     TGE_ASSERT(sys_obj, "GL initialization failed");
 
     Tempest::IOCommandBufferDescription io_cmd_buf_desc;

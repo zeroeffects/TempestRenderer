@@ -166,14 +166,9 @@ SET(TEMPEST_INPUT_INC
 
 FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/shader)
    
-BISON_TARGET(TempestParser "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader-parser.y"
-             "${CMAKE_CURRENT_BINARY_DIR}/shader/shader-parser.cc"
-             VERBOSE "${CMAKE_CURRENT_BINARY_DIR}/shader/shader-parser.output"
-             COMPILE_FLAGS "--report=state")
 FLEX_TARGET(TempestScanner "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader-lexer.l"
             "${CMAKE_CURRENT_BINARY_DIR}/shader/shader-lexer.cc"
             COMPILE_FLAGS "-Pshader_")
-ADD_FLEX_BISON_DEPENDENCY(TempestScanner TempestParser)
 
 SET(TEMPEST_SHADER_SRC
     shader/shader-parser.y
@@ -184,7 +179,7 @@ SET(TEMPEST_SHADER_SRC
     shader/shader-common.cc
     shader/shader-driver.cc
     shader/shader-ast.cc
-    ${BISON_TempestParser_OUTPUTS}
+    shader/shader-parser.cc
     ${FLEX_TempestScanner_OUTPUTS}
    )
 
@@ -194,6 +189,7 @@ SET(TEMPEST_SHADER_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-convert-common.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-common.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-driver.hh
+    ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-parser.hh
     ${CMAKE_SOURCE_DIR}/include/tempest/shader/shader-ast.hh
    )
 
@@ -308,3 +304,16 @@ IF(UNIX)
 ENDIF()
 
 ADD_LIBRARY(tempest-main STATIC utils/tempest-main.cc)
+
+###################################################################################################
+
+SET(TEMPEST_QT_WIDGETS_SRC
+	qt/tempest-widget.cc)
+
+SET(TEMPEST_QT_WIDGETS_INC
+	${CMAKE_SOURCE_DIR}/include/tempest/qt/tempest-widget.hh)
+
+QT5_WRAP_CPP(TEMPEST_QT_WIDGETS_INC_MOC ${TEMPEST_QT_WIDGETS_INC})
+
+ADD_LIBRARY(tempest-qt-widgets STATIC ${TEMPEST_QT_WIDGETS_SRC} ${TEMPEST_QT_WIDGETS_INC} ${TEMPEST_QT_WIDGETS_INC_MOC})
+TARGET_LINK_LIBRARIES(tempest-qt-widgets Qt5::Widgets)

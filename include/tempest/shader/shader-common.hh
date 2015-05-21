@@ -182,7 +182,7 @@ public:
     uint32 getImportedFileCount() const { return static_cast<uint32>(m_Imported.size()); }
     
     const VertexAttributeDescription& getVertexAttribute(uint32 idx) const { return m_InputSignature[idx]; }
-    uint32 getVertexAttributeCount() const { return m_InputSignature.size(); }
+    uint32 getVertexAttributeCount() const { return static_cast<uint32>(m_InputSignature.size()); }
 
     const BufferDescription& getBuffer(uint32 idx) const { return m_Buffers[idx]; }
     uint32 getBufferCount() const { return static_cast<uint32>(m_Buffers.size()); }
