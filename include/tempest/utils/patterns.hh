@@ -236,6 +236,8 @@ public:
             m_Rollback(_rollback) {}
         
     ~Transaction() { if(m_Status) m_Rollback(); }
+
+    void rollback() { m_Status = false; m_Rollback(); }
     
     void commit() { m_Status = false; }
 };

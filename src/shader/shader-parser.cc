@@ -333,11 +333,11 @@ bool Parser::jumpStatement()
     {
         auto statement_loc = m_CurrentLocation;
         parseToken();
-        AST::Node expr = expression();
+        AST::NodeT<Expression> expr = expression();
         auto status = expect(ToCharacterToken(';'));
         if(status)
         {
-            m_NodeStack.emplace_back(CreateNode<ReturnStatement>(statement_loc, std::move(expr)));
+            m_NodeStack.emplace_back(CreateNode<ReturnStatement>(statement_loc, std::move(expr->getSecond())));
         }
         else
         {
@@ -1188,77 +1188,76 @@ bool Parser::function()
     bool status = ident;
     AST::NodeT<List> args;
 
+    m_Driver.beginBlock();
+    auto& driver = m_Driver;
+    auto block_push = CreateTransaction([&driver]() { driver.endBlock(); });
+
+    if(status)
     {
-        m_Driver.beginBlock();
-        auto& driver = m_Driver;
-        auto at_exit = CreateAtScopeExit([&driver]() { driver.endBlock(); });
-
-        if(status)
-        {
-            status = expect(ToCharacterToken('('));
-            if(!status)
-            {
-                skipDeclarationOrDefinition();
-                return HANDLED;
-            }
-
-            auto top_element = m_NodeStack.size();
-
-            parseToken();
-
-            if(!IsCharacterToken(m_CurrentToken, ')'))
-            {
-                for(;;)
-                {
-                    StorageQualifier storage_mode;
-                    auto var_loc = m_CurrentLocation;
-                    switch(m_CurrentToken)
-                    {
-                    case ShaderToken::InQualifier:
-                    {
-                        storage_mode = StorageQualifier::In;
-                        parseToken();
-                    } break;
-                    case ShaderToken::OutQualifier:
-                    {
-                        storage_mode = StorageQualifier::Out;
-                        parseToken();
-                    } break;
-                    case ShaderToken::InOutQualifier:
-                    {
-                        storage_mode = StorageQualifier::InOut;
-                        parseToken();
-                    } break;
-                    }
-
-                    auto var = variable();
-                    if(!var)
-                    {
-                        status = false;
-                        m_Driver.error(var_loc, "Invalid function argument declaration");
-                        break;
-                    }
-
-                    m_NodeStack.emplace_back(CreateNode<Declaration>(var_loc, std::move(var)));
-
-                    if(IsCharacterToken(m_CurrentToken, ')'))
-                        break;
-
-                    status = expect(ToCharacterToken(','));
-                }
-
-                args = collapseStackToList(ListType::SemicolonSeparated, top_element);
-            }
-        }
-
+        status = expect(ToCharacterToken('('));
         if(!status)
         {
-            skipToToken(')');
-            parseToken();
             skipDeclarationOrDefinition();
-            m_NodeStack.emplace_back(AST::Node());
             return HANDLED;
         }
+
+        auto top_element = m_NodeStack.size();
+
+        parseToken();
+
+        if(!IsCharacterToken(m_CurrentToken, ')'))
+        {
+            for(;;)
+            {
+                StorageQualifier storage_mode;
+                auto var_loc = m_CurrentLocation;
+                switch(m_CurrentToken)
+                {
+                case ShaderToken::InQualifier:
+                {
+                    storage_mode = StorageQualifier::In;
+                    parseToken();
+                } break;
+                case ShaderToken::OutQualifier:
+                {
+                    storage_mode = StorageQualifier::Out;
+                    parseToken();
+                } break;
+                case ShaderToken::InOutQualifier:
+                {
+                    storage_mode = StorageQualifier::InOut;
+                    parseToken();
+                } break;
+                }
+
+                auto var = variable();
+                if(!var)
+                {
+                    status = false;
+                    m_Driver.error(var_loc, "Invalid function argument declaration");
+                    break;
+                }
+
+                m_NodeStack.emplace_back(CreateNode<Declaration>(var_loc, std::move(var)));
+
+                parseToken();
+                if(IsCharacterToken(m_CurrentToken, ')'))
+                    break;
+
+                status = expect(ToCharacterToken(','));
+            }
+
+            args = collapseStackToList(ListType::SemicolonSeparated, top_element);
+        }
+    }
+
+    if(!status)
+    {
+        skipToToken(')');
+        parseToken();
+        skipDeclarationOrDefinition();
+        m_NodeStack.emplace_back(AST::Node());
+        return HANDLED;
     }
 
     parseToken();
@@ -1268,6 +1267,7 @@ bool Parser::function()
         FunctionDeclaration* func_decl_ptr = nullptr;
         if(ident)
         {
+            block_push.rollback();
             if(ident_type == ShaderToken::Identifier)
             {
                 string func_name = ident.extract<Shader::Identifier>()->getValue();
@@ -1297,21 +1297,17 @@ bool Parser::function()
     else if(IsCharacterToken(m_CurrentToken, '{'))
     {
         AST::Node statement_list;
+        parseToken();
+        statement_list = statementList();
+        auto status = expect(ToCharacterToken('}'));
+        if(!status)
         {
-            m_Driver.beginBlock();
-            auto& driver = m_Driver;
-            auto at_exit = CreateAtScopeExit([&driver](){ driver.endBlock(); });
-            parseToken();
-            statement_list = statementList();
-            auto status = expect(ToCharacterToken('}'));
-            if(!status)
-            {
-                m_Driver.error(m_CurrentLocation, "Invalid function definition");
-                m_NodeStack.emplace_back(AST::Node());
-                return HANDLED;
-            }
+            m_Driver.error(m_CurrentLocation, "Invalid function definition");
+            m_NodeStack.emplace_back(AST::Node());
+            return HANDLED;
         }
 
+        block_push.rollback();
         NodeT<FunctionDefinition> func;
         FunctionDeclaration* func_decl_ptr = nullptr;
         if(ident)
