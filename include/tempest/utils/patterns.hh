@@ -134,7 +134,8 @@ class ScopedObject
     T                   m_Desc;
     TDeleter            m_Deleter;
 public:
-    ScopedObject() {}
+    ScopedObject()
+        :   m_Desc(T()) {}
     
     ScopedObject(T desc, TDeleter deleter)
         :   m_Desc(desc),
@@ -142,7 +143,25 @@ public:
     
     ScopedObject(TDeleter deleter)
         :   m_Deleter(deleter) {}
-        
+    
+    ScopedObject(ScopedObject&& obj)
+        :   m_Desc(std::move(obj.m_Desc)),
+            m_Deleter(obj.m_Deleter)
+    {
+        obj.m_Desc = T();
+    }
+    
+    ScopedObject& operator=(ScopedObject&& obj)   
+    {
+        m_Desc = std::move(obj.m_Desc);
+        m_Deleter = obj.m_Deleter;
+        obj.m_Ptr = nullptr;
+        return *this;
+    }
+    
+    ScopedObject(const ScopedObject&)=delete;
+    ScopedObject& operator=(const ScopedObject&)=delete;
+    
      ~ScopedObject() { if(m_Desc) m_Deleter(m_Desc); }
 
     ScopedObject& operator=(T t) { m_Desc = t; return *this; }
@@ -159,7 +178,8 @@ class ScopedObject<T*, TDeleter>
     T*                  m_Ptr;
     TDeleter            m_Deleter;
 public:
-    ScopedObject() {}
+    ScopedObject()
+        :   m_Ptr(nullptr) {}
     
     ScopedObject(T* ptr, TDeleter deleter)
         :   m_Ptr(ptr),
@@ -167,6 +187,24 @@ public:
     
     ScopedObject(TDeleter deleter)
         :   m_Deleter(deleter) {}
+    
+    ScopedObject(ScopedObject&& obj)
+        :   m_Ptr(obj.m_Ptr),
+            m_Deleter(obj.m_Deleter)
+    {
+        obj.m_Ptr = nullptr;
+    }
+    
+    ScopedObject& operator=(ScopedObject&& obj)   
+    {
+        m_Ptr = obj.m_Ptr;
+        m_Deleter = obj.m_Deleter;
+        obj.m_Ptr = nullptr;
+        return *this;
+    }
+    
+    ScopedObject(const ScopedObject&)=delete;
+    ScopedObject& operator=(const ScopedObject&)=delete;
         
      ~ScopedObject() { if(m_Ptr) m_Deleter(m_Ptr); }
 

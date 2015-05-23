@@ -43,7 +43,7 @@ namespace Tempest
 #ifdef _WIN32
 #   define GL_LIB_NAME "opengl32.dll"
 #else
-#   define GL_LIB_NAME "libGL.so"
+#   define GL_LIB_NAME "libGL.so.1"
 #endif
 
 #ifdef _WIN32
