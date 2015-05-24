@@ -757,7 +757,6 @@ AST::NodeT<Expression> Parser::prefixExpression()
     if(IsUnaryPrefixOperator(m_CurrentToken))
     {
         auto expr_loc = m_CurrentLocation;
-        parseToken();
         struct UnaryOperation
         {
             Location            location;
@@ -766,11 +765,11 @@ AST::NodeT<Expression> Parser::prefixExpression()
 
         std::vector<UnaryOperation> unary_operators;
 
-        while(IsUnaryPrefixOperator(m_CurrentToken))
+        do
         {
             unary_operators.emplace_back(UnaryOperation{ m_CurrentLocation, ToUnaryOperator(m_CurrentToken, true) });
             parseToken();
-        }
+        } while(IsUnaryPrefixOperator(m_CurrentToken));
 
         auto expr = suffixExpression();
         if(!expr)
@@ -941,6 +940,7 @@ AST::NodeT<Expression> Parser::binaryExpression()
         last_op = _op;
         BinaryOperatorInfo(m_CurrentToken, &_op, &precedence);
         loc = rhs_loc;
+        parseToken();
     }
 
     last_op = _op;
