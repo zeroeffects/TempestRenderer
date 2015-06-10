@@ -162,7 +162,15 @@ ENDIF()
 
 SET(TEMPEST_INPUT_INC
     ${CMAKE_SOURCE_DIR}/include/tempest/input/controller.hh
-   ) 
+   )
+
+SET(TEMPEST_VOLUME_INC
+    ${CMAKE_SOURCE_DIR}/include/tempest/volume/volume.hh
+   )
+
+SET(TEMPEST_VOLUME_SRC
+    volume/volume.cc
+   )
 
 FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/shader)
    
@@ -268,6 +276,8 @@ SET(TEMPEST_LIBRARY_FILES
     ${TEMPEST_MESH_INC}
     ${TEMPEST_TEXTURE_SRC}
     ${TEMPEST_TEXTURE_INC} 
+    ${TEMPEST_VOLUME_SRC}
+    ${TEMPEST_VOLUME_INC}
    )
 
 SOURCE_GROUP("Utility functions" FILES ${TEMPEST_UTILS_INC}

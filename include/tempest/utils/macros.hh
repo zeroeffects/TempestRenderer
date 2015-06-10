@@ -31,6 +31,12 @@
 #define _CONCAT_MACRO(lhs, rhs) lhs##rhs
 #define CONCAT_MACRO(lhs, rhs) _CONCAT_MACRO(lhs, rhs)
 
+#define TEMPEST_MAKE_FOURCC(x, y, z, w) \
+    (((x & 0xFFU))       | \
+    ((y & 0xFFU) << 8U)  | \
+    ((z & 0xFFU) << 16U) | \
+    ((w & 0xFFU) << 24U))
+
 #ifndef NDEBUG
 #   define TGE_DEBUG_EXEC_ONCE static bool CONCAT_MACRO(test, __LINE__) = true; if(CONCAT_MACRO(test, __LINE__) ? CONCAT_MACRO(test, __LINE__) = false, true : false)
 #else
