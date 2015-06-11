@@ -74,7 +74,7 @@ VolumeRoot* ParseVolume(const string& name)
         std::stringstream ss; // yeah, i know
         ss << name << "_" << std::setw(3) << std::setfill('0') << block.X << "_"
                           << std::setw(3) << std::setfill('0') << block.Y << "_"
-                          << std::setw(3) << std::setfill('0') << block.Z << "-orientation.vol";
+                          << std::setw(3) << std::setfill('0') << block.Z << "-density.vol";
         string vg_name = ss.str();
 
         std::fstream grid_fs(vg_name.c_str(), std::ios::binary | std::ios::in);
@@ -99,6 +99,7 @@ VolumeRoot* ParseVolume(const string& name)
         int32 channels = 0;
         Vector3 ab1, ab2;
         GridDataType fmt = GridDataType::Invalid;
+        static_assert(sizeof(fmt) + sizeof(volume.Dimensions) == 4*4, "Invalid format");
         grid_fs.read(reinterpret_cast<char*>(&fmt), sizeof(fmt));
         grid_fs.read(reinterpret_cast<char*>(&volume.Dimensions), sizeof(volume.Dimensions));
         grid_fs.read(reinterpret_cast<char*>(&channels), sizeof(channels));
@@ -110,13 +111,17 @@ VolumeRoot* ParseVolume(const string& name)
         {
             switch(fmt)
             {
-            case GridDataType::UInt32:
+            case GridDataType::Float32:
             {
-                elem_size = sizeof(uint32);
+                elem_size = sizeof(float);
             } break;
             case GridDataType::Float16:
             {
                 elem_size = sizeof(float)/2;
+            } break;
+            case GridDataType::UInt8:
+            {
+                elem_size = sizeof(uint8);
             } break;
             default:
             {
@@ -132,13 +137,8 @@ VolumeRoot* ParseVolume(const string& name)
         size_t data_size = channels*elem_size*grid_chunk_size;
         volume.GridData = new uint8[data_size];
 
-
         grid_fs.read(reinterpret_cast<char*>(&ab1), sizeof(ab1));
         grid_fs.read(reinterpret_cast<char*>(&ab2), sizeof(ab2));
-
-        std::streampos cur_pos = grid_fs.tellg();
-        grid_fs.seekg(0, std::ios_base::end);
-        size_t dist = grid_fs.tellg() - cur_pos;
 
         if(!grid_fs)
         {

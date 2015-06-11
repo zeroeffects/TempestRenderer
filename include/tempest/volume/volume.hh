@@ -37,14 +37,11 @@ struct Box
 
 enum class GridDataType: uint32
 {
-    Bitmask = 0,    //*< 1-bit bitmask
-    UInt8,          //*< 8-bit unsigned integer
-    UInt16,         //*< 16-bit unsigned integer
-    UInt32,         //*< 32-bit unsigned integer
-    Float16,        //*< 16-bit floating point
-    Float32,        //*< 32-bit floating point
-    Float64,        //*< 64-bit floating point
-    Invalid,        //*< Invalid data format
+    Invalid = 0,
+    Float32 = 1,
+	Float16 = 2,
+	UInt8 = 3,
+	QuantizedDirections = 4
 };
 
 struct Volume
