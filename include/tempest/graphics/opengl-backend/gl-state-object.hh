@@ -25,7 +25,7 @@
 #ifndef _GL_STATE_OBJECT_HH_
 #define _GL_STATE_OBJECT_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/graphics/rendering-definitions.hh"
 
 #include "tempest/graphics/opengl-backend/gl-library.hh"
@@ -45,7 +45,7 @@ struct GLRasterizerStates
     GLOrderMode         FrontFace;
     GLfloat             OffsetFactor;
     GLfloat             OffsetUnits;
-    uint32              MiscModes;
+    uint32_t            MiscModes;
 };
 
 void TranslateRasterizerStates(const RasterizerStates* raster_states, GLRasterizerStates* gl_raster_states);
@@ -60,12 +60,12 @@ struct GLBlendSeparateStates
                           DstFactorAlpha;
     GLBlendEquationMode   BlendEquation,
                           BlendAlphaEquation;
-    uint8                 ColorMask;
+    uint8_t               ColorMask;
 };
 
 struct GLBlendStates
 {
-    uint32                MiscModes;
+    uint32_t              MiscModes;
     GLBlendSeparateStates SeparateBlendStates[8];
 };
 

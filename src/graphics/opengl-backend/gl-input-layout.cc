@@ -93,7 +93,7 @@ static void TranslateDataFormat(DataFormat vtype, GLsizei* elements, GLType* typ
     }
 }
 
-GLInputLayout::GLInputLayout(uint32 count, const Shader::VertexAttributeDescription* arr)
+GLInputLayout::GLInputLayout(uint32_t count, const Shader::VertexAttributeDescription* arr)
     :   m_Attributes(count)
 {
     for(size_t i = 0; i < count; ++i)

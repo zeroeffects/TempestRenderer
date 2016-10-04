@@ -24,6 +24,7 @@
 
 #include "tempest/shader/shader-ast.hh"
 #include "tempest/shader/shader-driver.hh"
+#include "tempest/shader/shader-convert-common.hh"
 
 namespace Tempest
 {
@@ -91,7 +92,7 @@ bool FunctionCall::isBlockStatement() const
     return false;
 }
 
-FunctionDeclaration::FunctionDeclaration(const Type* return_type, string name, NodeT<List> var_list)
+FunctionDeclaration::FunctionDeclaration(const Type* return_type, std::string name, NodeT<List> var_list)
     :   m_ReturnType(return_type),
         m_Name(name),
         m_VarList(std::move(var_list)) {}
@@ -102,6 +103,9 @@ FunctionDeclaration::~FunctionDeclaration()
 
 NodeT<FunctionCall> FunctionDeclaration::createFunctionCall(Location loc, NodeT<List> arg_list)
 {
+    if((bool)arg_list != (bool)m_VarList)
+        return AST::NodeT<FunctionCall>();
+
     List::iterator i, j;
     for(i = arg_list->current(), j = m_VarList->current();
         i != arg_list->end() && j != m_VarList->end(); ++i, ++j);
@@ -119,12 +123,9 @@ bool FunctionDeclaration::sameParameters(const List* var_list) const
             return false;
         const AST::Node* decl = j->extract<Declaration>()->getVariables();
         auto* expr = i->extract<Expression>();
-        if(expr == nullptr)
-        {
-            Tempest::Log(LogLevel::Error, "Request for function which contains invalid expression. Probable consequence of previous error.");
-            return false;
-        }
-        if(!expr->getFirst()->hasBase(decl->extract<Variable>()->getType()))
+        TGE_ASSERT(expr->getFirst() || expr->getSecond(), "Invalid expression");
+        if(expr == nullptr ||
+           !expr->getFirst()->hasBase(decl->extract<Variable>()->getType()))
             return false;
     }
     return i == var_list->end() && j == m_VarList->end();
@@ -140,7 +141,7 @@ bool FunctionDeclaration::isBlockStatement() const
     return false;
 }
 
-Typedef::Typedef(Type* _type, string name)
+Typedef::Typedef(Type* _type, std::string name)
     :   m_Name(name),
         m_Type(_type) {}
 
@@ -189,7 +190,7 @@ bool ConstructorCall::isBlockStatement() const
     return false;
 }
 
-ScalarType::ScalarType(bool integer, string name)
+ScalarType::ScalarType(bool integer, std::string name)
     :   m_Integer(integer),
         m_Name(name)
 {
@@ -323,7 +324,7 @@ const Type* ScalarType::binaryOperatorResultType(Driver& driver, const Type* thi
         case BinaryOperatorType::BitwiseShiftRight:
         case BinaryOperatorType::BitwiseShiftLeft:
         {
-            string basic_type = operandB->getNodeName();
+            std::string basic_type = operandB->getNodeName();
             if(basic_type == "uint" || basic_type == "int")
                 return this_type;
         } break;
@@ -392,7 +393,7 @@ bool ScalarType::hasImplicitConversionTo(const Type* _type) const
     return m_Integer && _type->getTypeEnum() == ElementType::Scalar && _type->getNodeName() == "float";
 }
 
-const Type* ScalarType::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
+const Type* ScalarType::getMemberType(Driver& driver, const Type* this_type, const std::string& name) const { return nullptr; }
 const Type* ScalarType::getArrayElementType() const { return nullptr; }
 
 ArrayType::ArrayType(const Type* _type, AST::Node _size)
@@ -431,9 +432,9 @@ bool ArrayType::hasImplicitConversionTo(const Type* _type) const
 
 const Type* ArrayType::binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
 const Type* ArrayType::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
-const Type* ArrayType::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
+const Type* ArrayType::getMemberType(Driver& driver, const Type* this_type, const std::string& name) const { return nullptr; }
 
-VectorType::VectorType(const Type* _type, size_t vec_dim, string name)
+VectorType::VectorType(const Type* _type, size_t vec_dim, std::string name)
     :   m_Name(name),
         m_Type(_type),
         m_VecDim(vec_dim)
@@ -578,7 +579,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
         case BinaryOperatorType::BitwiseShiftRight:
         case BinaryOperatorType::BitwiseShiftLeft:
         {
-            string basic_type = operandB->getNodeName();
+            std::string basic_type = operandB->getNodeName();
             if(basic_type == "uint" || basic_type == "int")
                 return this_type;
         } break;
@@ -605,7 +606,7 @@ const Type* VectorType::binaryOperatorResultType(Driver& driver, const Type* thi
         case BinaryOperatorType::BitwiseShiftRight:
         case BinaryOperatorType::BitwiseShiftLeft:
         {
-            string basic_type = opBtype->getBasicType()->getNodeName();
+            std::string basic_type = opBtype->getBasicType()->getNodeName();
             if(opBtype->getDimension() == m_VecDim && (basic_type == "uint" || basic_type == "int"))
                 return this_type;
         } break;
@@ -632,7 +633,7 @@ const Type* VectorType::unaryOperatorResultType(Driver& driver, const Type* this
                 this_type : nullptr;
 }
 
-const Type* VectorType::getMemberType(Driver& driver, const Type* this_type, const string& name) const
+const Type* VectorType::getMemberType(Driver& driver, const Type* this_type, const std::string& name) const
 {
     static const char coord[3][4] = { { 'x', 'y', 'z', 'w' },
                                       { 'r', 'g', 'b', 'a' },
@@ -652,7 +653,7 @@ const Type* VectorType::getMemberType(Driver& driver, const Type* this_type, con
     else if(name.size() == 1)
         return m_Type;
 
-    string _prefix,
+    std::string _prefix,
            basic_type = m_Type->getNodeName();
 
     if(basic_type[0] != 'f')
@@ -728,7 +729,7 @@ bool VectorType::hasImplicitConversionTo(const Type* _type) const
            _type->extract<VectorType>()->getBasicType()->getNodeName() == "float";
 }
 
-MatrixType::MatrixType(size_t rows, const Type* row_type, string name)
+MatrixType::MatrixType(size_t rows, const Type* row_type, std::string name)
     :   m_Name(name),
         m_Rows(rows),
         m_RowType(row_type) {}
@@ -908,9 +909,9 @@ bool MatrixType::hasValidConstructor(const List* var_list) const
 }
 
 bool MatrixType::hasImplicitConversionTo(const Type* _type) const { return nullptr; }
-const Type* MatrixType::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; } // TODO: there might be something out here
+const Type* MatrixType::getMemberType(Driver& driver, const Type* this_type, const std::string& name) const { return nullptr; } // TODO: there might be something out here
 
-SamplerType::SamplerType(string name)
+SamplerType::SamplerType(std::string name)
     :   m_Name(name) {}
 
 SamplerType::~SamplerType() {}
@@ -919,10 +920,10 @@ bool SamplerType::hasValidConstructor(const List* var_list) const { return false
 bool SamplerType::hasImplicitConversionTo(const Type* _type) const { return false; }
 const Type* SamplerType::binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
 const Type* SamplerType::unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
-const Type* SamplerType::getMemberType(Driver& driver, const Type* this_type, const string& name) const { return nullptr; }
+const Type* SamplerType::getMemberType(Driver& driver, const Type* this_type, const std::string& name) const { return nullptr; }
 const Type* SamplerType::getArrayElementType() const { return nullptr; }
 
-static const Type* RecursiveGetMemberType(Driver& driver, const List* _list, const string& name)
+static const Type* RecursiveGetMemberType(Driver& driver, const List* _list, const std::string& name)
 {
     for(auto iter = _list->current(), iter_end = _list->end(); iter != iter_end; ++iter)
     {
@@ -931,7 +932,7 @@ static const Type* RecursiveGetMemberType(Driver& driver, const List* _list, con
         if(node_type == TGE_EFFECT_OPTIONAL)
         {
             auto* _opt = iter->extract<Optional>();
-            if(!driver.isOptionEnabled(_opt->getOption()))
+            if(!driver.isOptionEnabled(_opt))
                 continue;
 
             auto* content = _opt->getContent();
@@ -994,12 +995,12 @@ static const Type* RecursiveGetMemberType(Driver& driver, const List* _list, con
     return nullptr;
 }
 
-const Type* StructType::getMemberType(Driver& driver, const Type* this_type, const string& name) const
+const Type* StructType::getMemberType(Driver& driver, const Type* this_type, const std::string& name) const
 {
     return RecursiveGetMemberType(driver, getBody(), name);
 }
 
-Variable::Variable(const Type* _type, string name)
+Variable::Variable(const Type* _type, std::string name)
     :   m_Name(name),
         m_Interpolation(InterpolationQualifier::Default),
         m_Storage(StorageQualifier::Default),
@@ -1009,7 +1010,7 @@ Variable::Variable(const Type* _type, string name)
 {
 }
 
-Variable::Variable(StorageQualifier _storage, const Type* _type, string name)
+Variable::Variable(StorageQualifier _storage, const Type* _type, std::string name)
     :   m_Name(name),
         m_Interpolation(InterpolationQualifier::Default),
         m_Storage(_storage),
@@ -1156,7 +1157,7 @@ bool Declaration::isBlockStatement() const
     return false;
 }
 
-MemberVariable::MemberVariable(AST::Node parent, const Type* type, string name)
+MemberVariable::MemberVariable(AST::Node parent, const Type* type, std::string name)
     :   m_Variable(type, name),
         m_Parent(std::move(parent)) {}
 
@@ -1207,7 +1208,7 @@ bool FunctionDefinition::isBlockStatement() const
     return true;
 }
 
-FunctionSet::FunctionSet(string name)
+FunctionSet::FunctionSet(std::string name)
     :   m_Name(name) {}
 
 FunctionSet::~FunctionSet() {}
@@ -1374,12 +1375,12 @@ bool CaseStatement::isBlockStatement() const
     return false;
 }
 
-Import::Import(string name, NodeT<List> body)
+Import::Import(std::string name, NodeT<List> body)
     :   NamedList<Import>(name, std::move(body)) {}
 
 Import::~Import() {}
 
-Buffer::Buffer(string name, NodeT<List> body)
+Buffer::Buffer(std::string name, NodeT<List> body)
     :   NamedList<Buffer>(name, std::move(body)) {}
 
 Buffer::~Buffer() {}
@@ -1407,7 +1408,7 @@ ReturnStatement::~ReturnStatement()
 {
 }
 
-Printer::Printer(std::ostream& os, uint32 flags)
+Printer::Printer(std::ostream& os, uint32_t flags)
     :   m_Printer(os, flags) {}
 Printer::~Printer() {}
 
@@ -1660,76 +1661,16 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
 
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const BinaryOperator* binop)
 {
-    string binary_operator;
-    switch(binop->getOperation())
-    {
-    case BinaryOperatorType::Assign:
-        binary_operator = "="; break;
-    case BinaryOperatorType::AddAssign:
-        binary_operator = "+="; break;
-    case BinaryOperatorType::SubtractAssign:
-        binary_operator = "-="; break;
-    case BinaryOperatorType::MultiplyAssign:
-        binary_operator = "*="; break;
-    case BinaryOperatorType::DivideAssign:
-        binary_operator = "/="; break;
-    case BinaryOperatorType::ModulusAssign:
-        binary_operator = "%="; break;
-    case BinaryOperatorType::BitwiseAndAssign:
-        binary_operator = "&="; break;
-    case BinaryOperatorType::BitwiseXorAssign:
-        binary_operator = "^="; break;
-    case BinaryOperatorType::BitwiseOrAssign:
-        binary_operator = "|="; break;
-    case BinaryOperatorType::Add:
-        binary_operator = "+"; break;
-    case BinaryOperatorType::Subtract:
-        binary_operator = "-"; break;
-    case BinaryOperatorType::Multiply:
-        binary_operator = "*"; break;
-    case BinaryOperatorType::Divide:
-        binary_operator = "/"; break;
-    case BinaryOperatorType::Modulus:
-        binary_operator = "%"; break;
-    case BinaryOperatorType::BitwiseAnd:
-        binary_operator = "&"; break;
-    case BinaryOperatorType::BitwiseOr:
-        binary_operator = "|"; break;
-    case BinaryOperatorType::BitwiseXor:
-        binary_operator = "^"; break;
-    case BinaryOperatorType::BitwiseShiftRight:
-        binary_operator = ">>"; break;
-    case BinaryOperatorType::BitwiseShiftLeft:
-        binary_operator = "<<"; break;
-    case BinaryOperatorType::Less:
-        binary_operator = "<"; break;
-    case BinaryOperatorType::Greater:
-        binary_operator = ">"; break;
-    case BinaryOperatorType::LessEqual:
-        binary_operator = "<="; break;
-    case BinaryOperatorType::GreaterEqual:
-        binary_operator = ">="; break;
-    case BinaryOperatorType::Or:
-        binary_operator = "||"; break;
-    case BinaryOperatorType::And:
-        binary_operator = "&&"; break;
-    case BinaryOperatorType::Xor:
-        binary_operator = "^^"; break;
-    case BinaryOperatorType::Equal:
-        binary_operator = "=="; break;
-    case BinaryOperatorType::NotEqual:
-        binary_operator = "!="; break;
-    case BinaryOperatorType::Comma:
-        binary_operator = ","; break;
-    }
+    std::string binary_operator;
+    
     binop->getLHSOperand()->accept(visitor);
-    printer->stream() << binary_operator;
+    printer->stream() << BinaryOperationToString(binop->getOperation());
     binop->getRHSOperand()->accept(visitor);   
 }
 
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const UnaryOperator* unaryop)
 {
-    string unary_operator;
+    std::string unary_operator;
     bool is_post;
     switch(unaryop->getOperation())
     {
@@ -1945,13 +1886,11 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
     printer->stream() << _struct->getNodeName();
 }
 
-void PrintOptional(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Optional* _opt, const string* opts, size_t opts_count)
+void PrintOptional(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Optional* _opt, const std::string* opts, size_t opts_count)
 {
-    auto *begin_ptr = opts,
-         *end_ptr = begin_ptr + opts_count;
     // Basically, ignore if it is not covered by the current options set.
     auto& os = printer->stream();
-    if(std::find(begin_ptr, end_ptr, _opt->getNodeName()) != end_ptr)
+    if(IsOptionEnabled(opts, opts_count, _opt))
     {
         auto* content = _opt->getContent();
         if(content->getNodeType() == TGE_AST_BLOCK)

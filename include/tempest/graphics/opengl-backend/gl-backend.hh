@@ -1,7 +1,7 @@
 /*   The MIT License
  *   
  *   Tempest Engine
- *   Copyright (c) 2010-2014 Zdravko Velinov
+ *   Copyright (c) 2010-2016 Zdravko Velinov
  *   
  *   Permission is hereby granted, free of charge, to any person obtaining a copy
  *   of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@
 #include "tempest/graphics/rendering-backend.hh"
 #include "tempest/graphics/opengl-backend/gl-state-object.hh"
 #include "tempest/graphics/os-window.hh"
+#include "tempest/utils/config.hh"
 
 #include <unordered_set>
 #include <memory>
@@ -59,6 +60,9 @@ class BakedResourceTable;
 struct GLBlendStates;
 struct GLRasterizerStates;
 struct GLDepthStencilStates;
+
+struct CUDATextureResource;
+struct CUDASurfaceResource;
 
 #ifdef LINUX
 typedef std::shared_ptr<GLXFBConfig> GLXFBConfigPtr;
@@ -105,7 +109,7 @@ class GLRenderingBackend
 
 #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     GLuint                  m_TexturesTable = 0;
-    uint32                  m_ActiveTextures = 0;
+    uint32_t                m_ActiveTextures = 0;
 #endif
 
 #ifdef LINUX
@@ -160,7 +164,7 @@ public:
      *  \returns returns a new render target or nullptr on error. The error is automatically written to
      *           logging stream, if applicable.
      */
-    GLRenderTarget* createRenderTarget(const TextureDescription& desc, uint32 flags);
+    GLRenderTarget* createRenderTarget(const TextureDescription& desc, uint32_t flags = 0);
     
     /*! \brief Create a batch of render targets that can be assigned in a single call.
      * 
@@ -172,7 +176,7 @@ public:
      * 
      *  \returns returns a new render target batch.
      */    
-    GLFramebuffer* createFramebuffer();
+    GLFramebuffer* createFramebuffer(GLRenderTarget** color, uint32_t color_rt_count, GLRenderTarget* depth = nullptr);
     
     /*! \brief Assign a framebuffer to the pipeline.
      * 
@@ -183,6 +187,10 @@ public:
      */
     void setFramebuffer(GLFramebuffer* rt_batch);
     
+    void destroyRenderResource(GLRenderTarget* render_target);
+
+    void destroyRenderResource(GLFramebuffer* framebuffer);
+
     /*! \brief Create a command buffer used for scheduling draw commands in a CPU friendly fashion.
      * 
      *  The command buffer might be safely accessed through other threads, which makes it convenient for building
@@ -235,7 +243,7 @@ public:
      *  \param data     data used for automatic initialization (can be nullptr).
      *  \returns Returns a new buffer object.
      */
-    GLBuffer* createBuffer(size_t size, ResourceBufferType buffer_type, uint32 flags = RESOURCE_STATIC_DRAW, const void* data = nullptr);
+    GLBuffer* createBuffer(size_t size, ResourceBufferType buffer_type, uint32_t flags = RESOURCE_STATIC_DRAW, const void* data = nullptr);
     
     /*! \brief Set textures in a single call.
      *
@@ -255,7 +263,7 @@ public:
      *
      *  \param num_textures     the number of requested active textures.
      */
-    void setActiveTextures(uint32 num_textures);
+    void setActiveTextures(uint32_t num_textures);
 
     /*! \brief Destroy a buffer object.
      * 
@@ -277,8 +285,15 @@ public:
      *  \param data     data used for automatic initialization (can be nullptr).
      *  
      */
-    GLTexture* createTexture(const TextureDescription& desc, uint32 flags = RESOURCE_STATIC_DRAW, const void* data = nullptr);
+    GLTexture* createTexture(const TextureDescription& desc, uint32_t flags = RESOURCE_STATIC_DRAW, const void* data = nullptr);
     
+#ifndef DISABLE_CUDA
+    void mapToCudaTexture(GLTexture* tex, uint32_t flags, CUDATextureResource* cuda_tex);
+    void unmapCudaTexture(CUDATextureResource* cuda_tex);
+
+    void mapToCudaSurface(GLTexture* tex, uint32_t flags, CUDASurfaceResource* cuda_tex);
+    void unmapCudaSurface(CUDASurfaceResource* cuda_tex);
+#endif
     /*! \brief Destroy a texture object.
      * 
      *  Deallocates the texture object. It might not get executed immediately because of stalling prevention.
@@ -322,7 +337,7 @@ public:
      *  \param width  the horizontal size of the rectangle.
      *  \param height the vertical size of the rectangle.
      */
-	void setScissorRect(uint32 x, uint32 y, uint32 width, uint32 height);
+	void setScissorRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
     
     /*! \brief Set up the drawing rectangle.
      * 
@@ -331,7 +346,7 @@ public:
      *  \param width  the horizontal size of the rectangle.
      *  \param height the vertical size of the rectangle.
      */
-	void setViewportRect(uint32 x, uint32 y, uint32 width, uint32 height);
+	void setViewportRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
     
     /*! \brief Clear up the color buffer with the specified color.
      * 
@@ -340,14 +355,14 @@ public:
      *  \param idx    the index of the color buffer (-1 for all buffers).
      *  \param color  the color that is going to fill the color buffer.
      */
-    void clearColorBuffer(uint32 idx, const Vector4& color);
+    void clearColorBuffer(uint32_t idx, const Vector4& color);
     
     /*! \brief Clear up the depth stencil buffer with the specified depth and stencil value.
      * 
      *  \param depth   the depth value in non-linear format.
      *  \param stencil the stencil value.
      */
-    void clearDepthStencilBuffer(float depth=1.0f, uint8 stencil=0);
+    void clearDepthStencilBuffer(float depth=1.0f, uint8_t stencil=0);
 
     /*! \brief Create a storage buffer.
      *  
@@ -357,7 +372,7 @@ public:
      *  \param storage_type     the type of the storage buffer.
      *  \param size             the size of the storage buffer in bytes.
      */
-    GLStorage* createStorageBuffer(StorageMode storage_type, uint32 size);
+    GLStorage* createStorageBuffer(StorageMode storage_type, uint32_t size);
 
     /*! \brief Destroy a storage buffer.
      *
@@ -387,7 +402,10 @@ public:
      *
      *  It is used for building baked texture tables by hand.
      */
-    uint32 getTextureHandleSize();
+    uint32_t getTextureHandleSize();
+
+	void blitAttachmentToScreen(AttachmentType att, uint32_t idx,
+								uint32_t src_x, uint32_t src_y, uint32_t dst_x, uint32_t dst_y, uint32_t w, uint32_t h);
 };
 }
 

@@ -440,6 +440,12 @@ enum class GLTextureTarget: GLuint
     GL_TEXTURE_CUBE_MAP_NEGATIVE_Z     = 0x851A
 };
 
+enum class GLFilterMode: GLuint
+{
+	GL_NEAREST                         = 0x2600,
+    GL_LINEAR                          = 0x2601
+};
+
 enum class GLTextureParameter: GLuint
 {
     GL_DEPTH_STENCIL_TEXTURE_MODE      = 0x90EA,
@@ -831,6 +837,13 @@ enum class GLAttachmentIndex: GLuint
     GL_STENCIL_ATTACHMENT                     = 0x8D20
 };
 
+enum
+{
+    GL_DEPTH_BUFFER_BIT                       = 0x00000100,
+    GL_STENCIL_BUFFER_BIT                     = 0x00000400,
+    GL_COLOR_BUFFER_BIT                       = 0x00004000
+};
+
 enum class GLFramebufferStatus: GLuint
 {
     GL_FRAMEBUFFER_UNDEFINED                  = 0x8219,
@@ -848,7 +861,8 @@ enum class GLFramebufferStatus: GLuint
 enum class GLParameterType: GLint
 {
     GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT        = 0x8A34,
-    GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT = 0x90DF
+    GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT = 0x90DF,
+    GL_FRAMEBUFFER_BINDING                    = 0x8CA6
 };
 
 #define UINT_TO_GL_COLOR_ATTACHMENT(num) static_cast<GLAttachmentIndex>(static_cast<GLuint>(GLAttachmentIndex::GL_COLOR_ATTACHMENT0) + num)
@@ -975,7 +989,7 @@ enum
     TEMPEST_GL_CAPS_MDI_BINDLESS              = 1 << 11
 };
 
-bool IsGLCapabilitySupported(uint64 caps);
+bool IsGLCapabilitySupported(uint64_t caps);
 
 typedef void (APIENTRY  *GLDEBUGPROCARB)(GLDebugSourceType source, GLDebugType type, GLuint id, GLSeverityType severity, GLsizei length, const GLchar *message, const void *userParam);
 
@@ -984,10 +998,12 @@ typedef void (APIENTRY  *GLDEBUGPROCARB)(GLDebugSourceType source, GLDebugType t
 BOOL w32hackChoosePixelFormat(HDC hDC, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
 HGLRC w32hackCreateContextAttribs(HDC hDC, HGLRC hShareContext, const int *attribList);
 
-typedef HGLRC(WINAPI* PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC hDC, HGLRC hShareContext, const int *attribList);
-typedef BOOL(WINAPI* PFNWGLCHOOSEPIXELFORMATARBPROC)(HDC hdc, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
+typedef HGLRC (WINAPI* PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC hDC, HGLRC hShareContext, const int *attribList);
+typedef BOOL (WINAPI* PFNWGLCHOOSEPIXELFORMATARBPROC)(HDC hdc, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
+typedef BOOL (WINAPI * PFNWGLSWAPINTERVALEXTPROC)(int interval);
 extern PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
 extern PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB;
+extern PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT;
 #endif
 #endif
 
@@ -1024,7 +1040,7 @@ DECLARE_SYS_GL_FUNCTION(GLXContext, glXCreateNewContext, Display *dpy, GLXFBConf
 DECLARE_GL_FUNCTION(void, glClearColor, GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
 DECLARE_GL_FUNCTION(void, glClear, GLbitfield mask);
 DECLARE_GL_FUNCTION(void, glColorMask, GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha );
-DECLARE_GL_FUNCTION(void, glBlendFunc, GLBlendFactorMode sfactor, GLBlendFactorMode dfactor);
+DECLARE_GL_FUNCTION(void, glBlendFuncSeparate, GLBlendFactorMode src, GLBlendFactorMode dst, GLBlendFactorMode srcAlpha, GLBlendFactorMode dstAlpha);
 DECLARE_GL_FUNCTION(void, glLogicOp, GLLogicOpMode opcode);
 DECLARE_GL_FUNCTION(void, glCullFace, GLFaceMode mode);
 DECLARE_GL_FUNCTION(void, glFrontFace, GLOrderMode mode);
@@ -1083,7 +1099,8 @@ DECLARE_GL_FUNCTION(void, glTexImage3D, GLTextureTarget target, GLint level, GLF
 DECLARE_GL_FUNCTION(void, glTexSubImage3D, GLTextureTarget target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLFormat format, GLType type, const GLvoid *pixels);
 DECLARE_GL_FUNCTION(void, glCopyTexSubImage3D, GLTextureTarget target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLint x, GLint y, GLsizei width, GLsizei height);
 
-DECLARE_GL_FUNCTION(void, glBlendEquation, GLBlendEquationMode mode);
+DECLARE_GL_FUNCTION(void, glBlendEquationSeparate, GLBlendEquationMode modeRGB, GLBlendEquationMode modeAlpha);
+
 DECLARE_GL_FUNCTION(void, glBlendColor, GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
 
 DECLARE_GL_FUNCTION(void, glActiveTexture, GLTextureIndex texture);
@@ -1100,8 +1117,8 @@ DECLARE_GL_FUNCTION(void, glDrawRangeElements, GLDrawMode mode, GLuint start, GL
 DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_400, void, glDrawElementsIndirect, GLDrawMode mode, GLType type, const void *indirect);
 DECLARE_GL_FUNCTION(void, glDrawElementsBaseVertex, GLDrawMode mode, GLsizei count, GLType type, GLvoid *indices, GLint basevertex);
 
-DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_400, void, glBlendFunci, GLuint buf, GLBlendFactorMode src, GLBlendFactorMode dst);
-DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_400, void, glBlendEquationi, GLuint buf, GLBlendEquationMode mode);
+DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_400, void, glBlendFuncSeparatei, GLuint buf, GLBlendFactorMode srcRGB, GLBlendFactorMode dstRGB, GLBlendFactorMode srcAlpha, GLBlendFactorMode dstAlpha);
+DECLARE_GL_FUNCTION_OPTIONAL(TEMPEST_GL_CAPS_400, void, glBlendEquationSeparatei, GLuint buf, GLBlendEquationMode modeRGB, GLBlendEquationMode modeAlpha);
 
 DECLARE_GL_FUNCTION(void, glMultiDrawArrays, GLDrawMode mode, const GLint *first, const GLsizei *count, GLsizei drawcount);
 DECLARE_GL_FUNCTION(void, glMultiDrawElements, GLDrawMode mode, const GLsizei *count, GLType type, const void *const*indices, GLsizei drawcount);
@@ -1189,6 +1206,9 @@ DECLARE_GL_FUNCTION(void, glFramebufferTexture1D, GLFramebufferTarget target, GL
 DECLARE_GL_FUNCTION(void, glFramebufferTexture2D, GLFramebufferTarget target, GLAttachmentIndex attachment, GLTextureTarget textarget, GLuint texture, GLint level);
 DECLARE_GL_FUNCTION(void, glFramebufferTexture3D, GLFramebufferTarget target, GLAttachmentIndex attachment, GLTextureTarget textarget, GLuint texture, GLint level, GLint zoffset);
 DECLARE_GL_FUNCTION(void, glFramebufferRenderbuffer, GLFramebufferTarget target, GLAttachmentIndex attachment, GLTextureTarget renderbuffertarget, GLuint renderbuffer);
+DECLARE_GL_FUNCTION(void, glDrawBuffers, GLsizei n, const GLAttachmentIndex *bufs);
+
+DECLARE_GL_FUNCTION(void, glBlitFramebuffer, GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLFilterMode filter);
 
 DECLARE_GL_FUNCTION(void, glGetIntegerv, GLParameterType pname, GLint *data);
 

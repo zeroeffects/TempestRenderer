@@ -35,7 +35,7 @@
 #include <algorithm>
 #include <memory>
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/utils/assert.hh"
 #include "tempest/utils/patterns.hh"
 #include "tempest/graphics/shader.hh"
@@ -50,25 +50,8 @@ namespace Tempest
  *  is capable of assigning them in a single API call, if possible.
  */
 class GLTexture;
-class Matrix4;
-struct Vector4;
-struct Vector3;
-struct Vector2;
-
-template<class T> struct UniformValueBinding;
-#define UNIFORM_VALUE_BINDING(type, value) \
-    template<> struct UniformValueBinding<type> { \
-        static const UniformValueType value_type = value; };
 
 UNIFORM_VALUE_BINDING(GLTexture, UniformValueType::Texture);
-UNIFORM_VALUE_BINDING(Matrix4, UniformValueType::Matrix4);
-UNIFORM_VALUE_BINDING(Vector4, UniformValueType::Vector4);
-UNIFORM_VALUE_BINDING(Vector3, UniformValueType::Vector3);
-UNIFORM_VALUE_BINDING(Vector2, UniformValueType::Vector2);
-UNIFORM_VALUE_BINDING(float, UniformValueType::Float);
-UNIFORM_VALUE_BINDING(int32, UniformValueType::Integer);
-UNIFORM_VALUE_BINDING(uint32, UniformValueType::UnsignedInteger);
-UNIFORM_VALUE_BINDING(bool, UniformValueType::Boolean);
 
 class GLResourceTable
 {
@@ -84,7 +67,7 @@ public:
     
     inline size_t getResourceCount() const { return m_ResourceTable->Uniforms.Count; }
     
-    ResourceIndex getResourceIndex(const string& name);
+    ResourceIndex getResourceIndex(const std::string& name);
     
     void setResource(ResourceIndex index, const GLTexture& tex);
     
@@ -103,7 +86,7 @@ public:
     }
     
     template<class T>
-    void setResource(const string& name, const T& val)
+    void setResource(const std::string& name, const T& val)
     {
         setResource(getResourceIndex(name), val);
     }
@@ -116,7 +99,7 @@ public:
         return m_ResourceTable->Uniforms.Values + index.ResourceTableIndex;
     }
 
-    DataDescription* getResourceDescription(const string& name)
+    DataDescription* getResourceDescription(const std::string& name)
     {
         return getResourceDescription(getResourceIndex(name));
     }
@@ -146,12 +129,12 @@ class GLShaderProgram
     GLuint                                       m_Program;
     GLInputLayout*                               m_InputLayout;
     std::unique_ptr<ResourceTableDescription*[]> m_ResourceTables;
-    uint32                                       m_ResourceTableCount;
+    uint32_t                                     m_ResourceTableCount;
 
 public:
     typedef GLResourceTable     ResourceTableType;
     
-    explicit GLShaderProgram(GLuint shader_program, GLInputLayout* input_signature, ResourceTableDescription* resource_tables[], uint32 res_table_count);
+    explicit GLShaderProgram(GLuint shader_program, GLInputLayout* input_signature, ResourceTableDescription* resource_tables[], uint32_t res_table_count);
      ~GLShaderProgram();
     
     GLShaderProgram(const GLShaderProgram&)=delete;
@@ -163,7 +146,7 @@ public:
     
     const GLInputLayout* getInputLayout() const { return m_InputLayout; }
 
-    GLResourceTable* createResourceTable(const string& name, size_t extended = 0);
+    GLResourceTable* createResourceTable(const std::string& name, size_t extended = 0);
 };
 
 }

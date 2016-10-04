@@ -23,16 +23,21 @@
  */
 
 #include "tempest/utils/logging.hh"
-#include "tempest/utils/types.hh"
+#include <cstdint>
 
 #include <chrono>
 #include <iostream>
+
+#ifdef _WIN32
+#	define WIN32_LEAN_AND_MEAN 1
+#	include <Windows.h>
+#endif
 
 // TODO: Optimize
 
 namespace Tempest
 {
-string ConvertLogLevelToString(LogLevel level)
+std::string ConvertLogLevelToString(LogLevel level)
 {
     switch(level)
     {
@@ -46,14 +51,16 @@ string ConvertLogLevelToString(LogLevel level)
     return "[UNKNOWN]";
 }
 
-LogFile::LogFile(uint32 flags)
+static long long s_Timestamp = 0;
+
+LogFile::LogFile(uint32_t flags)
     :   m_MinLogLevel(LogLevel::Info),
 		m_CurrentIndex(0),
 		m_Flags(flags)
 {
 }
 
-LogFile::LogFile(const string& filename, LogLevel log_level, uint32 flags)
+LogFile::LogFile(const std::string& filename, LogLevel log_level, uint32_t flags)
     :   m_LogFile(filename.c_str(), std::ios::out | std::ios::trunc),
         m_MinLogLevel(log_level),
         m_CurrentIndex(0),
@@ -68,6 +75,7 @@ LogFile::~LogFile()
 
 void LogFile::flush()
 {
+    std::lock_guard<std::mutex> lock(m_Lock);
     for(auto iter = m_LogMessages.begin() + m_CurrentIndex, iter_end = m_LogMessages.end();
         iter != iter_end; ++iter)
     {
@@ -78,7 +86,7 @@ void LogFile::flush()
     m_CurrentIndex = m_LogMessages.size();
 }
 
-void LogFile::setLogFile(const string& filename)
+void LogFile::setLogFile(const std::string& filename)
 {
     m_LogFile.open(filename.c_str(), std::ios::out | std::ios::trunc);
 }
@@ -108,10 +116,15 @@ std::ostream& LogFile::getOutputStream(LogLevel level)
         return m_LogFile;
     // On Windows it uses an intermediate stream to output to the Output Window.
 #ifdef _MSC_VER
-    return m_MessageBuffer;
-#else
-    return GetStdOutput(level);
+    if(IsDebuggerPresent())
+    {
+        return m_MessageBuffer;
+    }
+    else
 #endif
+    {
+        return GetStdOutput(level);
+    }
 }
 
 void LogFile::flushStream(std::ostream& os)
@@ -119,18 +132,23 @@ void LogFile::flushStream(std::ostream& os)
     // HACK: It flushes the data to the Output Window in the case of Windows; otherwise, it
     // works in the usual fashion.
 #ifdef _MSC_VER
-    if(!m_LogFile.is_open())
+    if(IsDebuggerPresent())
     {
-        auto str = m_MessageBuffer.str();
-        OutputDebugString(str.c_str());
-        m_MessageBuffer.str("");
+        if(!m_LogFile.is_open())
+        {
+            auto str = m_MessageBuffer.str();
+            OutputDebugString(str.c_str());
+            m_MessageBuffer.str("");
+        }
     }
-#else
-    os.flush();
+    else
 #endif
+    {
+        os.flush();
+    }
 }
 
-string LogFile::readLog()
+std::string LogFile::readLog()
 {
     std::stringstream ss;
     for(auto& msg : m_LogMessages)
@@ -140,48 +158,60 @@ string LogFile::readLog()
     return ss.str();
 }
 
-void LogFile::pushMessage(LogLevel log_level, string msg)
+void LogFile::pushMessage(LogLevel log_level, std::string msg)
 {
+    if(log_level < m_MinLogLevel)
+        return;
+
+    std::lock_guard<std::mutex> lock(m_Lock);
     auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
-    m_LogMessages.push_back(LogMessage{ log_level, now.count(), msg });
+    m_LogMessages.push_back(LogMessage{ log_level, now.count() - s_Timestamp, msg });
     if((m_Flags & TEMPEST_LOG_ASYNCHRONOUS) == 0)
     {
-#ifdef _MSC_VER
-        PrintMessage(m_MessageBuffer, m_LogMessages.back());
-        OutputDebugString(m_MessageBuffer.str().c_str());
-        m_MessageBuffer.str("");
-#else
         PrintMessage(getOutputStream(log_level), m_LogMessages.back());
-#endif
         ++m_CurrentIndex;
     }
 }
 
 void PrintMessage(std::ostream& _stream, const LogMessage& msg)
 {
-    uint64 m = msg.timestamp / 60000000000LL;
-    uint64 s = (msg.timestamp % 60000000000LL) / 1000000000LL;
-    uint64 ns = (msg.timestamp % 1000000000LL);
-    _stream << m << ":" << s << "." << ns << ": " << ConvertLogLevelToString(msg.level) << ": " << msg.message << "\n";
+    uint64_t h = msg.timestamp / 3600000000000LL;
+    uint64_t m = (msg.timestamp % 3600000000000LL) / 60000000000LL;
+    uint64_t s = (msg.timestamp % 60000000000LL) / 1000000000LL;
+    uint64_t ns = (msg.timestamp % 1000000000LL);
+    _stream << h << ":" << m << ":" << s << "." << ns << ": " << ConvertLogLevelToString(msg.level) << ": " << msg.message << "\n";
 }
 
-void Log(LogLevel log_level, string msg_str)
+static std::mutex s_GlobalOutputLock;
+
+void Log(LogLevel log_level,std::string msg_str)
 {
     auto* ptr = LogFile::getSingletonPtr();
+    if(s_Timestamp == 0)
+    {
+        s_Timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+    }
+
     if(ptr)
     {
         ptr->pushMessage(log_level, msg_str);
     }
     else
     {
+        std::lock_guard<std::mutex> lock(s_GlobalOutputLock);
         auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
 #ifdef _MSC_VER
-        string _msg = msg_str + "\n";
-        OutputDebugString(_msg.c_str());
-#else
-        LogMessage msg{ log_level, now.count(), msg_str };
-        PrintMessage(GetStdOutput(log_level), msg);
+        if(IsDebuggerPresent())
+        {
+            std::string _msg = msg_str + "\n";
+            OutputDebugString(_msg.c_str());
+        }
+        else
 #endif
+        {
+            LogMessage msg{ log_level, now.count() - s_Timestamp, msg_str };
+            PrintMessage(GetStdOutput(log_level), msg);
+        }
     }
 }
 }

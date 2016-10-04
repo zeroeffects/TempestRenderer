@@ -24,14 +24,14 @@
 
 %{
 #include "tempest/mesh/obj-mtl-loader-driver.hh"
+#include "tempest/mesh/obj-mtl-parser.hh"
 #include "tempest/utils/patterns.hh"
 #include "tempest/utils/logging.hh"
-#include "obj-mtl-loader-parser.hh"
 
 #undef yywrap
 #define yywrap() 1
 
-#define yyterminate() return Parser::token::T_EOF
+#define yyterminate() return ObjMtlToken::EndOfFile
 %}
 
 %option noyywrap nounput batch
@@ -39,7 +39,7 @@
 %option prefix="obj_mtl_loader_"
 
 %{
-#define YY_USER_ACTION  yylloc->columns(yyleng);
+#define YY_USER_ACTION  yylloc->startColumn += yyleng;
 
 using namespace Tempest::ObjMtlLoader;
 using namespace Tempest;
@@ -48,39 +48,42 @@ using namespace Tempest;
 INTEGER     \-{0,1}[0-9]+
 MANTISA     (e|E)(\+|\-)?[0-9]*
 IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
-COMMENT     \#.*[\r]*\n
+COMMENT     \#[^\r\n]*
+
+%x NAME_SUB
 
 %%
-%{
-    yylloc->step();
-%}
 
 {INTEGER}"."[0-9]+{MANTISA}?              |
-{INTEGER}{MANTISA}                      yylval->FloatValue = static_cast<float>(atof(yytext)); return Parser::token::T_FLOAT;
-{INTEGER}                               yylval->IntegerValue = atoi(yytext); return Parser::token::T_INTEGER;
-"newmtl"                                return Parser::token::T_NEWMTL;
-"Ka"                                    return Parser::token::T_KA;
-"Kd"                                    return Parser::token::T_KD;
-"Ks"                                    return Parser::token::T_KS;
-"Tf"                                    return Parser::token::T_TF;
-"illum"                                 return Parser::token::T_ILLUM;
-"Ns"                                    return Parser::token::T_NS;
-"sharpness"                             return Parser::token::T_SHARPNESS;
-"Ni"                                    return Parser::token::T_NI;
-"map_Ka"                                return Parser::token::T_MAP_KA;
-"map_Kd"                                return Parser::token::T_MAP_KD;
-"map_Ks"                                return Parser::token::T_MAP_KS;
-"map_Ns"                                return Parser::token::T_MAP_NS;
-"map_d"                                 return Parser::token::T_MAP_D;
-"d"                                     return Parser::token::T_D;
-"Tr"                                    return Parser::token::T_D;
-"Ke"                                    return Parser::token::T_KE;
-illum_[0-9]                             yylval->IntegerValue = yytext[6]; return Parser::token::T_ILLUM_MODEL;
-[A-Z0-9a-z_.]+                          strncpy(yylval->StringValue, yytext, sizeof(yylval->StringValue) - 1); return Parser::token::T_STRING;
-{COMMENT}                               yylloc->lines(1); yylloc->step();
-[ \t]+                                  yylloc->step();
-[\r\n]+                                 yylloc->lines(yyleng); yylloc->step(); return Parser::token::T_EOL;
-.                                       driver.error(ToLocation(*yylloc), string("invalid character: ") + yytext);
+{INTEGER}{MANTISA}                      yylval->FloatValue = static_cast<float>(atof(yytext)); return ObjMtlToken::Float;
+{INTEGER}                               yylval->IntegerValue = atoi(yytext); return ObjMtlToken::Integer;
+"newmtl"                                return ObjMtlToken::NewMtl;
+"Ka"                                    return ObjMtlToken::AmbientReflectivity;
+"Kd"                                    return ObjMtlToken::DiffuseReflectivity;
+"Ks"                                    return ObjMtlToken::SpecularReflectivity;
+"Tf"                                    return ObjMtlToken::TransmissionFilter;
+"illum"                                 return ObjMtlToken::Illum;
+"Ns"                                    return ObjMtlToken::SpecularExponent;
+"sharpness"                             return ObjMtlToken::ReflectionSharpness;
+"Ni"                                    return ObjMtlToken::RefractionIndex;
+map_Ka[ \t]                             BEGIN(NAME_SUB); return ObjMtlToken::AmbientReflectivityMap;
+map_Kd[ \t]                             BEGIN(NAME_SUB); return ObjMtlToken::DiffuseReflectivityMap;
+map_Ks[ \t]                             BEGIN(NAME_SUB); return ObjMtlToken::SpecularReflectivityMap;
+map_Ns[ \t]                             BEGIN(NAME_SUB); return ObjMtlToken::SpecularExponentMap;
+map_d[ \t]                              BEGIN(NAME_SUB); return ObjMtlToken::DissolveMap;
+<NAME_SUB>\n                              |
+<NAME_SUB>[\r]*\n                       BEGIN(INITIAL); yylloc->startLine += 1; yylloc->startColumn = 1; return ObjMtlToken::EndOfLine;
+<NAME_SUB>[^\n]*                        strncpy(yylval->StringValue, yytext, sizeof(yylval->StringValue) - 1); return ObjMtlToken::String;
+"d"                                     return ObjMtlToken::Dissolve;
+"Tr"                                    return ObjMtlToken::Dissolve;
+"Ke"                                    return ObjMtlToken::Emission;
+illum_[0-9]                             yylval->IntegerValue = yytext[6]; return ObjMtlToken::IllumModel;
+[A-Z0-9a-z_.]+                          strncpy(yylval->StringValue, yytext, sizeof(yylval->StringValue) - 1); return ObjMtlToken::String;
+{COMMENT}                               
+[ \t]+                                  
+\n                                        |                                  
+[\r]*\n                                 yylloc->startLine += 1; yylloc->startColumn = 1; return ObjMtlToken::EndOfLine;
+.                                       driver.error(*yylloc, std::string("invalid character: ") + yytext);
 
 %%
 

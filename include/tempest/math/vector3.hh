@@ -28,197 +28,410 @@
 #include "tempest/math/vector2.hh"
 #include "tempest/math/functions.hh"
 
+#include <algorithm>
+
+#ifndef EXPORT_CUDA
+#	ifdef __CUDACC__
+#		define EXPORT_CUDA __device__ __host__
+#	else
+#		define EXPORT_CUDA
+#	endif
+#endif
+
 namespace Tempest
 {
 //! 3-dimensional vector
 /*! \ingroup TempestMath
 */
-struct Vector3
+union Vector3
 {
-    struct coord
+    struct
     {
         float x, /*!< x-coordinate component */
               y, /*!< y-coordinate component */
               z; /*!< z-coordinate component */
     };
-
-    union
+    struct
     {
-        coord coordinate;
-        float elem[3]; /*!< coordinate array */
+        Vector2 xy;
+        float _z;
     };
-
-    //! Default constructor
-    explicit Vector3() { static_assert(sizeof(Vector3) == 3*sizeof(float), "Vector3 has the wrong size"); }
-
-    Vector3(const Vector3& v)
-    {
-        coordinate.x = v.coordinate.x, coordinate.y = v.coordinate.y, coordinate.z = v.coordinate.z;
-    }
-    
-    //! Constructor
-    /*!
-        \param _x x-coordinate component
-        \param _y y-coordinate component
-        \param _z z-coordinate component
-    */
-    Vector3(float _x, float _y, float _z)
-    {
-        set(_x, _y, _z);
-    }
-
-    inline float& x() { return coordinate.x; }
-    inline float& y() { return coordinate.y; }
-    inline float& z() { return coordinate.z; }
-    inline float& r() { return coordinate.x; }
-    inline float& g() { return coordinate.y; }
-    inline float& b() { return coordinate.z; }
-    inline float& s() { return coordinate.x; }
-    inline float& t() { return coordinate.y; }
-    inline float& p() { return coordinate.z; }
-
-    inline float x() const { return coordinate.x; }
-    inline float y() const { return coordinate.y; }
-    inline float z() const { return coordinate.z; }
-    inline float r() const { return coordinate.x; }
-    inline float g() const { return coordinate.y; }
-    inline float b() const { return coordinate.z; }
-    inline float s() const { return coordinate.x; }
-    inline float t() const { return coordinate.y; }
-    inline float p() const { return coordinate.z; }
-
-    //! Array style coordinate component referencing
-    /*!
-        \param i the coordex of the coordinate component
-        \return reference to a coordinate component
-    */
-    inline float& operator[](size_t i)
-    {
-        TGE_ASSERT(i < TGE_FIXED_ARRAY_SIZE(elem), "Bad element coordex");
-        return elem[i];
-    }
-
-    //! Array style coordinate component referencing
-    /*!
-        \param i the coordex of the coordinate component
-        \return reference to a coordinate component
-    */
-    inline float operator[](size_t i) const
-    {
-        TGE_ASSERT(i < TGE_FIXED_ARRAY_SIZE(elem), "Bad element coordex");
-        return elem[i];
-    }
-
-    //! Computes the length of the vector
-    /*!
-        \return the length of the vector as a floating-point number
-    */
-    float length() const { return sqrt(coordinate.x*coordinate.x+coordinate.y*coordinate.y+coordinate.z*coordinate.z); }
-
-    //! Normalizes the vector
-    /*!
-        \remarks the function doesn't do anything if length is zero
-    */
-    void normalize()
-    {
-        float l = length();
-        if(l != 0.0f)
-        {
-            coordinate.x /= l;
-            coordinate.y /= l;
-            coordinate.z /= l;
-        }
-    }
-
-    //! Computes the dot product between two vectors
-    /*! 
-        \param vec a 3-dimesional vector
-        \return the dot product between the vectors
-    */
-    float dot(const Vector3& vec) const { return coordinate.x*vec.coordinate.x + coordinate.y*vec.coordinate.y + coordinate.z*vec.coordinate.z; }
-
-    //! Computes the cross product between two vectors
-    /*!
-        \param vec a 3-dimensional vector
-        \return the cross product between the vectors
-    */
-    Vector3 cross(const Vector3& vec) const { return Vector3(coordinate.y*vec.coordinate.z - coordinate.z*vec.coordinate.y,
-                                                             coordinate.z*vec.coordinate.x - coordinate.x*vec.coordinate.z,
-                                                             coordinate.x*vec.coordinate.y - coordinate.y*vec.coordinate.x); }
-
-    //! Sets the values of the coordinate component
-    /*!
-        \param _x x-coordinate component
-        \param _y y-coordinate component
-        \param _z z-coordinate component
-    */
-    inline void set(float _x, float _y, float _z) { coordinate.x = _x; coordinate.y = _y; coordinate.z = _z; }
+    float Components[3];
 };
 
-inline bool operator==(const Vector3& lhs, const Vector3& rhs) { return approx_eq(lhs.coordinate.x, rhs.coordinate.x) && approx_eq(lhs.coordinate.y, rhs.coordinate.y) && approx_eq(lhs.coordinate.z, rhs.coordinate.z); }
+inline EXPORT_CUDA Vector3 ToVector3(float* f) { return Vector3{ f[0], f[1], f[2] }; }
 
-inline bool operator!=(const Vector3& lhs, const Vector3& rhs) { return approx_neq(lhs.coordinate.x, rhs.coordinate.x) || approx_neq(lhs.coordinate.y, rhs.coordinate.y) || approx_neq(lhs.coordinate.z, rhs.coordinate.z); }
+#ifndef Array
+#	define Array(x) x.Components
+#endif
+
+//! Computes the length of the vector
+/*!
+    \return the length of the vector as a floating-point number
+*/
+inline EXPORT_CUDA float Length(const Vector3& vec) { return sqrt(vec.x*vec.x+vec.y*vec.y+vec.z*vec.z); }
+
+//! Normalizes the vector
+/*!
+    \remarks the function doesn't do anything if length is zero
+*/
+inline EXPORT_CUDA void NormalizeSelf(Vector3* vec)
+{
+    float l = Length(*vec);
+    if(l != 0.0f)
+    {
+		float rcp_l = 1.0f/l;
+        vec->x *= rcp_l;
+        vec->y *= rcp_l;
+        vec->z *= rcp_l;
+    }
+}
+
+//! Computes the dot product between two vectors
+/*! 
+    \param vec a 3-dimesional vector
+    \return the dot product between the vectors
+*/
+inline EXPORT_CUDA float Dot(const Vector3& lhs, const Vector3& rhs) { return lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z; }
+
+//! Computes the cross product between two vectors
+/*!
+    \param vec a 3-dimensional vector
+    \return the cross product between the vectors
+*/
+inline EXPORT_CUDA Vector3 Cross(const Vector3& lhs, const Vector3& rhs) { return Vector3{lhs.y*rhs.z - lhs.z*rhs.y,
+																		      lhs.z*rhs.x - lhs.x*rhs.z,
+																		      lhs.x*rhs.y - lhs.y*rhs.x}; }
+
+inline EXPORT_CUDA bool operator==(const Vector3& lhs, const Vector3& rhs) { return ApproxEqual(lhs.x, rhs.x) && ApproxEqual(lhs.y, rhs.y) && ApproxEqual(lhs.z, rhs.z); }
+
+inline EXPORT_CUDA bool IsZero(const Vector3& vec)
+{
+    return vec.x && vec.y && vec.z;
+}
+
+inline EXPORT_CUDA bool ApproxEqual(const Vector3& lhs, const Vector3& rhs, float epsilon = TEMPEST_WEAK_FLOAT_EPSILON)
+{
+    return ApproxEqual(lhs.x, rhs.x, epsilon) &&
+           ApproxEqual(lhs.y, rhs.y, epsilon) &&
+           ApproxEqual(lhs.z, rhs.z, epsilon);
+}
+
+inline EXPORT_CUDA bool ApproxEqual(const Vector3& vec, float scalar, float epsilon = TEMPEST_WEAK_FLOAT_EPSILON)
+{
+    return ApproxEqual(vec.x, scalar, epsilon) &&
+           ApproxEqual(vec.y, scalar, epsilon) &&
+           ApproxEqual(vec.z, scalar, epsilon);
+}
+
+inline EXPORT_CUDA bool operator!=(const Vector3& lhs, const Vector3& rhs) { return ApproxNotEqual(lhs.x, rhs.x) || ApproxNotEqual(lhs.y, rhs.y) || ApproxNotEqual(lhs.z, rhs.z); }
 
 //! Sums two vectors and returns the resulting vector
 /*! \related Vector3 */
-inline Vector3 operator+(const Vector3& lhs, const Vector3& rhs) { return Vector3(lhs.coordinate.x+rhs.coordinate.x, lhs.coordinate.y+rhs.coordinate.y, lhs.coordinate.z+rhs.coordinate.z); }
+inline EXPORT_CUDA Vector3 operator+(const Vector3& lhs, const Vector3& rhs) { return Vector3{lhs.x+rhs.x, lhs.y+rhs.y, lhs.z+rhs.z}; }
+
+inline EXPORT_CUDA Vector3 operator+(const Vector3& vec, float scalar) { return Vector3{vec.x + scalar, vec.y + scalar, vec.z + scalar}; }
+
+inline EXPORT_CUDA Vector3 operator+(float scalar, const Vector3& vec) { return Vector3{vec.x + scalar, vec.y + scalar, vec.z + scalar}; }
 
 //! Subtracts two vectors and returns the resulting vector
 /*! \related Vector3 */
-inline Vector3 operator-(const Vector3& lhs, const Vector3& rhs) { return Vector3(lhs.coordinate.x-rhs.coordinate.x, lhs.coordinate.y-rhs.coordinate.y, lhs.coordinate.z-rhs.coordinate.z); }
+inline EXPORT_CUDA Vector3 operator-(const Vector3& lhs, const Vector3& rhs) { return Vector3{lhs.x-rhs.x, lhs.y-rhs.y, lhs.z-rhs.z}; }
+
+inline EXPORT_CUDA Vector3 operator-(const Vector3& vec, float scalar) { return Vector3{vec.x - scalar, vec.y - scalar, vec.z - scalar}; }
+
+inline EXPORT_CUDA Vector3 operator-(float scalar, const Vector3& vec) { return Vector3{scalar - vec.x, scalar - vec.y, scalar - vec.z}; }
 
 //! Negates a vector and returns the resulting vector
 /*! \related Vector3 */
-inline Vector3 operator-(const Vector3& vec) { return Vector3(-vec.coordinate.x, -vec.coordinate.y, -vec.coordinate.z); }
+inline EXPORT_CUDA Vector3 operator-(const Vector3& vec) { return Vector3{-vec.x, -vec.y, -vec.z}; }
 
 //! Sums two vectors and stores the result in the first vector
 /*! \related Vector3 */
-inline Vector3& operator+=(Vector3& lhs, const Vector3& rhs) { lhs.coordinate.x += rhs.coordinate.x; lhs.coordinate.y += rhs.coordinate.y; lhs.coordinate.z += rhs.coordinate.z; return lhs; }
+inline EXPORT_CUDA Vector3& operator+=(Vector3& lhs, const Vector3& rhs) { lhs.x += rhs.x; lhs.y += rhs.y; lhs.z += rhs.z; return lhs; }
 
 //! Subtracts two vectors and stores the result in the first vector
 /*! \related Vector3 */
-inline Vector3& operator-=(Vector3& lhs, const Vector3& rhs) { lhs.coordinate.x -= rhs.coordinate.x; lhs.coordinate.y -= rhs.coordinate.y; lhs.coordinate.z -= rhs.coordinate.z; return lhs; }
+inline EXPORT_CUDA Vector3& operator-=(Vector3& lhs, const Vector3& rhs) { lhs.x -= rhs.x; lhs.y -= rhs.y; lhs.z -= rhs.z; return lhs; }
 
 //! Multiplies a vector with a float-pointing variable and returns the resulting vector
 /*! \related Vector3 */
-inline Vector3 operator*(const Vector3& vec, float a) { return Vector3(vec.coordinate.x * a, vec.coordinate.y * a, vec.coordinate.z * a); }
+inline EXPORT_CUDA Vector3 operator*(const Vector3& vec, float a) { return Vector3{vec.x * a, vec.y * a, vec.z * a}; }
 
 //! Multiplies a vector with a float-pointing variable and returns the resulting vector
 /*! \related Vector3 */
-inline Vector3 operator*(float a, const Vector3& vec) { return Vector3(vec.coordinate.x * a, vec.coordinate.y * a, vec.coordinate.z * a); }
+inline EXPORT_CUDA Vector3 operator*(float a, const Vector3& vec) { return Vector3{vec.x * a, vec.y * a, vec.z * a}; }
+
+//! Divides a float-pointing variable by vector component-wise and returns the resulting vector
+/*! \related Vector3 */
+inline EXPORT_CUDA Vector3 operator/(float a, const Vector3& vec) { return Vector3{a / vec.x, a / vec.y, a / vec.z}; }
+
+//! Multiplies component-wise two vectors
+/*! \related Vector3 */
+inline EXPORT_CUDA Vector3 operator*(const Vector3& lhs, const Vector3& rhs) { return Vector3{lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z}; }
+
+//! Divides component-wise two vectors
+/*! \related Vector3 */
+inline EXPORT_CUDA Vector3 operator/(const Vector3& lhs, const Vector3& rhs) { return Vector3{lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z}; }
 
 //! Multiplies a vector with a float-pointing variable and replaces the vector
 /*! \related Vector3 */
-inline Vector3& operator*=(Vector3& vec, float a) { vec.coordinate.x *= a; vec.coordinate.y *= a; vec.coordinate.z *= a; return vec; }
+inline EXPORT_CUDA Vector3& operator*=(Vector3& vec, float a) { vec.x *= a; vec.y *= a; vec.z *= a; return vec; }
+
+inline EXPORT_CUDA Vector3& operator*=(Vector3& lhs, const Vector3& rhs) { lhs.x *= rhs.x; lhs.y *= rhs.y; lhs.z *= rhs.z; return lhs; }
 
 //! Divides a vector with a float-pointing variable and returns the resulting vector
 /*! \related Vector3 */
-inline Vector3 operator/(const Vector3& vec, float a)
+inline EXPORT_CUDA Vector3 operator/(const Vector3& vec, float a)
 {
+	static_assert(sizeof(Vector3) == 3*sizeof(float), "Vector3 has the wrong size"); 
 	float rcp_a = 1.0f / a;
-	return Vector3(vec.coordinate.x * rcp_a, vec.coordinate.y * rcp_a, vec.coordinate.z * rcp_a);
+	return Vector3{vec.x * rcp_a, vec.y * rcp_a, vec.z * rcp_a};
 }
 
 //! Divides a vector with a float-pointing variable and replaces the vector
 /*! \related Vector3 */
-inline Vector3& operator/=(Vector3& vec, float a)
+inline EXPORT_CUDA Vector3& operator/=(Vector3& vec, float a)
 {
 	float rcp_a = 1.0f / a;
-	vec.coordinate.x *= rcp_a;
-	vec.coordinate.y *= rcp_a;
-	vec.coordinate.z *= rcp_a;
+	vec.x *= rcp_a;
+	vec.y *= rcp_a;
+	vec.z *= rcp_a;
 	return vec;
 }
 
-//! Returns the component-wise absolute value of a 3-dimensional vector
-inline Vector3 v3abs(Vector3& v)
+inline EXPORT_CUDA bool operator<(Vector3& lhs, const Vector3& rhs) { return lhs.x < rhs.x && lhs.y < rhs.y && lhs.z < rhs.z; }
+
+inline EXPORT_CUDA bool operator<(Vector3& lhs, float scalar) { return lhs.x < scalar && lhs.y < scalar && lhs.z < scalar; }
+
+inline EXPORT_CUDA bool operator<=(const Vector3& lhs, const Vector3& rhs) { return lhs.x <= rhs.x && lhs.y <= rhs.y && lhs.z <= rhs.z; }
+
+inline EXPORT_CUDA bool operator>(Vector3& lhs, const Vector3& rhs) { return lhs.x > rhs.x && lhs.y > rhs.y && lhs.z > rhs.z; }
+
+inline EXPORT_CUDA bool operator>(Vector3& lhs, float scalar) { return lhs.x > scalar && lhs.y > scalar && lhs.z > scalar; }
+
+inline std::ostream& operator<<(std::ostream& os, const Vector3& val) { return os << "<" << val.x << ", " << val.y << ", " << val.z << ">"; }
+
+inline EXPORT_CUDA Vector3 Normalize(const Vector3& vec)
 {
-    return Vector3(fabs(v.coordinate.x), fabs(v.coordinate.y), fabs(v.coordinate.z));
+    float l = Length(vec);
+	return l != 0.0f ? (vec / l) : vec;
 }
 
-inline Vector3 to_degrees(const Vector3& vec) { return Vector3(to_degrees(vec.coordinate.x), to_degrees(vec.coordinate.y), to_degrees(vec.coordinate.z)); }
+inline EXPORT_CUDA Vector3 Wedge(const Vector2& lhs, const Vector2& rhs) { return Vector3{ 0.0f, 0.0f, lhs.x*rhs.y - lhs.y*rhs.x }; }
 
-inline Vector3 to_radians(const Vector3& vec) { return Vector3(to_radians(vec.coordinate.x), to_radians(vec.coordinate.y), to_radians(vec.coordinate.z)); }
+//! Returns the component-wise absolute value of a 3-dimensional vector
+inline EXPORT_CUDA Vector3 Vector3Abs(const Vector3& v)
+{
+	return Vector3{fabsf(v.x), fabsf(v.y), fabsf(v.z)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Pow(const Vector3& v, float p)
+{
+	return Vector3{powf(v.x, p), powf(v.y, p), powf(v.z, p)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Floor(const Vector3& v)
+{
+	return Vector3{FastFloor(v.x), FastFloor(v.y), FastFloor(v.z)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Ceil(const Vector3& v)
+{
+	return Vector3{FastCeil(v.x), FastCeil(v.y), FastCeil(v.z)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Clamp(const Vector3& val, const Vector3& vmin, const Vector3& vmax)
+{
+	return Vector3{Clamp(val.x, vmin.x, vmax.x),
+				   Clamp(val.y, vmin.y, vmax.y),
+				   Clamp(val.z, vmin.z, vmax.z)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Clamp(const Vector3& val, float smin, float smax)
+{
+	return Vector3{Clamp(val.x, smin, smax),
+				   Clamp(val.y, smin, smax),
+				   Clamp(val.z, smin, smax)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Saturate(const Vector3& val)
+{
+	return Vector3{Clamp(val.x, 0.0f, 1.0f),
+				   Clamp(val.y, 0.0f, 1.0f),
+				   Clamp(val.z, 0.0f, 1.0f)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Sqrt(const Vector3& val)
+{
+    return Vector3{sqrtf(val.x),
+                   sqrtf(val.y),
+                   sqrtf(val.z)};
+}
+
+inline EXPORT_CUDA Vector3 GenericSqrt(const Vector3& val)
+{
+    return Vector3Sqrt(val);
+}
+
+inline EXPORT_CUDA Vector3 Vector3Min(const Vector3& val, const Vector3& vmax)
+{
+	return Vector3{Minf(val.x, vmax.x),
+				   Minf(val.y, vmax.y),
+				   Minf(val.z, vmax.z)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Max(const Vector3& val, float scalar)
+{
+	return Vector3{Maxf(val.x, scalar),
+				   Maxf(val.y, scalar),
+				   Maxf(val.z, scalar)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Max(const Vector3& lhs, const Vector3& rhs)
+{
+	return Vector3{Maxf(lhs.x, rhs.x),
+				   Maxf(lhs.y, rhs.y),
+				   Maxf(lhs.z, rhs.z)};
+}
+
+inline EXPORT_CUDA Vector3 GenericMin(const Vector3& lhs, const Vector3& rhs) { return Vector3Min(lhs, rhs); }
+
+inline EXPORT_CUDA Vector3 GenericMax(const Vector3& lhs, const Vector3& rhs) { return Vector3Max(lhs, rhs); }
+
+inline EXPORT_CUDA Vector3 Vector3Exp(const Vector3& val)
+{
+    return Vector3{expf(val.x), expf(val.y), expf(val.z)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Log(const Vector3& val)
+{
+    return Vector3{ logf(val.x), logf(val.y), logf(val.z) };
+}
+
+inline EXPORT_CUDA Vector3 Vector3Log10(const Vector3& val)
+{
+    return Vector3{ log10f(val.x), log10f(val.y), log10f(val.z) };
+}
+
+inline EXPORT_CUDA Vector3 GenericLog10(const Vector3& val)
+{
+    return Vector3Log10(val);
+}
+
+inline EXPORT_CUDA Vector3 Vector3Cos(const Vector3& val)
+{
+    return Vector3{cosf(val.x), cosf(val.y), cosf(val.z)};
+}
+
+inline EXPORT_CUDA Vector3 Vector3Sinc(const Vector3& val)
+{
+    return Vector3{Sinc(val.x), Sinc(val.y), Sinc(val.z)};
+}
+
+inline EXPORT_CUDA void CopyVec3ToFloatArray(const Vector3& vec, float* arr)
+{
+    arr[0] = vec.x;
+    arr[1] = vec.y;
+    arr[2] = vec.z;
+}
+
+inline EXPORT_CUDA Vector3 ToDegress(const Vector3& vec) { return Vector3{ToDegress(vec.x), ToDegress(vec.y), ToDegress(vec.z)}; }
+
+inline EXPORT_CUDA Vector3 ToRadians(const Vector3& vec) { return Vector3{ToRadians(vec.x), ToRadians(vec.y), ToRadians(vec.z)}; }
+
+inline EXPORT_CUDA Vector3 ToVector3(float value)
+{
+    return Vector3{value, value, value};
+}
+
+inline EXPORT_CUDA Vector3 SelectGE(const Vector3& vec, float value, const Vector3& true_vec, const Vector3& false_vec)
+{
+    return Vector3{ vec.x >= value ? true_vec.x : false_vec.x,
+                    vec.y >= value ? true_vec.y : false_vec.y,
+                    vec.z >= value ? true_vec.z : false_vec.z };
+}
+
+inline EXPORT_CUDA float MaxValue(const Vector3& vec)
+{
+    return Maxf(Maxf(vec.x, vec.y), vec.z);
+}
+
+inline EXPORT_CUDA float MinValue(const Vector3& vec)
+{
+    return Minf(Minf(vec.x, vec.y), vec.z);
+}
+
+inline EXPORT_CUDA Vector2 ToVector2Trunc(const Vector3& vec)
+{
+    return Vector2{ vec.x, vec.y };
+}
+
+inline EXPORT_CUDA Vector3 Interpolate(const Vector3& lhs, const Vector3& rhs, float t)
+{
+    return lhs*(1 - t) + rhs*t;
+}
+
+inline EXPORT_CUDA Vector3 SphereToCartesianCoordinates(const Vector2& angles)
+{
+    float cos_theta, sin_theta, cos_phi, sin_phi;
+    FastSinCos(angles.x, &sin_theta, &cos_theta);
+    FastSinCos(angles.y, &sin_phi, &cos_phi);
+
+    return { cos_phi*sin_theta, sin_phi*sin_theta, cos_theta };
+}
+
+inline EXPORT_CUDA Vector2 CartesianToParabolicCoordinates(const Vector3& coordinates)
+{
+    return { coordinates.x/(coordinates.z + 1.0f), coordinates.y/(coordinates.z + 1.0f) };
+}
+
+inline EXPORT_CUDA Vector3 ParabolicToCartesianCoordinates(const Vector2& coordinates)
+{
+    float len_sq = Dot(coordinates, coordinates);
+    return { 2.0f*coordinates.x/(len_sq + 1.0f), 2.0f*coordinates.y/(len_sq + 1.0f), (1 - len_sq) / (1 + len_sq) };
+}
+
+inline EXPORT_CUDA Tempest::Vector3 ParabolicMapToCartesianCoordinates(const Tempest::Vector2& tc)
+{
+    return Tempest::ParabolicToCartesianCoordinates(2.0f*tc - Tempest::ToVector2(1.0f));
+}
+
+inline EXPORT_CUDA Tempest::Vector2 CartesianToParabolicMapCoordinates(const Tempest::Vector3& dir)
+{
+    return Tempest::CartesianToParabolicCoordinates(dir)*0.5f + Tempest::ToVector2(0.5f);
+}
+
+inline EXPORT_CUDA Vector2 CartesianToLambertEqualAreaCoordinates(Vector3 normal)
+{
+    float f = sqrt(8*normal.z + 8);
+    return { normal.x/f + 0.5f, normal.y/f + 0.5f };
+}
+
+inline EXPORT_CUDA Vector3 LambertEqualAreaToCartesianCoordinates(Vector2 enc)
+{
+    Vector2 fenc = enc*4 - 2;
+    float f = Dot(fenc, fenc);
+    float g = sqrtf(1.0f - f/4);
+    auto interm = fenc * g;
+    return { interm.x, interm.y, 1.0f - f/2 };
+}
+
+inline EXPORT_CUDA Vector3 Reflect(const Vector3& inc, const Vector3& norm) { return 2.0f*Dot(norm, inc)*norm - inc; }
+
+// Refer to the Reshetov10 paper for explanation what all of this means
+inline EXPORT_CUDA Vector3 ComputeConsistentNormal(Vector3 dir, Vector3 norm, float a_coef)
+{
+	float q_numer = (1.0f - (2.0f/MathPi)*a_coef);
+	float q_coef = q_numer*q_numer/(1.0f + 2.0f*(1.0f - 2.0f/MathPi)*a_coef);
+
+	float b_coef = Dot(dir, norm);
+	float g_coef = 1.0f + q_coef*(b_coef - 1.0f);
+	float ratio = sqrtf(q_coef*(1.0f + g_coef)/(1.0f + b_coef));
+	Vector3 refl = (g_coef + ratio*b_coef)*norm - ratio*dir;
+			
+	return Normalize(dir + refl);
+}
 }
 
 #endif // _TEMPEST_VECTOR3_HH_

@@ -25,7 +25,7 @@
 #ifndef _TEMPEST_IO_COMMAND_BUFFER_HH_
 #define _TEMPEST_IO_COMMAND_BUFFER_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/graphics/rendering-definitions.hh"
 
 #include <memory>
@@ -36,7 +36,7 @@ class GLStorage;
 class GLTexture;
 class GLBuffer;
 
-enum class IOCommandMode: uint16
+enum class IOCommandMode: uint32_t
 {
     CopyBuffer,
     CopyTexture,
@@ -62,23 +62,23 @@ struct GLIOCommand
     {
         struct
         {
-            uint16 X,
-                   Y;
+            uint16_t X,
+                     Y;
         } SourceCoordinate;
-        uint32 SourceOffset;
+        uint32_t SourceOffset;
     };
 
     union
     {
         struct
         {
-            uint16 X,
-                   Y;
+            uint16_t X,
+                     Y;
         } DestinationCoordinate;
-        uint32 DestinationOffset;
+        uint32_t DestinationOffset;
     };
 
-    uint16          SourceSlice = 0,
+    uint32_t        SourceSlice = 0,
                     SourceMip = 0,
                     DestinationSlice = 0,
                     DestinationMip = 0,
@@ -90,8 +90,8 @@ struct GLIOCommand
 
 class GLIOCommandBuffer
 {
-    uint32                         m_IOCurrentCommand = 0;
-    uint32                         m_IOCommandCount;
+    uint32_t                       m_IOCurrentCommand = 0;
+    uint32_t                       m_IOCommandCount;
     std::unique_ptr<GLIOCommand[]> m_IOCommands;
     GLuint                         m_FBO;
 public:
@@ -99,6 +99,8 @@ public:
 
     GLIOCommandBuffer(const IOCommandBufferDescription& cmd_desc);
     ~GLIOCommandBuffer();
+
+    bool empty() const { return m_IOCommandCount == 0; }
 
     void clear();
 

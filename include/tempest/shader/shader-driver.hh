@@ -40,15 +40,17 @@ class Driver: public AST::Driver
     typedef std::vector<size_t> StackPointers;
     typedef std::vector<const Shader::Option*> OptionStackType;
 
+
     OptionStackType         m_OptionStack;
+    StackPointers           m_OptionStackPointers;
     AST::StackType          m_ShaderBuiltIns,
                             m_FSBuiltIns;
     StackPointers           m_StackPointers;
 public:
-    Driver();
+    Driver(FileLoader* loader);
      ~Driver();
 
-    const Type* find(const string& name)
+    const Type* find(const std::string& name)
     {
         AST::Node* id = findIdentifier(name);
         if(id->getNodeType() == TGE_EFFECT_TYPE)
@@ -58,15 +60,11 @@ public:
         return nullptr;
     }
 
-    bool isOptionEnabled(const Option* _opt)
-    {
-        auto begin_opt = std::begin(m_OptionStack),
-             end_opt = std::end(m_OptionStack);
-        return std::find(begin_opt, end_opt, _opt) != end_opt;
-    }
+    bool isOptionEnabled(const Optional* _opt);
 
-    void beginOptionBlock(const Option* _opt) { m_OptionStack.push_back(_opt); }
-    void endOptionBlock() { m_OptionStack.pop_back(); }
+    void beginOptionBlock() { m_OptionStackPointers.push_back(m_OptionStack.size()); }
+    void endOptionBlock() { m_OptionStackPointers.pop_back(); }
+    void pushOptionOnStack(const Shader::Option* _opt) { m_OptionStack.push_back(_opt); }
 
     void beginBlock();
     void endBlock();
@@ -74,8 +72,8 @@ public:
     void beginShader(ShaderType shader_type);
     void endShader();
 
-    bool parseFile(const string& filename);
-    bool parseString(const char* content, size_t size, const string& filename="");
+    bool parseFile(const std::string& filename);
+    bool parseString(const char* content, size_t size, const std::string& filename="");
     
     template<class T, class... TArgs>
     AST::NodeT<AST::Reference<Type>> createStackType(Location loc, TArgs&&... args)
@@ -120,13 +118,15 @@ private:
         return obj_idx;
     }
     
-    size_t createFunctionSet(FunctionSet** func_set, string name)
+    size_t createFunctionSet(FunctionSet** func_set, std::string name)
     {
         size_t obj_idx = m_ObjectPool.size();
         m_ObjectPool.push_back(CreateNode<FunctionSet>(TGE_DEFAULT_LOCATION, name));
         *func_set = m_ObjectPool.back().extract<FunctionSet>();
         return obj_idx;
     }
+
+    bool isOptionEnabledRecursive(const AST::Node* sub);
 };
 }
 }

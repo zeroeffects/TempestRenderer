@@ -33,7 +33,7 @@
 #	error "Unsupported platform"
 #endif
 
-#include "tempest/utils/types.hh"
+#include <string>
 
 namespace Tempest
 {
@@ -57,14 +57,14 @@ class Library
     LibType m_Lib;
 public:
     Library();
-    Library(const string& name);
+    Library(const std::string& name);
      ~Library();
 
     bool loaded() const { return m_Lib != nullptr; }
-    bool load(const string& name);
+    bool load(const std::string& name);
     void free();
 
-    ProcType getProcAddress(const string& str);
+    ProcType getProcAddress(const std::string& str);
 };
 }
 

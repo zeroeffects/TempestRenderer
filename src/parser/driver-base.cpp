@@ -27,25 +27,25 @@
 
 namespace Tempest
 {
-void DriverBase::warning(const Tempest::Location& loc, const string& str)
+void DriverBase::warning(const Tempest::Location& loc, const std::string& str)
 {
     ++m_WarningCount;
     Log(LogLevel::Warning, "\n", loc, ": warning: ", str);
 }
 
-void DriverBase::warning(const string& str)
+void DriverBase::warning(const std::string& str)
 {
     ++m_WarningCount;
     Log(LogLevel::Warning, "\n", __FileName, ": warning: ", str);
 }
 
-void DriverBase::error(const Tempest::Location& loc, const string& str)
+void DriverBase::error(const Tempest::Location& loc, const std::string& str)
 {
     ++m_ErrorCount;
     Log(LogLevel::Error, "\n", loc, ": error: ", str);
 }
 
-void DriverBase::error(const string& str)
+void DriverBase::error(const std::string& str)
 {
     ++m_ErrorCount;
     Log(LogLevel::Error, "\n", __FileName, ": error: ", str);

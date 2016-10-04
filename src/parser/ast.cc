@@ -32,7 +32,7 @@ namespace AST
 {
 void GenericDeleter(void* ptr) { TGE_ASSERT(ptr == nullptr, "Possible memory leak"); }
 
-StringLiteral::StringLiteral(string str)
+StringLiteral::StringLiteral(std::string str)
     :   m_Value(str) {}
 
 StringLiteral::~StringLiteral() {}
@@ -61,36 +61,6 @@ bool Block::isBlockStatement() const
 {
     return true;
 }
-
-ListElement::ListElement(ListType lt, AST::Node node, NodeT<List> next)
-    :   m_Current(std::move(node)),
-        m_Next(std::move(next)),
-        m_Type(lt)
-{
-    TGE_ASSERT(!m_Current || m_Current.getNodeType() != AST::TGE_AST_LIST_ELEMENT, "Don't build list of lists. That's too unspecific and bug prone."
-                                                                                 "What if you actually intended to insert another node in the list"
-                                                                                 "and instead you have set the current one incidentally.");
-}
-
-ListElement::~ListElement()
-{
-}
-
-ListType ListElement::getFormat() const
-{
-	return m_Type;
-}
-
-NodeT<List>* ListElement::next()
-{
-    return &m_Next;
-}
-
-const NodeT<List>* ListElement::next() const
-{
-	return &m_Next;
-}
-
 
 void ListElement::erase_next()
 {
@@ -156,7 +126,8 @@ bool ListElement::isBlockStatement() const
     return false;
 }
 
-Driver::Driver()
+Driver::Driver(FileLoader* loader)
+    :   DriverBase(loader)
 {
 }
 
@@ -179,7 +150,7 @@ const AST::Node* Driver::getASTRoot() const
     return &m_ASTRoot;
 }
 
-AST::Node* Driver::findIdentifier(const string& name)
+AST::Node* Driver::findIdentifier(const std::string& name)
 {
     for(size_t i = 0; i < m_Stack.size(); ++i)
     {
@@ -193,7 +164,7 @@ AST::Node* Driver::findIdentifier(const string& name)
 
 bool Driver::pushOnStack(AST::Node&& node)
 {
-    string name = node.getNodeName();
+    std::string name = node.getNodeName();
     if(name.empty())
     {
         Log(LogLevel::Error, "Could not insert unknown object. This might be caused by previous error.");
@@ -218,7 +189,7 @@ bool Driver::pushOnStack(AST::Node&& node)
 }
 
 
-PrinterInfrastructure::PrinterInfrastructure(std::ostream& os, uint32 flags)
+PrinterInfrastructure::PrinterInfrastructure(std::ostream& os, uint32_t flags)
     :   m_Indentation(0),
         m_OutputStream(os),
         m_Flags(flags)

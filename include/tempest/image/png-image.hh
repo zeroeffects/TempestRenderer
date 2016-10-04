@@ -28,9 +28,11 @@
 namespace Tempest
 {
 class Texture;
+struct TextureDescription;
 class Path;
 
 Texture* LoadPNGImage(const Path& file_path);
+bool SavePNGImage(const TextureDescription& tex, const void* data, const Path& file_path);
 }
 
 #endif // _PNG_IMAGE_HH_

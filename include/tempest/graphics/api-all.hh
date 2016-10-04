@@ -28,3 +28,7 @@
 #ifdef TEMPEST_NDA_APIS
 #   include "tempest/graphics/nda-api-all.hh"
 #endif
+
+#include "tempest/graphics/state-object.hh"
+#include "tempest/graphics/rendering-convenience.hh"
+#include "tempest/graphics/preferred-backend.hh"

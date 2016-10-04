@@ -66,7 +66,7 @@ public:
     
     bool operator==(GLInputLayout& input_layout)
     {
-        for(uint32 i = 0, iend = m_Attributes.Count; i < iend; ++i)
+        for(uint32_t i = 0, iend = m_Attributes.Count; i < iend; ++i)
         {
             auto& attr1 = m_Attributes.Values[i];
             auto& attr2 = input_layout.m_Attributes.Values[i];
@@ -86,7 +86,7 @@ public:
     void bind(GLBufferTableEntry* buffer_table) const;
 
 private:
-    GLInputLayout(uint32 count, const Shader::VertexAttributeDescription* arr);
+    GLInputLayout(uint32_t count, const Shader::VertexAttributeDescription* arr);
     ~GLInputLayout()=default;
 };
 }

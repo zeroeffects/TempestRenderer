@@ -30,6 +30,7 @@ struct GLSystem;
 class GLWindow;
 typedef GLSystem PreferredSystem;
 typedef GLWindow PreferredWindow;
+typedef decltype(PreferredSystem().ShaderCompiler) PreferredShaderCompiler;
 
 // Deduced types
 typedef decltype(GLSystem().Backend) PreferredBackend;

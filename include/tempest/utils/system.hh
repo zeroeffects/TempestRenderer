@@ -25,7 +25,9 @@
 #ifndef _TEMPEST_SYSTEM_HH_
 #define _TEMPEST_SYSTEM_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
+#include <thread>
+#include "tempest/utils/logging.hh"
 
 namespace Tempest
 {
@@ -35,23 +37,38 @@ namespace System
      *  \param name     the name of the Environment Variable.
      *  \return on success it returns true.
      */
-    bool GetEnvironmentVariable(const string& name, string& res);
+    bool GetEnvironmentVariable(const std::string& name,std::string& res);
 
     /*! \brief Sets the value of the specified Environment Variable.
      *  \param name     the name of the Environment Variable.
      *  \param val      the value to which it must be set.
      *  \return on success it returns true.
      */
-    bool SetEnvironmentVariable(const string& name, const string& val);
+    bool SetEnvironmentVariable(const std::string& name, const std::string& val);
 
     /*! \brief Gets the full path to the current executable.
      *  \remarks the returned string is in native file format.
      *  \return on failure returns an empty string.
      */
-    string GetExecutablePath();
+    std::string GetExecutablePath();
 
     //! Returns whether the specified file exists.
-    bool Exists(const string& name);
+    bool Exists(const std::string& name);
+
+	bool FileCopy(const std::string& source, const std::string& dest);
+
+    bool Touch(const std::string& filename);
+
+    //! Returns the number of logical processors
+    uint32_t GetNumberOfProcessors();
+
+    void OpenConsoleConnection();
+
+    void SetThreadName(std::thread::native_handle_type handle, const std::string& name);
+
+    std::string GetThreadName(std::thread::native_handle_type handle);
+
+    std::thread::native_handle_type GetCurrentThreadNativeHandle();
 }
 }
 

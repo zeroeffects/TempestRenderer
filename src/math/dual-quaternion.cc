@@ -41,10 +41,9 @@ DualQuaternion::DualQuaternion(const DualQuaternion& d)
         dual(d.dual) {}
 
 DualQuaternion::DualQuaternion(const Matrix4& mat)
-    :   non_dual(mat),
-        dual(mat(3, 0)/2.0f, mat(3, 1)/2.0f, mat(3, 2)/2.0f, 0.0f)
+    :   non_dual(ToQuaternion(mat))
 {
-    dual *= non_dual;
+    dual = Quaternion{mat(3, 0)/2.0f, mat(3, 1)/2.0f, mat(3, 2)/2.0f, 0.0f} * non_dual;
 }
 
 DualQuaternion& DualQuaternion::operator=(const DualQuaternion& d)
@@ -129,13 +128,13 @@ void DualQuaternion::conjugateSelf()
 
 DualQuaternion DualQuaternion::conjugateQuaternion() const
 {
-    return DualQuaternion(non_dual.conjugate(), dual.conjugate());
+    return DualQuaternion(Conjugate(non_dual), Conjugate(dual));
 }
 
 void DualQuaternion::conjugateQuaternionSelf()
 {
-    non_dual.conjugateSelf();
-    dual.conjugateSelf();
+    ConjugateSelf(&non_dual);
+    ConjugateSelf(&dual);
 }
 
 DualQuaternion DualQuaternion::inverse() const
@@ -145,96 +144,92 @@ DualQuaternion DualQuaternion::inverse() const
 
 void DualQuaternion::invertSelf()
 {
-    non_dual = -non_dual.inverse();
+    non_dual = -Inverse(non_dual);
     dual *= non_dual*non_dual;
 }
 
 float DualQuaternion::length() const
 {
-    float lnd = non_dual.length();
-    return lnd + non_dual.dot(dual)/lnd;
+    float lnd = Length(non_dual);
+    return lnd + Dot(non_dual, dual)/lnd;
 }
 
 void DualQuaternion::normalize()
 {
-    float lnd = non_dual.length();
+    float lnd = Length(non_dual);
     non_dual /= lnd, dual /= lnd;
 }
 
 void DualQuaternion::rotateX(float pitch)
 {
-    Quaternion qr;
-    qr.identity();
-    qr.rotateX(pitch);
+    Quaternion qr = IdentityQuaternion();
+    RotateX(qr, pitch);
     non_dual *= qr;
     dual *= qr;
 }
 
 void DualQuaternion::rotateY(float yaw)
 {
-    Quaternion qr;
-    qr.identity();
-    qr.rotateY(yaw);
+    Quaternion qr = IdentityQuaternion();
+    RotateY(qr, yaw);
     non_dual *= qr;
     dual *= qr;
 }
 
 void DualQuaternion::rotateZ(float roll)
 {
-    Quaternion qr;
-    qr.identity();
-    qr.rotateZ(roll);
+    Quaternion qr = IdentityQuaternion();
+    RotateZ(qr, roll);
     non_dual *= qr;
     dual *= qr;
 }
 
 void DualQuaternion::rotate(float angle, const Vector3& axis)
 {
-    Quaternion qr;
-    qr.identity();
-    qr.rotate(angle, axis);
+    Quaternion qr = IdentityQuaternion();
+    Rotate(qr, angle, axis);
     non_dual *= qr;
     dual *= qr;
 }
 
 void DualQuaternion::translate(const Vector3& vec)
 {
-    Quaternion qtr(vec.coordinate.x/2.0f, vec.coordinate.y/2.0f, vec.coordinate.z/2.0f, 0.0f);
+	Quaternion qtr{ vec.x/2.0f, vec.y/2.0f, vec.z/2.0f, 0.0f };
     dual += non_dual*qtr;
 }
 
 void DualQuaternion::translateX(float x)
 {
-    Quaternion qtr(x/2.0f, 0.0f, 0.0f, 0.0f);
+	Quaternion qtr{ x/2.0f, 0.0f, 0.0f, 0.0f };
     dual += non_dual*qtr;
 }
 
 void DualQuaternion::translateY(float y)
 {
-    Quaternion qtr(0.0f, y/2.0f, 0.0f, 0.0f);
+	Quaternion qtr{ 0.0f, y/2.0f, 0.0f, 0.0f };
     dual += non_dual*qtr;
 }
 
 void DualQuaternion::translateZ(float z)
 {
-    Quaternion qtr(0.0f, 0.0f, z/2.0f, 0.0f);
+	Quaternion qtr{ 0.0f, 0.0f, z/2.0f, 0.0f };
     dual += non_dual*qtr;
 }
 
 Vector3 DualQuaternion::transform(const Vector3& v) const
 {
-    return non_dual.transform(v) + 2.0f*(non_dual.scalar()*dual.vector() -
-                                         dual.scalar()*non_dual.vector() +
-                                         non_dual.vector().cross(dual.vector()));
+    return Transform(non_dual, v) + 2.0f*(ExtractScalar(non_dual)*ExtractVector(dual) -
+                                          ExtractScalar(dual)*ExtractVector(non_dual) +
+                                          Cross(ExtractVector(non_dual), ExtractVector(dual)));
 }
 
 void DualQuaternion::identity()
 {
-    non_dual.identity();
-    dual.coordinate.x = 0.0f;
-    dual.coordinate.y = 0.0f;
-    dual.coordinate.z = 0.0f;
-    dual.coordinate.w = 0.0f;
+    non_dual = IdentityQuaternion();
+    dual.x = 0.0f;
+    dual.y = 0.0f;
+    dual.z = 0.0f;
+    dual.w = 0.0f;
 }
 
 DualQuaternion interpolate(float t, const DualQuaternion& q1, const DualQuaternion& q2)

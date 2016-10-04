@@ -1,0 +1,9 @@
+executable = sggx-fitting.bat
+universe = vanilla
+when_to_transfer_output = ON_EXIT
+transfer_input_files = brushed_alcantara_dfmf500.btf, sggxfit.exe, embree.dll
+transfer_output_files = $(FILE)
+output = Output.txt
+error = Error.txt
+log = Log.txt
+queue  FILE  MATCHING (brushed*.exr)

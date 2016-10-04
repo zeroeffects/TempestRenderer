@@ -1,0 +1,2 @@
+Source code is licensed under MIT license; however, data tends to be released under different licenses, so
+it is pretty much safe to use only the library.

@@ -28,7 +28,7 @@
 #include "tempest/graphics/opengl-backend/gl-library.hh"
 
 #include "tempest/image/image.hh"
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/math/vector4.hh"
 #include "tempest/graphics/texture.hh"
 
@@ -59,9 +59,9 @@ enum
 
 struct TextureTableDescription
 {
-    uint32          Slots[TEMPEST_TEXTURE_SLOTS];
-    uint32          UploadHeapSize = 32 * 1024 * 1024;
-    uint32          UploadQueueSize = 32;
+    uint32_t          Slots[TEMPEST_TEXTURE_SLOTS];
+    uint32_t          UploadHeapSize = 32 * 1024 * 1024;
+    uint32_t          UploadQueueSize = 32;
 
     TextureTableDescription()
     {
@@ -70,12 +70,12 @@ struct TextureTableDescription
 };
 
 #define TEMPTEST_TEXTURE_TABLE_BUFFER_COUNT 2
-const Vector4 InvalidSlot = Vector4(-1.0f, -1.0f, -1.0f, -1.0f);
+const Vector4 InvalidSlot = Vector4{-1.0f, -1.0f, -1.0f, -1.0f};
 
 struct PendingTexture
 {
-    uint32   Slot;
-    uint32   Slice;
+    uint32_t Slot;
+    uint32_t Slice;
     Texture* TexturePtr;
 };
 
@@ -89,21 +89,21 @@ class TextureTable
     TBackend*               m_Backend;
     struct
     {
-        uint32          SlotCount;
-        uint32          LastSlot;
+        uint32_t        SlotCount;
+        uint32_t        LastSlot;
         TextureType*    TexturePtr;
     } m_Textures[TEMPEST_TEXTURE_SLOTS];
     StorageType*            m_UploadHeap;
-    int32                   m_UploadHeapBoundary[TEMPTEST_TEXTURE_TABLE_BUFFER_COUNT];
-    uint32                  m_UploadHeapSize = 0;
-    uint32                  m_BufferIndex = 0;
+    int32_t                 m_UploadHeapBoundary[TEMPTEST_TEXTURE_TABLE_BUFFER_COUNT];
+    uint32_t                m_UploadHeapSize = 0;
+    uint32_t                m_BufferIndex = 0;
 
     IOCommandBufferType*    m_IOCommandBuffer;
 
     typedef typename TBackend::FenceType FenceType;
     typedef std::vector<PendingTexture> TextureQueue;
     TextureQueue            m_PendingTextures;
-    uint32                  m_ProcessedTextures = 0;
+    uint32_t                m_ProcessedTextures = 0;
     FenceType*              m_Fence[TEMPTEST_TEXTURE_TABLE_BUFFER_COUNT];
 
     std::unique_ptr<BakedResourceTable> m_BakedTable;
@@ -112,6 +112,9 @@ public:
      ~TextureTable();
     
     Vector4 loadTexture(const Path& filename);
+
+    Vector4 loadTexture(const Texture* texture);
+
     Vector4 loadCube(const Path& posx_filename,
                      const Path& negx_filename,
                      const Path& posy_filename,
@@ -119,10 +122,17 @@ public:
                      const Path& posz_filename,
                      const Path& negz_filename);
 
+    // +X, -X, +Y, -Y, +Z, -Z
+    Vector4 loadCube(Texture** textures);
+
     void setTextures(TBackend* backend);
+
+    BakedResourceTable* getBakedTable() { return m_BakedTable.get(); }
 
     void executeIOOperations();
 private:
+    Vector4 loadTexture(std::unique_ptr<Texture> texture);
+
     void clearPendingTextures();
 };
 }

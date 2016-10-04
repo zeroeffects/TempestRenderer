@@ -25,17 +25,19 @@
 #include "tempest/image/image.hh"
 #include "tempest/image/tga-image.hh"
 #include "tempest/image/png-image.hh"
+#include "tempest/image/exr-image.hh"
 #include "tempest/graphics/texture.hh"
 #include "tempest/utils/file-system.hh"
 #include "tempest/utils/logging.hh"
+#include "tempest/utils/system.hh"
 
 namespace Tempest
 {
 Texture* LoadImage(const Path& file_path)
 {
     auto ext = file_path.extension();
-    for(size_t i = 0; i < ext.size(); ++i)
-        ext[i] = tolower(ext[i]);
+    for(auto& c : ext)
+        c = tolower(c);
     if(ext == "tga")
     {
         return LoadTGAImage(file_path);
@@ -44,10 +46,39 @@ Texture* LoadImage(const Path& file_path)
     {
         return LoadPNGImage(file_path);
     }
+    else if(ext == "exr")
+    {
+        return LoadEXRImage(file_path);
+    }
     else
     {
         Log(LogLevel::Error, "Unsupported file format: ", ext);
         return nullptr;
     }
+}
+
+bool SaveImage(const TextureDescription& tex, const void* data, const Path& file_path)
+{
+    auto ext = file_path.extension();
+    for(auto& c : ext)
+        c = tolower(c);
+    if(ext == "tga")
+    {
+        return SaveTGAImage(tex, data, file_path);
+    }
+    else if(ext == "png")
+    {
+        return SavePNGImage(tex, data, file_path);
+    }
+    else if(ext == "exr")
+    {
+        return SaveEXRImage(tex, data, file_path);
+    }
+    else
+    {
+        Log(LogLevel::Error, "Unsupported file format: ", ext);
+        return nullptr;
+    }
+    System::Touch(file_path.get());
 }
 }

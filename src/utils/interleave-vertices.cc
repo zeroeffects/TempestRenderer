@@ -40,9 +40,9 @@ public:
     IndicesHasher(size_t el_count)
         :   m_ElementCount(el_count) {}
 
-    size_t operator()(const int32* key) const
+    size_t operator()(const int32_t* key) const
     {
-        return (size_t)XXH32(key, (uint32)m_ElementCount*sizeof(int32), 0xEF1C1337);
+        return (size_t)XXH32(key, (uint32_t)m_ElementCount*sizeof(int32_t), 0xEF1C1337);
     }
 };
 
@@ -53,7 +53,7 @@ public:
     IndicesEquality(size_t el_count)
         :   m_ElementCount(el_count) {}
     
-    bool operator()(const int32* key1, const int32* key2) const
+    bool operator()(const int32_t* key1, const int32_t* key2) const
     {
         return std::equal(key1, key1 + m_ElementCount, key2);
     }
@@ -62,15 +62,15 @@ public:
 #define ESTIMATED_COMPRESSION_RATIO 2
 
 void InterleaveVertices(const char** vert_arrays,
-                        const int32* strides,
+                        const int32_t* strides,
                         size_t subarrays,
-                        const int32** inds,
+                        const int32_t** inds,
                         size_t ind_count,
-                        std::vector<int32>* out_inds,
+                        std::vector<int32_t>* out_inds,
                         std::vector<char>* out_data)
 {
     out_data->reserve(std::accumulate(strides, strides + subarrays, 0)*ind_count/ESTIMATED_COMPRESSION_RATIO); // pessimistic, but better than reallocating
-    std::unordered_map<int32*, int32, IndicesHasher, IndicesEquality> inds_remap(ind_count, IndicesHasher(subarrays), IndicesEquality(subarrays));
+    std::unordered_map<int32_t*, int32_t, IndicesHasher, IndicesEquality> inds_remap(ind_count, IndicesHasher(subarrays), IndicesEquality(subarrays));
     auto scope_exit = CreateAtScopeExit([&inds_remap]()
                                         {
                                             for(auto& p : inds_remap)
@@ -78,9 +78,9 @@ void InterleaveVertices(const char** vert_arrays,
                                                 delete p.first;
                                             }
                                         });
-    std::unique_ptr<int32[]> current_indices(new int32[subarrays]);
+    std::unique_ptr<int32_t[]> current_indices(new int32_t[subarrays]);
     
-    int32 index = 0;
+    int32_t index = 0;
     
     for(size_t i = 0; i < ind_count; ++i)
     {
@@ -104,7 +104,7 @@ void InterleaveVertices(const char** vert_arrays,
             }
             out_inds->push_back(index);
             inds_remap[current_indices.release()] = index;
-            current_indices = std::unique_ptr<int32[]>(new int32[subarrays]);
+            current_indices = std::unique_ptr<int32_t[]>(new int32_t[subarrays]);
             ++index;
         }
     }

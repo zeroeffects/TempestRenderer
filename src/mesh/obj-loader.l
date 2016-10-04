@@ -48,8 +48,9 @@ using namespace Tempest;
 
 INTEGER     \-{0,1}[0-9]+
 MANTISA     (e|E)(\+|\-)?[0-9]*
-IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
-COMMENT     \#.*[\r]*\n
+COMMENT     \#[^\r\n]*
+
+%x NAME_SUB
 
 %%
 
@@ -85,8 +86,13 @@ COMMENT     \#.*[\r]*\n
 "c_interp"                              return ObjFileToken::ColorInterp;
 "d_interp"                              return ObjFileToken::DissolveInterp;
 "lod"                                   return ObjFileToken::LOD;
-"usemtl"                                return ObjFileToken::MaterialName;
-"mtllib"                                return ObjFileToken::MaterialLibrary;
+"p"                                     return ObjFileToken::Point;
+"l"                                     return ObjFileToken::Line;
+usemtl[ \t]                             BEGIN(NAME_SUB); return ObjFileToken::MaterialName;
+mtllib[ \t]                             BEGIN(NAME_SUB); return ObjFileToken::MaterialLibrary;
+<NAME_SUB>\n                              |
+<NAME_SUB>[\r]*\n                       BEGIN(INITIAL); yylloc->startLine += 1; yylloc->startColumn = 1; return ObjFileToken::EndOfLine;
+<NAME_SUB>[^\n]*                        strncpy(yylval->StringValue, yytext, sizeof(yylval->StringValue) - 1); return ObjFileToken::String;
 "shadow_obj"                            return ObjFileToken::ShadowCasting;
 "trace_obj"                             return ObjFileToken::RayTracing;
 "ctech"                                 return ObjFileToken::CurveApprox;
@@ -94,10 +100,11 @@ COMMENT     \#.*[\r]*\n
 "off"                                   return ObjFileToken::Off;
 [/]                                     return static_cast<ObjFileToken>(yytext[0]);
 [A-Z0-9a-z_.]+                          strncpy(yylval->StringValue, yytext, sizeof(yylval->StringValue) - 1); return ObjFileToken::String;
-{COMMENT}                               yylloc->startLine += 1; yylloc->startColumn = 1;
-[ \t]+                                  
-[\r\n]+                                 yylloc->startLine += yyleng; yylloc->startColumn = 1; return ObjFileToken::EndOfLine;
-.                                       driver.error(*yylloc, string("invalid character: ") + yytext);
+{COMMENT}                               
+[ \t]+
+\n                                        |                                  
+[\r]*\n                                 yylloc->startLine += 1; yylloc->startColumn = 1; return ObjFileToken::EndOfLine;
+.                                       driver.error(*yylloc, std::string("invalid character: ") + yytext);
 
 %%
 

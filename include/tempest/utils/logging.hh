@@ -30,6 +30,7 @@
 
 #include <vector>
 #include <fstream>
+#include <mutex>
 
 namespace Tempest
 {
@@ -52,9 +53,9 @@ enum LogFlags
 
 struct LogMessage
 {
-    LogLevel    level;
-    int64           timestamp;
-    string          message;
+	LogLevel     level;
+	int64_t      timestamp;
+	std::string  message;
 };
 
 void PrintMessage(std::ostream& _stream, const LogMessage& msg);
@@ -64,8 +65,7 @@ std::ostream& GetStdOutput(LogLevel level);
 class LogFile: public Singleton<LogFile>
 {
     std::fstream            m_LogFile;
-    LogLevel            m_MinLogLevel;
-    uint64                  m_Timestamp;
+    LogLevel                m_MinLogLevel;
 
     typedef std::vector<LogMessage> LogMessages;
     LogMessages             m_LogMessages;
@@ -74,22 +74,24 @@ class LogFile: public Singleton<LogFile>
 #ifdef _MSC_VER
     std::stringstream       m_MessageBuffer;
 #endif
+
+    std::mutex              m_Lock;
 public:
-    LogFile(uint32 flags);
-    LogFile(const string& filename, LogLevel log_level = LogLevel::Info, uint32 flags = 0);
+    LogFile(uint32_t flags);
+    LogFile(const std::string& filename, LogLevel log_level = LogLevel::Info, uint32_t flags = 0);
      ~LogFile();
     
     void flush();
     
-    void setLogFile(const string& filename);
+    void setLogFile(const std::string& filename);
     
     void setMinLogLevel(LogLevel log_level);
     LogLevel getMinLogLevel();
 
-    void pushMessage(LogLevel log_level, string msg);
-    string readLog();
+    void pushMessage(LogLevel log_level, std::string msg);
+    std::string readLog();
 
-    inline static string read() { return LogFile::getSingleton().readLog(); }
+    inline static std::string read() { return LogFile::getSingleton().readLog(); }
 private:
     void flushStream(std::ostream& os);
     void flushCurrentMessage();
@@ -105,7 +107,7 @@ inline void _LogPrintImpl(std::ostream& os, T&& arg, TArgs&&... args)
     _LogPrintImpl(os, args...);
 }
 
-void Log(LogLevel log_level, string msg);
+void Log(LogLevel log_level, std::string msg);
 
 template<class... TArgs>
 void Log(LogLevel log_level, TArgs&&... args)

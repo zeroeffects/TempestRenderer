@@ -24,6 +24,7 @@
 ##################################################################################
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
+                    ${CMAKE_SOURCE_DIR}/external
                    )
 
 SET(TEMPEST_SHADER_COMPILER_SRC
@@ -31,5 +32,6 @@ SET(TEMPEST_SHADER_COMPILER_SRC
    )
 
 ADD_EXECUTABLE(shader-compiler WIN32 ${TEMPEST_SHADER_COMPILER_SRC})
+SET_PROPERTY(TARGET shader-compiler PROPERTY FOLDER "Tools")
 
-TARGET_LINK_LIBRARIES(shader-compiler tempest-static tempest-main)
+TARGET_LINK_LIBRARIES(shader-compiler tempest-main tempest-static)

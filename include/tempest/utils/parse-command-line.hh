@@ -26,7 +26,10 @@
 #define _PARSE_CMDLINE_HH_
 
 #include "tempest/utils/assert.hh"
-
+#include "tempest/utils/file-system.hh"
+#include "tempest/utils/system.hh"
+#include "tempest/math/point2.hh"
+#include "tempest/math/vector2.hh"
 #include <limits>
 #include <algorithm>
 #include <unordered_map>
@@ -42,10 +45,11 @@ public:
         :   m_ShortName(FullNameOnly),
             m_Arg(false) {}
     
-    OptionDescription(char short_name, string description, bool has_arg)
+    OptionDescription(char short_name, std::string description, bool has_arg, std::string default_value = "")
         :   m_ShortName(short_name),
             m_Description(description),
-            m_Arg(has_arg) {}
+            m_Arg(has_arg),
+            m_Value(default_value) {}
     
     OptionDescription(OptionDescription&& _desc)
         :   m_ShortName(_desc.m_ShortName),
@@ -78,7 +82,7 @@ public:
     }
     
     template<class T>
-    T convert()
+    T convert() const
     {
         TGE_ASSERT(m_Arg, "The requested command line option does not support follow-up values");
         T val;
@@ -88,52 +92,95 @@ public:
         return val;
     }
     
-    void setValue(string value) { m_Value = value; }
-    string getValue() const { return m_Value; }
-    
+    void setValue(std::string value) { m_Value = value; }
+    std::string getValue() const { return m_Value; }
+    bool isSet() const { return !m_Value.empty(); }
+
     char getShortName() const { return m_ShortName; }
     bool getHasValue() const { return m_Arg; }
     
-    string getDescription() const { return m_Description; }
+    std::string getDescription() const { return m_Description; }
     
 private:
-    
-    
     char   m_ShortName;
-    string m_Description;
-    string m_Value;
+    std::string m_Description;
+    std::string m_Value;
     bool   m_Arg;
 };
 
 class CommandLineOptsParser
 {
-    typedef std::unordered_map<string, OptionDescription> OptionDescriptionMap;
-    typedef std::vector<string>                           UntypedValuesList;
-    string                     m_Name;
+    typedef std::unordered_map<std::string, OptionDescription> OptionDescriptionMap;
+    typedef std::vector<std::string>                           UntypedValuesList;
+    std::string                m_Name;
     bool                       m_UnassociatedAllowed;
     OptionDescriptionMap       m_Opts;
     UntypedValuesList          m_Unassociated;
 public:
-    CommandLineOptsParser(string name, bool unassociated_allowed);
+    CommandLineOptsParser(std::string name, bool unassociated_allowed);
      ~CommandLineOptsParser();
     
-    void createOption(char short_name, string full_name, string description, bool has_arg);
+    void createOption(char short_name,std::string full_name, std::string description, bool has_arg, std::string default_value = "");
     
     template<typename T>
-    T extract(const string& full_name)
+    T extract(const std::string& full_name) const
     {
         auto iter = m_Opts.find(full_name);
         TGE_ASSERT(iter != m_Opts.end(), "Unknown command line option");
         return iter->second.convert<T>();
     }
+
+    bool isSet(const std::string& full_name)
+    {
+        auto iter = m_Opts.find(full_name);
+        TGE_ASSERT(iter != m_Opts.end(), "Unknown command line option");
+        return iter->second.isSet();
+    }
+
+    std::string extractString(const std::string& full_name) const
+    {
+        auto iter = m_Opts.find(full_name);
+        TGE_ASSERT(iter != m_Opts.end(), "Invalid option");
+        if(iter == m_Opts.end())
+            return {};
+
+        return iter->second.getValue();
+    }
     
-    string getUnassociatedArgument(size_t idx) { return m_Unassociated[idx]; }
+    std::string getUnassociatedArgument(size_t idx) { return m_Unassociated[idx]; }
+    
+    template<class T>
+    T extractUnassociatedArgument(size_t idx)
+    {
+        T val;
+        std::stringstream ss;
+        ss << m_Unassociated[idx];
+        ss >> val;
+        return val;
+    }
+    
     size_t getUnassociatedCount() const { return m_Unassociated.size(); }
     
     bool parse(int argc, char* argv[]);
     
     void printHelp(std::ostream& os);
 };
+
+union Vector3;
+
+bool ParseResolution(const std::string& display, uint32_t* out_width, uint32_t* out_height);
+bool ParseDirection(const char* str, Vector3* out_vec);
+bool ParseCommaSeparatedPoints(const char* str, std::vector<Point2>* out_vec);
+
+template<class TVector>
+bool ParseCommaSeparatedVectors(const char* str, std::vector<TVector>* out_vec);
+
+template<class... TArgs>
+void GenerateError(TArgs&&... args)
+{
+    auto exe_path = System::GetExecutablePath();
+    Tempest::Log(LogLevel::Error, Path(exe_path).filename(), ": error: ", args...);
+}
 }
 
 #endif // _PARSE_CMDLINE_HH_

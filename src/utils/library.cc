@@ -25,13 +25,21 @@
 #include "tempest/utils/library.hh"
 #include "tempest/utils/logging.hh"
 #include <cassert>
+#include <cerrno>
+#include <cstring>
 
 namespace Tempest
 {
+#ifdef _WIN32
+std::string GetLastErrorString();
+#else
+std::string GetLastErrorString() { return strerror(errno); }
+#endif
+
 Library::Library()
     :   m_Lib(0) {}
 
-Library::Library(const string& name)
+Library::Library(const std::string& name)
     :   m_Lib(LoadLibrary(name.c_str()))
 {
 }
@@ -42,11 +50,16 @@ Library::~Library()
         FreeLibrary(m_Lib);
 }
 
-bool Library::load(const string& name)
+bool Library::load(const std::string& name)
 {
     this->free();
     m_Lib = LoadLibrary(name.c_str());
-    return m_Lib != 0;
+    if(m_Lib == nullptr)
+    {
+        Log(LogLevel::Error, "Failed to find symbol within library ", name, ": ", GetLastErrorString());
+        return false;
+    }
+    return true;
 }
 
 void Library::free()
@@ -56,9 +69,7 @@ void Library::free()
     m_Lib = 0;
 }
 
-string GetLastErrorString();
-
-ProcType Library::getProcAddress(const string& str)
+ProcType Library::getProcAddress(const std::string& str)
 {
     if(!m_Lib)
         return ProcType();
@@ -69,16 +80,17 @@ ProcType Library::getProcAddress(const string& str)
     } ptr;
 #ifdef _WIN32
     ptr.proc = GetProcAddress(m_Lib, str.c_str());
-    if(ptr.proc == nullptr)
-    {
-        Log(LogLevel::Error, "Failed to find symbol within library ", str, ": ", GetLastErrorString());
-        return nullptr;
-    }
 #elif defined(LINUX)
     ptr.symbol = GetProcAddress(m_Lib, str.c_str());
 #else
 #   error "Unsupported platform"
 #endif
+    if(ptr.proc == nullptr)
+    {
+        Log(LogLevel::Error, "Failed to find symbol within library ", str, ": ", GetLastErrorString());
+        return nullptr;
+    }
+
     return ptr.proc;
 }
 }

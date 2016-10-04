@@ -39,7 +39,7 @@ namespace GLFX
 {
 class ShaderPrinter;
 
-bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, uint32 settings, size_t* ssbo_binding_counter, size_t* ubo_binding_counter);
+bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, uint32_t settings, size_t* ssbo_binding_counter, size_t* ubo_binding_counter);
 
 class ShaderPrinter: public Shader::VisitorInterface
 {
@@ -50,14 +50,14 @@ class ShaderPrinter: public Shader::VisitorInterface
     bool                       m_DrawIDInUse = false;
     
     bool                       m_Valid = true;
-    uint32                     m_Settings = 0;
+    uint32_t                     m_Settings = 0;
     size_t                     m_SSBOBindingCounter;
     size_t                     m_UBOBindingCounter;
-    const string*              m_Options;
+    const std::string*              m_Options;
     size_t                     m_OptionCount;
 
 public:
-    ShaderPrinter(std::ostream& os, const string* opts, size_t opts_count, size_t ssbo_binding_counter, size_t ubo_binding_counter, uint32 settings_flags, uint32 flags)
+    ShaderPrinter(std::ostream& os, const std::string* opts, size_t opts_count, size_t ssbo_binding_counter, size_t ubo_binding_counter, uint32_t settings_flags, uint32_t flags)
         :   m_Printer(os, flags),
             m_Settings(settings_flags),
             m_SSBOBindingCounter(ssbo_binding_counter),
@@ -81,7 +81,7 @@ public:
     virtual void visit(const AST::Value<int>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<unsigned>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<bool>* value) final { AST::PrintNode(&m_Printer, value); }
-    virtual void visit(const AST::Value<string>* value) final { AST::PrintNode(&m_Printer, value); }
+    virtual void visit(const AST::Value<std::string>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::ListElement* lst) final { AST::PrintNode(this, &m_Printer, lst); }
     virtual void visit(const AST::Block* _block) final { AST::PrintNode(this, &m_Printer, _block);}
     virtual void visit(const AST::StringLiteral* value) final { AST::PrintNode(&m_Printer, value); }
@@ -165,16 +165,16 @@ class Generator: public Shader::VisitorInterface
 
     const Shader::OptionsDeclaration* m_OptionsDeclaration = nullptr;
 
-    string                     m_Version;
+    std::string                m_Version;
 
     bool                       m_Valid;
     Shader::EffectDescription& m_Effect;
     FileLoader*                m_FileLoader;
-    const string*              m_Options;
+    const std::string*         m_Options;
     size_t                     m_OptionCount;
-    uint32                     m_Settings = 0;
+    uint32_t                   m_Settings = 0;
 public:
-    Generator(Shader::EffectDescription& effect, const string* opts, size_t opts_count, FileLoader* include_loader, uint32);
+    Generator(Shader::EffectDescription& effect, const std::string* opts, size_t opts_count, FileLoader* include_loader, uint32_t);
     virtual ~Generator();
     
     virtual void visit(const Location& loc) final { m_RawImport.visit(loc); }
@@ -182,7 +182,7 @@ public:
     virtual void visit(const AST::Value<int>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<unsigned>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<bool>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const AST::Value<string>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
+    virtual void visit(const AST::Value<std::string>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::ListElement* lst) final;
     virtual void visit(const AST::Block* _block) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::StringLiteral* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -227,10 +227,10 @@ public:
     bool isValid() const { return m_Valid & m_RawImport.isValid(); }
 
 private:
-    void generateTopLevel(Shader::ShaderType shader_type, const AST::Node* node, ShaderPrinter& shader_printer, uint32* vb_offset);
+    void generateTopLevel(Shader::ShaderType shader_type, const AST::Node* node, ShaderPrinter& shader_printer, uint32_t* vb_offset);
 };
 
-Generator::Generator(Shader::EffectDescription& effect, const string* opts, size_t opts_count, FileLoader* include_loader, uint32 settings)
+Generator::Generator(Shader::EffectDescription& effect, const std::string* opts, size_t opts_count, FileLoader* include_loader, uint32_t settings)
     :   m_RawImport(m_RawImportStream, opts, opts_count, TEMPEST_SSBO_START, TEMPEST_UBO_START, settings, AST::TGE_AST_PRINT_LINE_LOCATION),
         m_Effect(effect),
         m_Valid(true),
@@ -239,7 +239,7 @@ Generator::Generator(Shader::EffectDescription& effect, const string* opts, size
         m_OptionCount(opts_count),
         m_Settings(settings)
 {
-    uint32 min_version = 420;
+    uint32_t min_version = 420;
     if((m_Settings & TEMPEST_SETTING_DISABLE_SSBO) == 0)
     {
         min_version = std::max(min_version, 430U);
@@ -260,7 +260,7 @@ Generator::Generator(Shader::EffectDescription& effect, const string* opts, size
 
 Generator::~Generator() {}
 
-bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, uint32 settings, size_t* ssbo_binding_counter, size_t* ubo_binding_counter)
+bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Buffer* buffer, uint32_t settings, size_t* ssbo_binding_counter, size_t* ubo_binding_counter)
 {
     bool status = true;
     switch(buffer->getBufferType())
@@ -328,7 +328,7 @@ bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
         {
             for(size_t i = 0, indentation = printer->getIndentation(); i < indentation; ++i)
                 printer->stream() << "\t";
-            printer->stream() << "layout(std140, binding = " TO_STRING(TEMPEST_RESOURCE_BUFFER) ") uniform " << buffer->getNodeName()
+            printer->stream() << "layout(std140, binding = " << TO_STRING(TEMPEST_RESOURCE_BUFFER) << ") uniform " << buffer->getNodeName()
                 << "{\n";
             visitor->visit(list);
             printer->stream() << "};\n";
@@ -344,7 +344,8 @@ bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
                 auto node_type = vars->getNodeType();
                 TGE_ASSERT(node_type == Shader::TGE_EFFECT_VARIABLE, "Expect only variables");
                 auto* var = vars->extract<Shader::Variable>();
-                stream << "layout(binding = " << bind_point++ << ") uniform ";
+                stream << "layout(binding = " << bind_point << ") uniform ";
+                bind_point += CountElements(var);
                 static_cast<Shader::VisitorInterface*>(visitor)->visit(decl);
                 stream << ";\n";
             }
@@ -354,7 +355,7 @@ bool PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* pri
     return status;
 }
 
-static void ProcessStructBuffer(ShaderPrinter* visitor, const string* opts, size_t opts_count, uint64 settings, const Shader::Variable* var,
+static void ProcessStructBuffer(ShaderPrinter* visitor, const std::string* opts, size_t opts_count, uint64_t settings, const Shader::Variable* var,
                                 size_t* ssbo_binding_counter, size_t* ubo_binding_counter, Shader::EffectDescription* effect)
 {
     auto size = ConvertStructBuffer(opts, opts_count, settings, var, effect);
@@ -433,7 +434,7 @@ void Generator::visit(const Shader::Import* _import)
     // get parsed. It is also possible to place some definitions that would
     // be automatically prepended before this block and undefined afterwards
     // to protect from polluting the global space.
-    string name = _import->getNodeName();
+    std::string name = _import->getNodeName();
     TGE_ASSERT(name[0] == '"' && name.back() == '"', "unexpected import layout");
     name.erase(name.begin());
     name.erase(name.end()-1);
@@ -470,7 +471,7 @@ void Generator::visit(const Shader::Type* type_stmt)
     type_stmt->accept(this);
 }
 
-void Generator::generateTopLevel(Shader::ShaderType shader_type, const AST::Node* node, ShaderPrinter& shader_printer, uint32* vb_offset)
+void Generator::generateTopLevel(Shader::ShaderType shader_type, const AST::Node* node, ShaderPrinter& shader_printer, uint32_t* vb_offset)
 {
     shader_printer.visit(node->getDeclarationLocation());
 
@@ -481,7 +482,7 @@ void Generator::generateTopLevel(Shader::ShaderType shader_type, const AST::Node
     {
         auto* _opt = node->extract<Shader::Optional>();
         auto* opts_end = m_Options + m_OptionCount;
-        if(std::find(m_Options, opts_end, _opt->getNodeName()) == opts_end)
+        if(!Shader::IsOptionEnabled(m_Options, m_OptionCount, _opt))
             return;
         node = _opt->getContent();
         node_type = node->getNodeType();
@@ -516,7 +517,7 @@ void Generator::generateTopLevel(Shader::ShaderType shader_type, const AST::Node
         if(layout)
         {
             bool layout_started = false;
-            uint32 cur_offset = *vb_offset;
+            uint32_t cur_offset = *vb_offset;
             for(auto k = layout->current(); k != layout->end(); ++k)
             {
                 auto* binop = k->extract<Shader::BinaryOperator>();
@@ -528,11 +529,11 @@ void Generator::generateTopLevel(Shader::ShaderType shader_type, const AST::Node
                 }
                 else if(layout_id == "vb_pack_align")
                 {
-                    vert_attr.Offset = AlignAddress(cur_offset, (uint32)binop->getRHSOperand()->extract<Shader::Value<int>>()->getValue());
+                    vert_attr.Offset = AlignAddress(cur_offset, (uint32_t)binop->getRHSOperand()->extract<Shader::Value<int>>()->getValue());
                 }
                 else if(layout_id == "vb_format")
                 {
-                    vert_attr.Format = TranslateDataFormat(binop->getRHSOperand()->extract<Shader::Value<string>>()->getValue());
+                    vert_attr.Format = TranslateDataFormat(binop->getRHSOperand()->extract<Shader::Value<std::string>>()->getValue());
                     vb_attrs = true;
                 }
                 else
@@ -551,7 +552,8 @@ void Generator::generateTopLevel(Shader::ShaderType shader_type, const AST::Node
             }
             if(layout_started)
                 shader_printer.stream() << ") ";
-            *vb_offset = cur_offset + DataFormatElementSize(vert_attr.Format);
+            if(vert_attr.Format != DataFormat::Unknown)
+                *vb_offset = cur_offset + DataFormatElementSize(vert_attr.Format);
         }
 
         auto* var_type = var->getType();
@@ -666,18 +668,18 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
     } break;
     }
     
-    uint32 vb_offset = 0;
+    uint32_t vb_offset = 0;
 
     for(auto j = _shader->getBody()->current(); j != _shader->getBody()->end(); ++j)
     {
         generateTopLevel(shader_type, j.getNode(), shader_printer, &vb_offset);
     }
     
-    string source;
+    std::string source;
     if(shader_printer.isDrawIDInUse() && shader_type != Shader::ShaderType::VertexShader)
     {
         std::stringstream interm;
-        interm << "flat​ in int sys_DrawID_" << (uint32)shader_type << ";\n" << ss.str(); 
+        interm << "flat​ in int sys_DrawID_" << (uint32_t)shader_type << ";\n" << ss.str(); 
         source = ss.str();
     }
     else
@@ -729,9 +731,9 @@ void Generator::visit(const Shader::FunctionDeclaration* func_decl)
     m_RawImport.visit(func_decl);
 }
 
-bool LoadEffect(const string& filename, FileLoader* loader, const string* opts, size_t opts_count, uint32 flags, Shader::EffectDescription& effect)
+bool LoadEffect(const std::string& filename, FileLoader* loader, const std::string* opts, size_t opts_count, uint32_t flags, Shader::EffectDescription& effect)
 {
-    Shader::Driver  effect_driver;
+    Shader::Driver  effect_driver(loader);
     auto            parse_ret = effect_driver.parseFile(filename);
     if(!parse_ret)
     {

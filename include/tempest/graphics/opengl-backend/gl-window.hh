@@ -27,7 +27,7 @@
 
 #include <memory>
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/graphics/os-window.hh"
 #include "tempest/graphics/rendering-definitions.hh"
 
@@ -53,6 +53,8 @@ class GLWindow
 #endif
     OSWindowSystem*   m_Display   = nullptr;
 
+    uint32_t          m_ProcessedEvent = 0;
+    int               m_SwapInterval = 0;
     WindowInformation m_WindowInformation;
 public:
     explicit GLWindow()=default;
@@ -73,17 +75,35 @@ public:
 #endif
     OSWindow getWindowId() {  return m_Window; }
     
-    uint32 getWidth() const { return m_WindowInformation.Width; }
-    uint32 getHeight() const { return m_WindowInformation.Height; }
+    uint32_t getWidth() const { return m_WindowInformation.Width; }
+    uint32_t getHeight() const { return m_WindowInformation.Height; }
 
-    int32 getMouseDeltaX() const { return m_WindowInformation.MouseDeltaX; }
-    int32 getMouseDeltaY() const { return m_WindowInformation.MouseDeltaY; }
-    int32 getMouseX() const { return m_WindowInformation.MouseX; }
-    int32 getMouseY() const { return m_WindowInformation.MouseY; }
+    int32_t getMouseDeltaX() const { return m_WindowInformation.MouseDeltaX; }
+    int32_t getMouseDeltaY() const { return m_WindowInformation.MouseDeltaY; }
+    int32_t getMouseX() const { return m_WindowInformation.MouseX; }
+    int32_t getMouseY() const { return m_WindowInformation.MouseY; }
+
+    void setEventMask(uint32_t event_mask) { m_WindowInformation.EventMask |= event_mask; }
+    void clearEventMask(uint32_t event_mask) { m_WindowInformation.EventMask &= ~event_mask; }
+
+    bool getEvent(WindowSystemEvent* wevent)
+    {
+        if(m_ProcessedEvent >= m_WindowInformation.EventQueue.size())
+        {
+            return false;
+        }
+        *wevent = m_WindowInformation.EventQueue[m_ProcessedEvent++];
+        return true;
+    }
+
+	void captureMouse();
+	void releaseMouse();
+
+    void resize(uint32_t width, uint32_t height);
 
     void show();
     
-    void swapBuffers();
+    void swapBuffers(int swap_interval = 0);
 };
 }
 

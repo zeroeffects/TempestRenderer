@@ -1,0 +1,26 @@
+struct GlobalsDesc
+{
+    mat4 Transform;
+};
+
+structbuffer GlobalsDesc Globals;
+
+vertex shader
+{
+    layout(vb_offset = 0, vb_format = RG32F) in vec2 VertexData;
+
+    void main()
+    {
+        gl_Position = Globals[tge_DrawID].Transform*vec4(VertexData.xy, 0.0, 1.0);
+    }
+}
+
+fragment shader
+{
+    out vec4 FragmentColor;
+
+    void main()
+    {
+        FragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+}

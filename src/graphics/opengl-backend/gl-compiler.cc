@@ -50,7 +50,7 @@ GLShaderType TranslateShaderType(Shader::ShaderType type)
     }
 }
 
-GLShaderCompiler::GLShaderCompiler(uint32 settings)
+GLShaderCompiler::GLShaderCompiler(uint32_t settings)
     :   m_Settings(settings)
 {
 #ifndef TEMPEST_DISABLE_MDI
@@ -67,8 +67,8 @@ GLShaderCompiler::GLShaderCompiler(uint32 settings)
     }
 }
 
-GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, FileLoader* file_loader,
-                                                        const string* options, uint32 options_count)
+GLShaderProgram* GLShaderCompiler::compileShaderProgram(const std::string& filename, FileLoader* file_loader,
+                                                        const std::string* options, uint32_t options_count)
 {
     Shader::EffectDescription effect;
     auto status = GLFX::LoadEffect(filename, file_loader, options, options_count, m_Settings, effect);
@@ -78,7 +78,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
     auto prog = CreateScoped<GLuint>(glCreateProgram(), [](GLuint prog) { if(prog) glDeleteProgram(prog); });
     
     for(Shader::ShaderType i = Shader::ShaderType::VertexShader, iend = Shader::ShaderType::ShaderTypeCount;
-        i != iend; ++reinterpret_cast<uint32&>(i))
+        i != iend; ++reinterpret_cast<uint32_t&>(i))
     {
         auto* shader_desc = effect.getShader(i);
         if(shader_desc == nullptr)
@@ -108,7 +108,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
                     "=======================================\n\n";
             error += source;
         #endif
-            string shader_type;
+            std::string shader_type;
             switch(_type)
             {
             case Shader::ShaderType::VertexShader: shader_type = "Vertex shader:\n"; break;
@@ -127,32 +127,32 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
         glAttachShader(prog.get(), shader_id);
     }
     
-    uint32 buf_count = effect.getBufferCount();
-    uint32 res_table_count = buf_count;
+    uint32_t buf_count = effect.getBufferCount();
+    uint32_t res_table_count = buf_count;
     std::unique_ptr<ResourceTableDescription*[]> res_tables(new ResourceTableDescription*[res_table_count]);
     
-    for(uint32 buffer_idx = 0; buffer_idx < buf_count; ++buffer_idx)
+    for(uint32_t buffer_idx = 0; buffer_idx < buf_count; ++buffer_idx)
     {
         auto& buffer = effect.getBuffer(buffer_idx);
         auto& res_table = res_tables[buffer_idx];
         
         auto type = buffer.getBufferType();
-        uint32 elem_count = buffer.getElementCount();
+        uint32_t elem_count = buffer.getElementCount();
         
         bool is_resource = false;
 
         res_table = CreatePackedData<ResourceTableDescription>(elem_count, buffer.getResiablePart(), buffer.getBufferName(), buffer_idx);
         res_table->BufferSize = 0;
-        for(uint32 el_idx = 0; el_idx < elem_count; ++el_idx)
+        for(uint32_t el_idx = 0; el_idx < elem_count; ++el_idx)
         {
             auto& elem_desc = buffer.getElement(el_idx);
             auto& uval = res_table->Uniforms.Values[el_idx];
             uval.Name = elem_desc.getElementName();
             uval.Type = elem_desc.getElementType();
-            uval.ElementSize = static_cast<Tempest::uint16>(elem_desc.getElementSize());
-            uval.ElementCount = static_cast<Tempest::uint16>(elem_desc.getElementCount());
-            uval.Offset = static_cast<Tempest::uint32>(elem_desc.getBufferOffset());
-            auto cur_end = static_cast<uint32>(uval.Offset + uval.ElementCount*uval.ElementSize);
+            uval.ElementSize = static_cast<uint16_t>(elem_desc.getElementSize());
+            uval.ElementCount = static_cast<uint16_t>(elem_desc.getElementCount());
+            uval.Offset = static_cast<uint32_t>(elem_desc.getBufferOffset());
+            auto cur_end = static_cast<uint32_t>(uval.Offset + uval.ElementCount*uval.ElementSize);
             res_table->BufferSize = std::max(res_table->BufferSize, cur_end);
             if(uval.Type == UniformValueType::Texture)
             {
@@ -160,19 +160,12 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
             }
         }
 
-        if(is_resource && (m_Settings & TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS))
-        {
-            res_table->BufferSize = res_table->BufferSize;
-        }
-        else
-        {
-            res_table->BufferSize = AlignAddress(res_table->BufferSize, (uint32)(4 * sizeof(float)));
-        }
-        res_table->BufferSize -= static_cast<Tempest::uint32>(buffer.getResiablePart());
+        res_table->BufferSize = AlignAddress(res_table->BufferSize, (uint32_t)(4 * sizeof(float)));
+        res_table->BufferSize -= static_cast<uint32_t>(buffer.getResiablePart());
     }
     
-    uint32 input_param_count = effect.getVertexAttributeCount();
-    for(uint32 iparam_idx = 0; iparam_idx < input_param_count; ++iparam_idx)
+    uint32_t input_param_count = effect.getVertexAttributeCount();
+    for(uint32_t iparam_idx = 0; iparam_idx < input_param_count; ++iparam_idx)
     {
         auto& input_param = effect.getVertexAttribute(iparam_idx);
         glBindAttribLocation(prog.get(), iparam_idx, input_param.Name.c_str());
@@ -187,7 +180,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
     {
         GLint len;
         glGetProgramiv(prog.get(), GLProgramParameter::GL_INFO_LOG_LENGTH, &len);
-        string error;
+        std::string error;
         error.resize(len);
         glGetProgramInfoLog(prog.get(), len, nullptr, &error.front());
         Log(LogLevel::Error, "Shader program link error: ", error);
@@ -195,7 +188,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
             
 #ifdef TGE_DEBUG_GLSL_APPEND_SOURCE
         for(Shader::ShaderType i = Shader::ShaderType::VertexShader, iend = Shader::ShaderType::ShaderTypeCount;
-            i != iend; ++reinterpret_cast<uint32&>(i))
+            i != iend; ++reinterpret_cast<uint32_t&>(i))
         {
             auto* shader_desc = effect.getShader(i);
             if(shader_desc == nullptr)
@@ -208,7 +201,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
             const char* header = "\n\nSource code\n"
                                  "=======================================\n\n";
 
-            string shader_type;
+            std::string shader_type;
             switch(_type)
             {
             case Shader::ShaderType::VertexShader: shader_type = "Vertex shader:\n"; break;
@@ -226,7 +219,7 @@ GLShaderProgram* GLShaderCompiler::compileShaderProgram(const string& filename, 
     }
     
 #ifndef NDEBUG
-    for(uint32 iparam_idx = 0; iparam_idx < input_param_count; ++iparam_idx)
+    for(uint32_t iparam_idx = 0; iparam_idx < input_param_count; ++iparam_idx)
     {
         auto& input_param = effect.getVertexAttribute(iparam_idx);
         auto actual_idx = glGetAttribLocation(prog.get(), input_param.Name.c_str());
@@ -248,8 +241,8 @@ void GLShaderCompiler::destroyRenderResource(GLShaderProgram* shader_program)
     delete shader_program;
 }
 
-FileDescription* GLShaderCompiler::compileBinaryBlob(const string& filename, FileLoader* file_loader,
-                                                     const string* options, uint32 options_count)
+FileDescription* GLShaderCompiler::compileBinaryBlob(const std::string& filename, FileLoader* file_loader,
+                                                     const std::string* options, uint32_t options_count)
 {
     TGE_ASSERT(false, "Stub");
     return nullptr;

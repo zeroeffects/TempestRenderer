@@ -25,7 +25,7 @@
 #ifndef _SHADER_PARSER_HH_
 #define _SHADER_PARSER_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/parser/ast.hh"
 #include "tempest/shader/shader-ast.hh"
 #include "tempest/parser/driver-base.hh"
@@ -36,7 +36,7 @@ namespace Tempest
 {
 namespace Shader
 {
-enum class ShaderToken: uint32
+enum class ShaderToken: uint32_t
 {
 #define SHADER_TOKEN(token_enum, token_name) token_enum,
 #include "tempest/shader/shader-tokens.hh"
@@ -44,7 +44,7 @@ enum class ShaderToken: uint32
     Count
 };
 
-#define ToCharacterToken(_c) static_cast<ShaderToken>((uint32)ShaderToken::Count + (uint32)(_c) - '!')
+#define ToCharacterToken(_c) static_cast<ShaderToken>((uint32_t)ShaderToken::Count + (uint32_t)(_c) - '!')
 
 #define YY_DECL Tempest::Shader::ShaderToken ShaderLexer(Tempest::AST::Node* yylval,  \
                                                          Tempest::Location* yylloc, \
@@ -52,7 +52,7 @@ enum class ShaderToken: uint32
 
 class Driver;
 
-class Parser: public DriverBase
+class Parser
 {
     Shader::Driver&        m_Driver;
     ShaderToken            m_CurrentToken;
@@ -77,7 +77,7 @@ private:
     AST::NodeT<Expression> expression();
     AST::NodeT<Expression> suffixExpression();
     AST::NodeT<Expression> prefixExpression();
-    AST::NodeT<Expression> binaryExpression();
+    AST::NodeT<Expression> binaryExpression(AST::NodeT<Expression> (Parser::*func)());
     AST::NodeT<Expression> assignmentExpression();
     AST::NodeT<Expression> paranthesesExpression();
     AST::NodeT<Expression> conditionalExpression();
@@ -110,6 +110,8 @@ private:
     bool structBufferDeclaration();
 
     bool structDeclaration();
+
+    AST::NodeT<Expression> option();
     bool optional(bool (Parser::*func)());
 };
 }

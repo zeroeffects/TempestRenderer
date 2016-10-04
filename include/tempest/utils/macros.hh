@@ -37,6 +37,22 @@
     ((z & 0xFFU) << 16U) | \
     ((w & 0xFFU) << 24U))
 
+#define TEMPEST_MAKE_EIGHTCC(c0, c1, c2, c3, c4, c5, c6, c7, c8) \
+    (((c0 & 0xFFU))       | \
+    ((c1 & 0xFFU) << 8U)  | \
+    ((c2 & 0xFFU) << 16U) | \
+    ((c3 & 0xFFU) << 24U))| \
+    ((c4 & 0xFFU) << 32U))| \
+    ((c5 & 0xFFU) << 40U))| \
+    ((c6 & 0xFFU) << 48U))| \
+    ((c7 & 0xFFU) << 56U))
+
+#ifdef _MSC_VER
+#   define ALIGN_1 __declspec(align(1))
+#else
+#   define ALIGN_1 __attribute__((aligned(1)))
+#endif
+
 #ifndef NDEBUG
 #   define TGE_DEBUG_EXEC_ONCE static bool CONCAT_MACRO(test, __LINE__) = true; if(CONCAT_MACRO(test, __LINE__) ? CONCAT_MACRO(test, __LINE__) = false, true : false)
 #else

@@ -30,6 +30,8 @@
 #include <cstddef>
 #include <memory>
 
+#include "tempest/compute/compute-macros.hh"
+
 #ifdef _WIN32
 #   ifdef __MINGW32__
 #       define _aligned_malloc __mingw_aligned_malloc
@@ -62,6 +64,8 @@
 #   include <alloca.h>
 #   define TGE_ALLOCA alloca
 #endif
+
+#define TGE_TYPED_ALLOCA(_type, size) (reinterpret_cast<_type*>(TGE_ALLOCA(size*sizeof(_type))))
 
 namespace Tempest
 {
@@ -129,7 +133,7 @@ inline void DeallocFunction(T* p)
 #ifdef TGE_MEMORY_DEBUG
 class MemoryDebugger: public Singleton<MemoryDebugger>
 {
-    typedef std::unordered_map<void*, string> PointerMap;
+    typedef std::unordered_map<void*, std::string> PointerMap;
     PointerMap          m_Allocated,
                         m_Deallocated;
 public:
@@ -137,7 +141,7 @@ public:
     ~MemoryDebugger();
     
     template<class T>
-    static T* allocate(const string& info)
+    static T* allocate(const std::string& info)
     {
         T* ptr = Tempest::ObjectAllocator<T, alignment_of<T>::value>::allocate();
         MemoryDebugger::getSingleton().registerPointer(ptr, info);
@@ -145,18 +149,18 @@ public:
     }
     
     template<class T>
-    static void deallocate(T* ptr, const string& info)
+    static void deallocate(T* ptr, const std::string& info)
     {
         if(ptr && MemoryDebugger::getSingleton().unregisterPointer(ptr, info))
             _TGE_DEALLOCATE(ptr);
     }
     
     bool isAllocated(void* ptr);
-    string getAllocatedInfo(void* ptr);
-    string getDeallocatedInfo(void* ptr);
+    std::string getAllocatedInfo(void* ptr);
+    std::string getDeallocatedInfo(void* ptr);
 private:
-    bool registerPointer(void* ptr, const string& info);
-    bool unregisterPointer(void* ptr, const string& info);
+    bool registerPointer(void* ptr, const std::string& info);
+    bool unregisterPointer(void* ptr, const std::string& info);
 };
 #endif
 
@@ -271,6 +275,92 @@ template<typename T, typename... TArgs>
 inline std::unique_ptr<T> make_unique(TArgs&&... args)
 {
     return std::unique_ptr<T>(new T(std::forward<TArgs>(args)...));
+}
+
+template<class T>
+struct PoolPtr
+{
+    size_t PoolOffset;
+};
+
+template<class T>
+PoolPtr<T> GenerateInvalidPoolPtr()
+{
+    return { std::numeric_limits<decltype(PoolPtr<T>().PoolOffset)>::max() };
+}
+
+struct MemoryPool
+{
+    uint8_t* BaseAddress;
+
+    template<class T>
+    inline EXPORT_CUDA T* operator()(PoolPtr<T> ptr)
+    {
+        return reinterpret_cast<T*>(BaseAddress + ptr.PoolOffset);
+    }
+};
+
+struct MemoryPoolAllocation
+{
+    MemoryPool m_Pool;
+    size_t     m_End = 0,
+               m_Size;
+public:
+    MemoryPoolAllocation(size_t size)
+        :   m_Size(size)
+    {
+        m_Pool.BaseAddress = new uint8_t[size];
+    }
+
+    ~MemoryPoolAllocation()
+    {
+        delete[] m_Pool.BaseAddress;
+    }
+
+    PoolPtr<uint8_t> allocateMemory(size_t size)
+    {
+        TGE_ASSERT(size + m_End < m_Size, "Not enough space in pool");
+        if(size + m_End >= m_Size)
+            return GenerateInvalidPoolPtr<uint8_t>();
+
+        auto ptr_offset = m_End;
+        m_End += size;
+        return { ptr_offset };
+    }
+
+    PoolPtr<uint8_t> allocateAlignedMemory(size_t size, size_t aligned)
+    {
+        auto expand = AlignAddress(m_End, aligned) - m_End;
+        return { allocateMemory(size + expand).PoolOffset + expand };
+    }
+
+    template<class T>
+    PoolPtr<T> allocate()
+    {
+        return { allocateMemory(sizeof(T)).PoolOffset };
+    }    
+
+    template<class T>
+    PoolPtr<T> allocateAligned(size_t aligned)
+    {
+        return { allocateAlignedMemory(sizeof(T), aligned).PoolOffset };
+    }
+
+    template<class T>
+    inline EXPORT_CUDA T* operator()(PoolPtr<T> ptr)
+    {
+        return m_Pool(ptr);
+    }
+
+    MemoryPool getBase() { return m_Pool; }
+
+    size_t getDataSize() const { return m_End; }
+};
+
+template<class T>
+void IsInvalidPoolPtr(PoolPtr<T> ptr)
+{
+    return ptr.PoolOffset = std::numeric_limits<decltype(ptr.PoolOffset)>::max();
 }
 }
 

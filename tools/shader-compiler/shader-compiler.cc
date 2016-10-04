@@ -36,13 +36,6 @@
 
 using namespace Tempest;
 
-template<class... TArgs>
-void GenerateError(TArgs&&... args)
-{
-    auto exe_path = System::GetExecutablePath();
-    Tempest::Log(LogLevel::Error, Path(exe_path).filename(), ": error: ", args...);
-}
-
 // TODO: Replace include loaders
 class DummyIncludeLoader: public FileLoader
 {
@@ -50,7 +43,7 @@ public:
     DummyIncludeLoader() {}
     virtual ~DummyIncludeLoader() {}
     
-    virtual FileDescription* loadFileContent(const string& name) override { return nullptr; }
+    virtual FileDescription* loadFileContent(const std::string& name) override { return nullptr; }
     virtual void freeFileContent(FileDescription* ptr) override {}
 };
 
@@ -62,7 +55,7 @@ enum CompilerFlags
     CompileFlagShift = 0
 };
 
-bool BuildTextShaderSimple(const string& input_file, std::ostream& output_file, uint32 flags)
+bool BuildTextShaderSimple(const std::string& input_file, std::ostream& output_file, uint32_t flags)
 {
     // TODO: Options
     DummyIncludeLoader include_loader;
@@ -89,7 +82,7 @@ bool BuildTextShaderSimple(const string& input_file, std::ostream& output_file, 
     }
 
     for(Tempest::Shader::ShaderType i = Tempest::Shader::ShaderType::VertexShader, iend = Tempest::Shader::ShaderType::ShaderTypeCount;
-        i < iend; ++reinterpret_cast<uint32&>(i))
+        i < iend; ++reinterpret_cast<uint32_t&>(i))
     {
         auto* shader = effect.getShader(i);
         output_file << "// " << Tempest::Shader::ConvertShaderTypeToText(i) << "\n"
@@ -98,7 +91,7 @@ bool BuildTextShaderSimple(const string& input_file, std::ostream& output_file, 
     return true;
 }
 
-bool BuildTextShaderSimple(const string& input_file, const string& output_file, uint32 flags)
+bool BuildTextShaderSimple(const std::string& input_file, const std::string& output_file, uint32_t flags)
 {
     std::fstream fs(output_file.c_str(), std::ios::out);
     return BuildTextShaderSimple(input_file, output_file.empty() ? std::cout : fs, flags);
@@ -111,9 +104,9 @@ int TempestMain(int argc, char** argv)
     parser.createOption('o', "output", "The name of the file to which the processed shader is going to be written.", true);
     parser.createOption('l', "language", "The shading language of the output file.", true);
     parser.parse(argc, argv);
-    string output_file = parser.extract<string>("output");
-    string shading_lang = parser.extract<string>("language");
-    uint32 flags = 0;
+    std::string output_file = parser.extract<std::string>("output");
+    std::string shading_lang = parser.extract<std::string>("language");
+    uint32_t flags = 0;
     if(shading_lang.empty() || shading_lang == "glsl")
     {
         flags |= (CompileToGLSL << CompileFlagShift);
@@ -137,7 +130,7 @@ int TempestMain(int argc, char** argv)
         GenerateError("Expecting input file");
         return EXIT_FAILURE;
     }
-    string input_file = parser.getUnassociatedArgument(0);
+    std::string input_file = parser.getUnassociatedArgument(0);
 
     return BuildTextShaderSimple(input_file, output_file, flags) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -29,25 +29,66 @@
 
 namespace Tempest
 {
-FileDescription* BasicFileLoader::loadFileContent(const string& name)
+FileDescription* BasicFileLoader::loadFileContent(const std::string& name)
 {
-    std::fstream fs(name, std::ios::in);
+    std::fstream fs(name, std::ios::in|std::ios::binary);
+    if(!fs)
+        return nullptr;
+
     auto start = fs.tellg();
     fs.seekg(0, std::ios::end);
     size_t size = fs.tellg() - start;
     fs.seekg(0, std::ios::beg);
     
-    char* data = reinterpret_cast<char*>(malloc(sizeof(FileDescription) + size));
-    fs.read(data, size);
-    fs.close();        
-    
+    char* data = reinterpret_cast<char*>(malloc(sizeof(FileDescription) + size + 1));
     FileDescription* header = reinterpret_cast<FileDescription*>(data);
     header->Content = data + sizeof(FileDescription);
+    ((char*)header->Content)[size] = 0;
     header->ContentSize = size;
+
+    fs.read((char*)header->Content, size);
+    fs.close();        
+    
     return header;
 }
 
 void BasicFileLoader::freeFileContent(FileDescription* ptr)
+{
+    free(ptr);
+}
+
+SubdirectoryFileLoader::SubdirectoryFileLoader(const std::string& subdir)
+    :   m_Subdirectory(subdir + "/")
+{
+}
+
+FileDescription* SubdirectoryFileLoader::loadFileContent(const std::string& name)
+{
+    std::fstream fs(m_Subdirectory + name, std::ios::in|std::ios::binary);
+    if(!fs)
+		fs.open(name, std::ios::in|std::ios::binary);
+
+	if(!fs)
+        return nullptr;
+
+    auto start = fs.tellg();
+    fs.seekg(0, std::ios::end);
+    size_t size = fs.tellg() - start;
+    fs.seekg(0, std::ios::beg);
+    
+    char* data = reinterpret_cast<char*>(malloc(sizeof(FileDescription) + size + 1));
+    FileDescription* header = reinterpret_cast<FileDescription*>(data);
+    header->Content = data + sizeof(FileDescription);
+    ((char*)header->Content)[size] = 0;
+    header->ContentSize = size;
+
+    fs.read((char*)header->Content, size);
+    fs.close();        
+    
+    return header;
+}
+
+void SubdirectoryFileLoader::freeFileContent(FileDescription* ptr)
 {
     free(ptr);
 }

@@ -22,12 +22,15 @@
 *   THE SOFTWARE.
 */
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/utils/patterns.hh"
+
+#define WIN32_LEAN_AND_MEAN 1
+#include <Windows.h>
 
 namespace Tempest
 {
-string GetLastErrorString()
+std::string GetLastErrorString()
 {
     auto err = ::GetLastError();
     auto msg = CREATE_SCOPED(LPSTR, LocalFree);

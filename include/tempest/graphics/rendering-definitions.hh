@@ -26,8 +26,12 @@
 #define TEMPEST_RENDERING_DEFS_HH
 
 #include "tempest/graphics/opengl-backend/gl-library.hh"
-#include "tempest/utils/types.hh"
 #include "tempest/utils/assert.hh"
+#include "tempest/compute/compute-macros.hh"
+#include "tempest/math/vector4.hh"
+
+#include <cstdint>
+#include <string>
 
 namespace Tempest
 {
@@ -106,7 +110,7 @@ enum class ResourceBufferType
     IndexBuffer
 };
 
-enum class DrawModes: uint16
+enum class DrawModes: uint16_t
 {
     Unknown,
     PointList,
@@ -172,18 +176,37 @@ enum class DataFormat
     RG8UNorm,
 //  RGB8UNorm,
     RGBA8UNorm,
+    BGRA8UNorm,
 
     D16,
     D24S8,
     D32,
 
     R10G10B10A2,
-    uR10G10B10A2
+    uR10G10B10A2,
+    Count
 };
 
-DataFormat TranslateDataFormat(const string& str);
+inline bool HasDepth(DataFormat fmt)
+{
+    switch(fmt)
+    {
+    case DataFormat::D16:
+    case DataFormat::D24S8:
+    case DataFormat::D32:
+        return true;
+    }
+    return false;
+}
 
-inline uint32 DataFormatChannels(DataFormat format)
+inline bool HasStencil(DataFormat fmt)
+{
+    return fmt == DataFormat::D24S8;
+}
+
+DataFormat TranslateDataFormat(const std::string& str);
+
+inline EXPORT_CUDA uint32_t DataFormatChannels(DataFormat format)
 {
     switch(format)
     {
@@ -249,7 +272,7 @@ inline uint32 DataFormatChannels(DataFormat format)
     return 0;
 }
 
-inline uint32 DataFormatElementSize(DataFormat format)
+inline EXPORT_CUDA uint32_t DataFormatElementSize(DataFormat format)
 {
     switch(format)
     {
@@ -262,55 +285,55 @@ inline uint32 DataFormatElementSize(DataFormat format)
     case DataFormat::RG16F: return 2*sizeof(float)/2;
     //  RGB16F,
     case DataFormat::RGBA16F: return 4*sizeof(float)/2;
-    case DataFormat::R32: return sizeof(int32);
-    case DataFormat::RG32: return 2*sizeof(int32);
-    case DataFormat::RGB32: return 3*sizeof(int32);
-    case DataFormat::RGBA32: return 4*sizeof(int32);
-    case DataFormat::R16: return sizeof(int16);
-    case DataFormat::RG16: return 2*sizeof(int16);
+    case DataFormat::R32: return sizeof(int32_t);
+    case DataFormat::RG32: return 2*sizeof(int32_t);
+    case DataFormat::RGB32: return 3*sizeof(int32_t);
+    case DataFormat::RGBA32: return 4*sizeof(int32_t);
+    case DataFormat::R16: return sizeof(int16_t);
+    case DataFormat::RG16: return 2*sizeof(int16_t);
     //  RGB16,
-    case DataFormat::RGBA16: return 4*sizeof(int16);
-    case DataFormat::R8: return sizeof(int8);
-    case DataFormat::RG8: return 2*sizeof(int8);
+    case DataFormat::RGBA16: return 4*sizeof(int16_t);
+    case DataFormat::R8: return sizeof(int8_t);
+    case DataFormat::RG8: return 2*sizeof(int8_t);
     //  RGB8,
-    case DataFormat::RGBA8: return 4*sizeof(int8);
-    case DataFormat::uR32: return sizeof(uint32);
-    case DataFormat::uRG32: return 2*sizeof(uint32);
-    case DataFormat::uRGB32: return 3*sizeof(uint32);
-    case DataFormat::uRGBA32: return 4*sizeof(uint32);
-    case DataFormat::uR16: return sizeof(uint16);
-    case DataFormat::uRG16: return 2*sizeof(uint16);
+    case DataFormat::RGBA8: return 4*sizeof(int8_t);
+    case DataFormat::uR32: return sizeof(uint32_t);
+    case DataFormat::uRG32: return 2*sizeof(uint32_t);
+    case DataFormat::uRGB32: return 3*sizeof(uint32_t);
+    case DataFormat::uRGBA32: return 4*sizeof(uint32_t);
+    case DataFormat::uR16: return sizeof(uint16_t);
+    case DataFormat::uRG16: return 2*sizeof(uint16_t);
     //  uRGB16,
-    case DataFormat::uRGBA16: return 4*sizeof(uint16);
-    case DataFormat::uR8: return sizeof(uint8);
-    case DataFormat::uRG8: return 2*sizeof(uint8);
+    case DataFormat::uRGBA16: return 4*sizeof(uint16_t);
+    case DataFormat::uR8: return sizeof(uint8_t);
+    case DataFormat::uRG8: return 2*sizeof(uint8_t);
     //  uRGB8,
-    case DataFormat::uRGBA8: return 4*sizeof(uint8);
-    case DataFormat::R16SNorm: return sizeof(int16);
-    case DataFormat::RG16SNorm: return 2*sizeof(int16);
+    case DataFormat::uRGBA8: return 4*sizeof(uint8_t);
+    case DataFormat::R16SNorm: return sizeof(int16_t);
+    case DataFormat::RG16SNorm: return 2*sizeof(int16_t);
     //  RGB16SNorm,
-    case DataFormat::RGBA16SNorm: return 4*sizeof(int16);
-    case DataFormat::R8SNorm: return sizeof(int8);
-    case DataFormat::RG8SNorm: return 2*sizeof(int8);
+    case DataFormat::RGBA16SNorm: return 4*sizeof(int16_t);
+    case DataFormat::R8SNorm: return sizeof(int8_t);
+    case DataFormat::RG8SNorm: return 2*sizeof(int8_t);
     //  RGB8SNorm,
-    case DataFormat::RGBA8SNorm: return 4*sizeof(int8);
-    case DataFormat::R16UNorm: return sizeof(uint16);
-    case DataFormat::RG16UNorm: return 2*sizeof(uint16);
+    case DataFormat::RGBA8SNorm: return 4*sizeof(int8_t);
+    case DataFormat::R16UNorm: return sizeof(uint16_t);
+    case DataFormat::RG16UNorm: return 2*sizeof(uint16_t);
     //  RGB16UNorm,
-    case DataFormat::RGBA16UNorm: return 4*sizeof(uint16);
-    case DataFormat::R8UNorm: return sizeof(uint8);
-    case DataFormat::RG8UNorm: return 2*sizeof(uint8);
+    case DataFormat::RGBA16UNorm: return 4*sizeof(uint16_t);
+    case DataFormat::R8UNorm: return sizeof(uint8_t);
+    case DataFormat::RG8UNorm: return 2*sizeof(uint8_t);
     //  RGB8UNorm,
-    case DataFormat::RGBA8UNorm: return 4*sizeof(uint8);
-    case DataFormat::D16: return sizeof(uint16);
+    case DataFormat::RGBA8UNorm: return 4*sizeof(uint8_t);
+    case DataFormat::D16: return sizeof(uint16_t);
     case DataFormat::D24S8: return (24 + 8)/8;
-    case DataFormat::D32: return sizeof(uint32);
+    case DataFormat::D32: return sizeof(uint32_t);
     case DataFormat::R10G10B10A2: return (10 + 10 + 10 + 2)/8;
     case DataFormat::uR10G10B10A2:  return (10 + 10 + 10 + 2)/8;
     }
 }
 
-enum class UniformValueType: uint32
+enum class UniformValueType: uint32_t
 {
     Float,
     Vector2,
@@ -341,7 +364,7 @@ enum class UniformValueType: uint32
     Struct,
 };
 
-enum class StorageMode: uint32
+enum class StorageMode: uint32_t
 {
     BufferRead,
     BufferWrite,
@@ -349,7 +372,7 @@ enum class StorageMode: uint32
     PixelUnpack
 };
 
-inline uint32 UniformValueTypeSize(UniformValueType uniform_value, bool tex_ptr64 = true)
+inline EXPORT_CUDA uint32_t UniformValueTypeSize(UniformValueType uniform_value, bool tex_ptr64 = true)
 {
     switch(uniform_value)
     {
@@ -357,18 +380,18 @@ inline uint32 UniformValueTypeSize(UniformValueType uniform_value, bool tex_ptr6
     case UniformValueType::Vector2: return 2*sizeof(float);
     case UniformValueType::Vector3: return 3*sizeof(float);
     case UniformValueType::Vector4: return 4*sizeof(float);
-    case UniformValueType::Integer: return sizeof(int32);
-    case UniformValueType::IntegerVector2: return 2*sizeof(int32);
-    case UniformValueType::IntegerVector3: return 3*sizeof(int32);
-    case UniformValueType::IntegerVector4: return 4*sizeof(int32);
-    case UniformValueType::UnsignedInteger: return sizeof(uint32);
-    case UniformValueType::UnsignedIntegerVector2: return 2*sizeof(uint32);
-    case UniformValueType::UnsignedIntegerVector3: return 3*sizeof(uint32);
-    case UniformValueType::UnsignedIntegerVector4: return 4*sizeof(uint32);
-    case UniformValueType::Boolean: return sizeof(int32);
-    case UniformValueType::BooleanVector2: return 2*sizeof(int32);
-    case UniformValueType::BooleanVector3: return 3*sizeof(int32);
-    case UniformValueType::BooleanVector4: return 4*sizeof(int32);
+    case UniformValueType::Integer: return sizeof(int32_t);
+    case UniformValueType::IntegerVector2: return 2*sizeof(int32_t);
+    case UniformValueType::IntegerVector3: return 3*sizeof(int32_t);
+    case UniformValueType::IntegerVector4: return 4*sizeof(int32_t);
+    case UniformValueType::UnsignedInteger: return sizeof(uint32_t);
+    case UniformValueType::UnsignedIntegerVector2: return 2*sizeof(uint32_t);
+    case UniformValueType::UnsignedIntegerVector3: return 3*sizeof(uint32_t);
+    case UniformValueType::UnsignedIntegerVector4: return 4*sizeof(uint32_t);
+    case UniformValueType::Boolean: return sizeof(int32_t);
+    case UniformValueType::BooleanVector2: return 2*sizeof(int32_t);
+    case UniformValueType::BooleanVector3: return 3*sizeof(int32_t);
+    case UniformValueType::BooleanVector4: return 4*sizeof(int32_t);
     case UniformValueType::Matrix2: return 2*2*sizeof(float);
     case UniformValueType::Matrix3: return 3*3*sizeof(float);
     case UniformValueType::Matrix4: return 4*4*sizeof(float);
@@ -383,12 +406,12 @@ inline uint32 UniformValueTypeSize(UniformValueType uniform_value, bool tex_ptr6
     #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
         if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_TEXTURE_BINDLESS) && tex_ptr64)
         {
-            return sizeof(uint64);
+            return sizeof(uint64_t);
         }
         else
     #endif
         {
-            return sizeof(uint32);
+            return sizeof(uint32_t);
         }
     }
     case UniformValueType::Struct: return 1;
@@ -401,18 +424,78 @@ enum
 {
     TEMPEST_SETTING_DISABLE_SSBO             = 1 << 0,
     TEMPEST_SETTING_DISABLE_MULTI_DRAW       = 1 << 1,
-    TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS = 1 << 2
+    TEMPEST_SETTING_DISABLE_TEXTURE_BINDLESS = 1 << 2,
+};
+
+struct DepthStencilClearValue
+{
+    float    Depth;
+    uint32_t Stencil;
+};
+
+union ClearValue
+{
+    Vector4                Color;
+    DepthStencilClearValue DepthStencil;
 };
 
 struct CommandBufferDescription
 {
-    uint32 CommandCount;
-    uint32 ConstantsBufferSize;
+    uint32_t CommandCount;
+    uint32_t ConstantsBufferSize;
 };
 
 struct IOCommandBufferDescription
 {
-    uint32 CommandCount;
+    uint32_t CommandCount;
+};
+
+enum class InputRateType: uint32_t
+{
+    PerVertex,
+    PerInstance
+};
+
+struct BufferBinding
+{
+    uint32_t      BindPoint;
+    InputRateType InputRate;
+    uint32_t      Stride;
+};
+
+enum ClearFlags
+{
+    CLEAR_COLOR_BIT = 1 << 0,
+    CLEAR_DEPTH_BIT = 1 << 1
+};
+
+struct ViewportBox
+{
+    float X = 0.0f,
+          Y = 0.0f,
+          Width,
+          Height,
+          MinDepth = -1.0f,
+          MaxDepth = 1.0f;
+};
+
+struct ScissorRect
+{
+    uint32_t X = 0,
+             Y = 0,
+             Width,
+             Height;
+};
+
+struct DynamicState
+{
+    ViewportBox Viewport;
+    ScissorRect Scissor;
+};
+
+struct BindPointLayout
+{
+    uint32_t TextureCount = 0;
 };
 }
 

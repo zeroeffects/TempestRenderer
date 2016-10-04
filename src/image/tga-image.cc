@@ -27,7 +27,7 @@
 #include "tempest/graphics/texture.hh"
 #include "tempest/utils/file-system.hh"
 #include "tempest/utils/logging.hh"
-#include "tempest/utils/types.hh"
+#include <cstdint>
 
 #include <fstream>
 #include <memory>
@@ -35,9 +35,9 @@
 
 namespace Tempest
 {
-typedef int8    tga_byte;
-typedef int16   tga_short;
-typedef int32   tga_long;
+typedef int8_t  tga_byte;
+typedef int16_t tga_short;
+typedef int32_t   tga_long;
 typedef char    tga_ascii;
 
 #ifndef _MSC_VER
@@ -149,7 +149,7 @@ Texture* LoadTGAImage(const Path& file_path)
     }
 
     size_t image_size = image_area*final_bytes_per_pixel;
-    std::unique_ptr<uint8 []> data(new uint8[image_size]);
+    std::unique_ptr<uint8_t []> data(new uint8_t[image_size]);
     
     if((tga_header.ImageType & TGA_IMAGE_TYPE_RLE_MASK) != 0)
     { 
@@ -233,10 +233,78 @@ Texture* LoadTGAImage(const Path& file_path)
         }
     }
     
-    tex_header.Width = static_cast<size_t>(tga_header.IS_ImageWidth);
-    tex_header.Height = static_cast<size_t>(tga_header.IS_ImageHeight);
+    tex_header.Width = static_cast<uint16_t>(tga_header.IS_ImageWidth);
+    tex_header.Height = static_cast<uint16_t>(tga_header.IS_ImageHeight);
     tex_header.Depth = 1;
     tex_header.Tiling = TextureTiling::Flat;
     return new Texture(tex_header, data.release());
+}
+
+#ifdef LINUX
+#   define _byteswap_ulong(x) ((unsigned int)__builtin_bswap32(x))
+#endif
+
+bool SaveTGAImage(const TextureDescription& tex_hdr, const void* data, const Path& file_path)
+{
+    std::fstream fs(file_path.get().c_str(), std::ios::out | std::ios::binary);
+    if(!fs)
+    {
+        Log(LogLevel::Error, "Failed to open TGA file for writing: ", file_path.get());
+        return false;
+    }
+
+    TGAHeader tga_header;
+    tga_header.IDLength = 0;
+    tga_header.ColorMapType = 0;
+
+    tga_header.CMS_FirstEntryIndex = 0;
+    tga_header.CMS_ColorMapLength = 0;
+    tga_header.CMS_ColorMapEntrySize = 0;
+    
+    tga_header.IS_XOrigin = 0;
+    tga_header.IS_YOrigin = 0;
+    tga_header.IS_ImageWidth = tex_hdr.Width;
+    tga_header.IS_ImageHeight = tex_hdr.Height;
+    tga_header.IS_ImageDescriptor = 0;
+
+    std::unique_ptr<char[]> interm;
+    const char* src_data = reinterpret_cast<const char*>(data);
+
+    size_t image_size = tga_header.IS_ImageWidth*tga_header.IS_ImageHeight;
+
+    switch(tex_hdr.Format)
+    {
+    case DataFormat::R16UNorm:
+    {
+        tga_header.ImageType = TGA_UNCOMPRESSED_BLACK_AND_WHITE;
+        tga_header.IS_PixelDepth = 16;
+    } break;
+    case DataFormat::R8UNorm:
+    {
+        tga_header.ImageType = TGA_UNCOMPRESSED_BLACK_AND_WHITE;
+        tga_header.IS_PixelDepth = 8;
+    } break;
+    case DataFormat::RGBA8UNorm:
+    {
+        tga_header.ImageType = TGA_UNCOMPRESSED_TRUE_COLOR;
+        tga_header.IS_PixelDepth = 32;
+
+        interm = std::unique_ptr<char[]>(new char[image_size*sizeof(uint32_t)]);
+        auto *dst = reinterpret_cast<char*>(interm.get());
+        auto *src = reinterpret_cast<const char*>(data);
+        for(auto *dst_end = dst + image_size*sizeof(uint32_t); dst != dst_end; dst += sizeof(uint32_t))
+        {
+            dst[2] = *(src++);
+            dst[1] = *(src++);
+            dst[0] = *(src++);
+            dst[3] = *(src++);
+        }
+        src_data = interm.get();
+    } break;
+    }
+        
+    fs.write(reinterpret_cast<const char*>(&tga_header), sizeof(tga_header));
+    fs.write(src_data, tga_header.IS_ImageWidth*tga_header.IS_ImageHeight*tga_header.IS_PixelDepth/8);
+    return true;
 }
 }

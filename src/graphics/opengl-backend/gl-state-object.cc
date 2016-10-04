@@ -255,7 +255,7 @@ bool GLStateObject::operator==(const GLStateObject& state_obj) const
            m_DepthStencilStates == state_obj.m_DepthStencilStates;
 }
 
-void SetupState(uint32 mode_diff, uint32 misc_states, uint32 state, GLCapabilityMode gl_state)
+void SetupState(uint32_t mode_diff, uint32_t misc_states, uint32_t state, GLCapabilityMode gl_state)
 {
     if(mode_diff & state)
     {
@@ -283,7 +283,7 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
         glCullFace(cur_rast_state->CullFace);
         glFrontFace(cur_rast_state->FrontFace);
         glPolygonOffset(cur_rast_state->OffsetFactor, cur_rast_state->OffsetUnits);
-        uint32 mode_diff = ~0;
+        uint32_t mode_diff = ~0;
         SetupState(mode_diff, cur_rast_state->MiscModes, TEMPEST_DEPTH_CLIP_ENABLE, GLCapabilityMode::GL_DEPTH_CLAMP);
         SetupState(mode_diff, cur_rast_state->MiscModes, TEMPEST_SCISSOR_ENABLE, GLCapabilityMode::GL_SCISSOR_TEST);
         SetupState(mode_diff, cur_rast_state->MiscModes, TEMPEST_MULTISAMPLE_ENABLE, GLCapabilityMode::GL_MULTISAMPLE);
@@ -299,10 +299,8 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
                 if(cur_rt_blend_states.BlendEnable == GL_TRUE)
                 {
                     glEnablei(GLCapabilityMode::GL_BLEND, i);
-                    glBlendFunci(i, cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor);
-                    glBlendEquationi(i, cur_rt_blend_states.BlendEquation);
-                    glBlendFunci(i, cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
-                    glBlendEquationi(i, cur_rt_blend_states.BlendAlphaEquation);
+                    glBlendFuncSeparatei(i, cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor, cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
+                    glBlendEquationSeparatei(i, cur_rt_blend_states.BlendEquation, cur_rt_blend_states.BlendAlphaEquation);
                 }
                 else
                 {
@@ -320,10 +318,8 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
             if(cur_rt_blend_states.BlendEnable == GL_TRUE)
             {
                 glEnable(GLCapabilityMode::GL_BLEND);
-                glBlendFunc(cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor);
-                glBlendEquation(cur_rt_blend_states.BlendEquation);
-                glBlendFunc(cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
-                glBlendEquation(cur_rt_blend_states.BlendAlphaEquation);
+                glBlendFuncSeparate(cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor, cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
+                glBlendEquationSeparate(cur_rt_blend_states.BlendEquation, cur_rt_blend_states.BlendAlphaEquation);
             }
             else
             {
@@ -347,7 +343,7 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
         enable_stencil_func(GLCapabilityMode::GL_STENCIL_TEST);
         if(cur_ds_states->StencilEnable == GL_TRUE)
         {
-            auto setup_face = [](uint8 mask, uint8 ref, const GLDepthStencilOperationStates& cur_ds_states)
+            auto setup_face = [](uint8_t mask, uint8_t ref, const GLDepthStencilOperationStates& cur_ds_states)
             {
                 glStencilFunc(cur_ds_states.StencilFunction, ref, mask);
                 glStencilOp(cur_ds_states.StencilFailOperation,
@@ -412,10 +408,8 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
                     if(cur_rt_blend_states.BlendEnable == GL_TRUE)
                     {
                         glEnablei(GLCapabilityMode::GL_BLEND, i);
-                        glBlendFunci(i, cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor);
-                        glBlendEquationi(i, cur_rt_blend_states.BlendEquation);
-                        glBlendFunci(i, cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
-                        glBlendEquationi(i, cur_rt_blend_states.BlendAlphaEquation);
+                        glBlendFuncSeparatei(i, cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor, cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
+                        glBlendEquationSeparatei(i, cur_rt_blend_states.BlendEquation, cur_rt_blend_states.BlendAlphaEquation);
                     }
                     else
                     {
@@ -433,10 +427,8 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
                 if(cur_rt_blend_states.BlendEnable == GL_TRUE)
                 {
                     glEnable(GLCapabilityMode::GL_BLEND);
-                    glBlendFunc(cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor);
-                    glBlendEquation(cur_rt_blend_states.BlendEquation);
-                    glBlendFunc(cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
-                    glBlendEquation(cur_rt_blend_states.BlendAlphaEquation);
+                    glBlendFuncSeparate(cur_rt_blend_states.SrcFactor, cur_rt_blend_states.DstFactor, cur_rt_blend_states.SrcFactorAlpha, cur_rt_blend_states.DstFactorAlpha);
+                    glBlendEquationSeparate(cur_rt_blend_states.BlendEquation, cur_rt_blend_states.BlendAlphaEquation);
                 }
                 else
                 {
@@ -472,22 +464,16 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
                     if(blend_states1.BlendEnable == GL_FALSE)
                         continue;
                     if(blend_states1.SrcFactor != blend_states2.SrcFactor ||
-                       blend_states1.DstFactor != blend_states2.DstFactor)
-                    {
-                        glBlendFunci(i, blend_states1.SrcFactor, blend_states1.DstFactor);
-                    }
-                    if(blend_states1.BlendEquation != blend_states2.BlendEquation)
-                    {
-                        glBlendEquationi(i, blend_states1.BlendEquation);
-                    }
-                    if(blend_states1.SrcFactorAlpha != blend_states2.SrcFactorAlpha ||
+                       blend_states1.DstFactor != blend_states2.DstFactor ||
+                       blend_states1.SrcFactorAlpha != blend_states2.SrcFactorAlpha ||
                        blend_states1.DstFactorAlpha != blend_states2.DstFactorAlpha)
                     {
-                        glBlendFunci(i, blend_states1.SrcFactorAlpha, blend_states1.DstFactorAlpha);
+                        glBlendFuncSeparatei(i, blend_states1.SrcFactor, blend_states1.DstFactor, blend_states1.SrcFactorAlpha, blend_states1.DstFactorAlpha);
                     }
-                    if(blend_states1.BlendAlphaEquation != blend_states2.BlendAlphaEquation)
+                    if(blend_states1.BlendEquation != blend_states2.BlendEquation ||
+                       blend_states1.BlendAlphaEquation != blend_states2.BlendAlphaEquation)
                     {
-                        glBlendEquationi(i, blend_states1.BlendAlphaEquation);
+                        glBlendEquationSeparatei(i, blend_states1.BlendEquation, blend_states1.BlendAlphaEquation);
                     }
                 }
             }
@@ -511,22 +497,16 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
                 if(blend_states1.BlendEnable == GL_TRUE)
                 {
                     if(blend_states1.SrcFactor != blend_states2.SrcFactor ||
-                       blend_states1.DstFactor != blend_states2.DstFactor)
-                    {
-                        glBlendFunc(blend_states1.SrcFactor, blend_states1.DstFactor);
-                    }
-                    if(blend_states1.BlendEquation != blend_states2.BlendEquation)
-                    {
-                        glBlendEquation(blend_states1.BlendEquation);
-                    }
-                    if(blend_states1.SrcFactorAlpha != blend_states2.SrcFactorAlpha ||
+                       blend_states1.DstFactor != blend_states2.DstFactor ||
+                       blend_states1.SrcFactorAlpha != blend_states2.SrcFactorAlpha ||
                        blend_states1.DstFactorAlpha != blend_states2.DstFactorAlpha)
                     {
-                        glBlendFunc(blend_states1.SrcFactorAlpha, blend_states1.DstFactorAlpha);
+                        glBlendFuncSeparate(blend_states1.SrcFactor, blend_states1.DstFactor, blend_states1.SrcFactorAlpha, blend_states1.DstFactorAlpha);
                     }
-                    if(blend_states1.BlendAlphaEquation != blend_states2.BlendAlphaEquation)
+                    if(blend_states1.BlendEquation != blend_states2.BlendEquation ||
+                       blend_states1.BlendAlphaEquation != blend_states2.BlendAlphaEquation)
                     {
-                        glBlendEquation(blend_states1.BlendAlphaEquation);
+                        glBlendEquationSeparate(blend_states1.BlendEquation, blend_states1.BlendAlphaEquation);
                     }
                 }
             }
@@ -558,7 +538,7 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
         }
         if(cur_ds_states->StencilEnable == GL_TRUE)
         {
-            auto setup_face = [](bool diff_states, uint8 mask, uint8 ref, const GLDepthStencilOperationStates& cur_ds_states, const GLDepthStencilOperationStates& old_ds_states)
+            auto setup_face = [](bool diff_states, uint8_t mask, uint8_t ref, const GLDepthStencilOperationStates& cur_ds_states, const GLDepthStencilOperationStates& old_ds_states)
             {
                 if(diff_states || cur_ds_states.StencilFunction != old_ds_states.StencilFunction)
                 {
@@ -583,5 +563,6 @@ void GLStateObject::setup(const GLStateObject* prev_state, GLBufferTableEntry* b
             setup_face(diff_states, cur_ds_states->StencilReadMask, cur_ds_states->StencilRef, cur_ds_states->BackFace, old_ds_states->BackFace);
         }
     }
+    CheckOpenGL();
 }
 }   

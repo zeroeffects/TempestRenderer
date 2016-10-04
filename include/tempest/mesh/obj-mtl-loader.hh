@@ -55,22 +55,22 @@ enum class IlluminationModel
 // It compensates the lack of global illumination with ambient term.
 struct Material
 {
-    string            Name;
-    Vector3           Emission = Vector3(0.0f, 0.0f, 0.0f);                 // Ke
-    Vector3           AmbientReflectivity = Vector3(1.0f, 1.0f, 1.0f);      // Ka
-    Vector3           DiffuseReflectivity = Vector3(1.0f, 1.0f, 1.0f);      // Kd
-    Vector3           SpecularReflectivity = Vector3(0.0f, 0.0f, 0.0f);     // Ks
-    Vector3           TransmissionFilter = Vector3(0.0f, 0.0f, 0.0f);       // Tf
+    std::string       Name;
+    Vector3           Emission = Vector3{0.0f, 0.0f, 0.0f};                 // Ke
+    Vector3           AmbientReflectivity = Vector3{1.0f, 1.0f, 1.0f};      // Ka
+    Vector3           DiffuseReflectivity = Vector3{1.0f, 1.0f, 1.0f};      // Kd
+    Vector3           SpecularReflectivity = Vector3{0.0f, 0.0f, 0.0f};     // Ks
+    Vector3           TransmissionFilter = Vector3{0.0f, 0.0f, 0.0f};       // Tf
     IlluminationModel IllumModel = IlluminationModel::Diffuse;              // illum
     float             Dissolve = 0.0f;                                      // d (alpha)
     float             SpecularExponent = 1.0f;                              // Ns
     float             ReflectionSharpness = 1.0f;                           // sharpness
     float             RefractionIndex = 1.0f;                               // Ni
-    string            AmbientReflectivityMap;                               // map_Ka
-    string            DiffuseReflectivityMap;                               // map_Kd
-    string            SpecularReflectivityMap;                              // map_Ks
-    string            SpecularExponentMap;                                  // map_Ns
-    string            DissolveMap;                                          // map_d
+    std::string       AmbientReflectivityMap;                               // map_Ka
+    std::string       DiffuseReflectivityMap;                               // map_Kd
+    std::string       SpecularReflectivityMap;                              // map_Ks
+    std::string       SpecularExponentMap;                                  // map_Ns
+    std::string       DissolveMap;                                          // map_d
 };
 }
 }

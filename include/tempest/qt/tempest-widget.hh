@@ -43,13 +43,16 @@ class TempestWidget: public QWidget
     Q_OBJECT
     Q_DISABLE_COPY(TempestWidget)
 
-    PreferredBackend*           m_Backend;
+    bool                        m_Rendering = false;
+
+    PreferredBackend*           m_Backend = nullptr;
     PreferredWindow             m_Window;
 public:
     TempestWidget(QWidget* parent = nullptr);
     ~TempestWidget();
 
     const PreferredWindow& getTempestWindow() const { return m_Window; }
+    PreferredWindow& getTempestWindow() { return m_Window; }
 
     void attach(PreferredBackend* backend);
 

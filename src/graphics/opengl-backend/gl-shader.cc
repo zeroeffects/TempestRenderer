@@ -50,14 +50,14 @@ void GLResourceTable::setResource(ResourceIndex index, const GLTexture& tex)
     else
 #endif
     {
-        m_BakedResourceTable.setValue(index.BaseOffset, tex.getCPUHandle());
+        m_BakedResourceTable.setValue(index.BaseOffset, tex.getHandle());
     }
 }
     
-ResourceIndex GLResourceTable::getResourceIndex(const string& name)
+ResourceIndex GLResourceTable::getResourceIndex(const std::string& name)
 {
     ResourceIndex res_idx;
-    string sliced_string;
+    std::string sliced_string;
     sliced_string.reserve(name.size());
     int array_index = 0, array_index_base = 1;
     for(size_t idx = 0; idx < name.size(); ++idx)
@@ -102,11 +102,11 @@ ResourceIndex GLResourceTable::getResourceIndex(const string& name)
     auto iter = std::find_if(m_ResourceTable->Uniforms.Values, m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count, [&sliced_string](const DataDescription& data) { return data.Name == sliced_string; });
     TGE_ASSERT(iter != m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count, "Unknown variable");
     res_idx.BaseOffset += iter->Offset + iter->ElementSize*array_index;
-    res_idx.ResourceTableIndex = iter != m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count ? static_cast<uint32>(iter - m_ResourceTable->Uniforms.Values) : std::numeric_limits<uint32>::max(); // So we don't crash on reloads and in general.
+    res_idx.ResourceTableIndex = iter != m_ResourceTable->Uniforms.Values + m_ResourceTable->Uniforms.Count ? static_cast<uint32_t>(iter - m_ResourceTable->Uniforms.Values) : std::numeric_limits<uint32_t>::max(); // So we don't crash on reloads and in general.
     return res_idx;
 }
     
-GLShaderProgram::GLShaderProgram(GLuint prog, GLInputLayout* input_layout, ResourceTableDescription* res_tables[], uint32 res_table_count)
+GLShaderProgram::GLShaderProgram(GLuint prog, GLInputLayout* input_layout, ResourceTableDescription* res_tables[], uint32_t res_table_count)
     :   m_Program(prog),
         m_InputLayout(input_layout),
         m_ResourceTableCount(res_table_count),
@@ -118,14 +118,14 @@ GLShaderProgram::~GLShaderProgram()
     {
         DestroyPackedData(m_InputLayout);
     }
-    for(uint32 i = 0; i < m_ResourceTableCount; ++i)
+    for(uint32_t i = 0; i < m_ResourceTableCount; ++i)
     {
         DestroyPackedData(m_ResourceTables[i]);
     }
     glDeleteProgram(m_Program);
 }
 
-GLResourceTable* GLShaderProgram::createResourceTable(const string& name, size_t extended)
+GLResourceTable* GLShaderProgram::createResourceTable(const std::string& name, size_t extended)
 {
     auto iter = std::find_if(m_ResourceTables.get(), m_ResourceTables.get() + m_ResourceTableCount,
                              [&name](const ResourceTableDescription* desc) { return desc->Name == name; });
@@ -139,5 +139,6 @@ void GLShaderProgram::bind(GLBufferTableEntry* table_entry) const
     {
         m_InputLayout->bind(table_entry);
     }
+    CheckOpenGL();
 }
 }

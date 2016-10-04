@@ -1,4 +1,4 @@
-/*   The MIT License
+﻿/*   The MIT License
  *   
  *   Tempest Engine
  *   Copyright (c) 2009 2010 2011 2012 Zdravko Velinov
@@ -22,7 +22,7 @@
  *   THE SOFTWARE.
  */
 
-bool Driver::parseFile(const string& filename)
+bool Driver::parseFile(const std::string& filename)
 {
     // Ye olde version of FLEX on Windows does not support this function.
     #ifndef _WIN32
@@ -37,24 +37,54 @@ bool Driver::parseFile(const string& filename)
     #endif
     parser.set_debug_level(yy_flex_debug);
     */
-    yyin = fopen(filename.c_str(), "rt");
-    auto fd = CreateAtScopeExit([]() {
-                                    if(yyin)
-                                        fclose(yyin);
-                                });
 
-    if(!yyin)
+    if(m_FileLoader)
     {
-        Tempest::Log(LogLevel::Error, "Error has occurred while trying to open the following file: ", filename);
-        return false;
+        auto loader = m_FileLoader;
+        auto file_data = CreateScoped(m_FileLoader->loadFileContent(filename), [loader](FileDescription* desc) { loader->freeFileContent(desc); });
+        
+        if(file_data == nullptr)
+        {
+            Tempest::Log(LogLevel::Error, "Failed to open the following file for parsing: ", filename);
+            return false;
+        }
+        auto bs = SCAN_BYTES(file_data->Content, (int)(unsigned)file_data->ContentSize);
+        auto fd = CreateAtScopeExit([bs]() { DELETE_BUFFER(bs); });
+
+        if(!bs)
+        {
+            Tempest::Log(LogLevel::Error, "Cannot create buffer object for file: ", filename);
+            return false;
+        }
+
+        SWITCH_TO_BUFFER(bs);
+    
+        int res = parser.parse();
+
+        return res == 0 && !m_ErrorCount;
     }
+    else
+    {
+        yyin = fopen(filename.c_str(), "rt");
+        auto fd = CreateAtScopeExit([]() {
+                                        if(yyin)
+                                            fclose(yyin);
+                                    });
 
-    int res = parser.parse();
+        if(!yyin)
+        {
+            Tempest::Log(LogLevel::Error, "Failed to open: ", filename);
+            return false;
+        }
 
-    return res == 0 && !m_ErrorCount;
+        yyrestart(yyin);
+        int res = parser.parse();
+
+        return res == 0 && !m_ErrorCount;
+    }
 }
 
-bool Driver::parseString(const char* str, size_t size, const string& filename)
+bool Driver::parseString(const char* str, size_t size, const std::string& filename)
 {
     // Ye olde version of FLEX on Windows does not support this function.
     #ifndef _WIN32
@@ -69,7 +99,7 @@ bool Driver::parseString(const char* str, size_t size, const string& filename)
     #endif
     parser.set_debug_level(yy_flex_debug);
     */
-    auto bs = SCAN_BYTES(str, size);
+    auto bs = SCAN_BYTES(str, (int)(unsigned)size);
     auto fd = CreateAtScopeExit([bs]() { DELETE_BUFFER(bs); });
 
     if(!bs)

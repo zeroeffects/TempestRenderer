@@ -1,0 +1,101 @@
+/*   The MIT License
+ *
+ *   Tempest Engine
+ *   Copyright (c) 2016 Zdravko Velinov
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy
+ *   of this software and associated documentation files (the "Software"), to deal
+ *   in the Software without restriction, including without limitation the rights
+ *   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *   copies of the Software, and to permit persons to whom the Software is
+ *   furnished to do so, subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in
+ *   all copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ *   THE SOFTWARE.
+ */
+
+options
+{
+    PNFormat,
+    PTNFormat,
+    PTTNFormat,
+    PcNFormat,
+    PTcNFormat,
+    PTTcNFormat
+} 
+
+struct GlobalsDesc
+{
+    mat4 WorldViewProjectionTransform;
+    mat4 RotateViewTransform;
+    uint MaterialID;
+};
+
+// The main reason is APIs that support some non-bindless weirdness for the old hardware sake.
+resource buffer ResourcesTable
+{
+    sampler2DArray Textures[4];
+}
+
+structbuffer GlobalsDesc Globals;
+
+// See the excellent blog post by Aras Pranckevičius:
+// http://aras-p.info/texts/CompactNormalStorage.html
+
+// Note that we are passing view space normals
+vec2 CartesianToLambertEqualAreaCoordinates(vec3 normal)
+{
+    float f = sqrt(8.0*normal.z + 8.0);
+    return normal.xy/f + 0.5;
+}
+
+vertex shader
+{
+    layout(vb_pack_align = 4, vb_format = RGB32F)                                                       in vec3 Position;
+    @PTNFormat || PTTNFormat || PTcNFormat || PTTcNFormat layout(vb_pack_align = 4, vb_format = RG32F)  in vec2 TexCoord;
+    @PTTNFormat || PTTcNFormat layout(vb_pack_align = 4, vb_format = RGB32F)                            in vec3 Tangent;
+    @PcNFormat ||PTcNFormat || PTTcNFormat layout(vb_pack_align = 4, vb_format = R32F)                  in float InterpolationConstant;
+    layout(vb_pack_align = 4, vb_format = RGB32F)                                                       in vec3  Normal;
+    
+    @PTNFormat || PTTNFormat || PTcNFormat || PTTcNFormat                                               out vec2 InterpTexCoord;
+                                                                                                        out vec3 InterpNormal;
+                                                                                                        flat out int DrawIndex;
+    
+    void main()
+    {
+        DrawIndex = tge_DrawID;
+        
+        @PTNFormat || PTTNFormat || PTcNFormat || PTTcNFormat InterpTexCoord = TexCoord;
+        
+        InterpNormal = mat3(Globals[tge_DrawID].RotateViewTransform)*Normal;		
+        gl_Position = Globals[tge_DrawID].WorldViewProjectionTransform*vec4(Position, 1.0);
+    }
+}
+
+fragment shader
+{
+	@PTNFormat || PTTNFormat || PTcNFormat || PTTcNFormat out vec2 InterpTexCoord;
+    in vec3 InterpNormal;
+	in vec3 InterpView;
+	
+    flat in int DrawIndex;
+
+	layout(location = 0) out vec4 GBuffer0;
+    layout(location = 1) out vec4 GBuffer1;
+    layout(location = 2) out vec4 GBuffer2;
+
+    void main()
+    {
+        GBuffer0 = vec4(1.0, 1.0, 1.0, 1.0);
+		GBuffer1 = vec4(1.0, 1.0, 1.0, 1.0);
+        GBuffer2 = vec4(CartesianToLambertEqualAreaCoordinates(InterpNormal), uintBitsToFloat(Globals[DrawIndex].MaterialID), 1.0);
+	}
+}

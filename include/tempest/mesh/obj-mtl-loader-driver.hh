@@ -40,15 +40,22 @@ class Driver: public DriverBase
     std::vector<ObjMtlLoader::Material>* m_Materials;
     
 public:
-    Driver(std::vector<ObjMtlLoader::Material>* out_materials)
-        :   m_Materials(out_materials) {}
+    Driver(FileLoader* loader, std::vector<ObjMtlLoader::Material>* out_materials)
+        :   DriverBase(loader),
+            m_Materials(out_materials) {}
      ~Driver()=default;
     
-    void pushNewMaterial(string name) { m_Materials->push_back(ObjMtlLoader::Material()); m_Materials->back().Name = name; m_CurrentMaterial = &m_Materials->back(); }
+    void pushNewMaterial(std::string name)
+	{
+		std::transform(std::begin(name), std::end(name), std::begin(name), ::tolower);
+		m_Materials->push_back(ObjMtlLoader::Material());
+		m_Materials->back().Name = name; 
+		m_CurrentMaterial = &m_Materials->back();
+	}
     ObjMtlLoader::Material* getCurrentMaterial() { return m_CurrentMaterial; }
     
-    bool parseFile(const string& filename);
-    bool parseString(const char* str, size_t size, const string& filename);
+    bool parseFile(const std::string& filename);
+    bool parseString(const char* str, size_t size, const std::string& filename);
 };
 }
 }

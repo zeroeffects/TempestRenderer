@@ -25,7 +25,7 @@
 #ifndef TEMPEST_FILE_LOADER_HH_
 #define TEMPEST_FILE_LOADER_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/utils/patterns.hh"
 
 namespace Tempest
@@ -40,7 +40,7 @@ struct FileDescription
 class FileLoader
 {
 public:
-    virtual FileDescription* loadFileContent(const string& name)=0;
+    virtual FileDescription* loadFileContent(const std::string& name)=0;
     virtual void freeFileContent(FileDescription* ptr)=0;
 };
 

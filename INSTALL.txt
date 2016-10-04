@@ -1,0 +1,11 @@
+This project requires Gnu Flex for lexer generation. You may download it from: http://gnuwin32.sourceforge.net/
+Embree is required for ray tracing. You may download it from: https://embree.github.io/
+Qt is required for GUIs. You may download it from: https://www.qt.io/download-open-source/
+
+Windows is the main development platform; however, we support Linux to some extend. Everything that uses CPU for rendering should work.
+GPU rendering is driver vendor related.
+
+We have support for CUDA. You may remove it by using -DDISABLE_CUDA=on when doing the cmake configuration.
+
+This project is provided in hope that it is useful for other researchers. We do not claim production quality or fit for any other purpose
+than learning about the techniques that we have developed.

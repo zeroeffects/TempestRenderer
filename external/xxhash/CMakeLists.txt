@@ -24,4 +24,7 @@
 ##################################################################################
 
 ADD_LIBRARY(xxhash STATIC xxhash.c xxhash.h)
-SET_TARGET_PROPERTIES(xxhash PROPERTIES COMPILE_FLAGS "-fPIC")
+IF(UNIX)
+    SET_TARGET_PROPERTIES(xxhash PROPERTIES COMPILE_FLAGS "-fPIC")
+ENDIF()
+SET_PROPERTY(TARGET xxhash PROPERTY FOLDER "External")

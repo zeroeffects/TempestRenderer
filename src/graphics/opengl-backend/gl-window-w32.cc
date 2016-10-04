@@ -64,7 +64,7 @@ GLWindow::~GLWindow()
     }
 }
 
-extern string GetLastErrorString();
+extern std::string GetLastErrorString();
 
 bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescription& wdesc)
 {
@@ -106,14 +106,35 @@ bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescri
     int pixel_format;
     UINT num_format;
 
+	RECT window_rect;
     DWORD dwStyle;
     if(parent)
+	{
         dwStyle = WS_CHILD;
-    else
+		window_rect.left = 0;
+		window_rect.top = 0;
+		window_rect.right = static_cast<int>(wdesc.Width);
+		window_rect.bottom = static_cast<int>(wdesc.Height);
+	}
+	else
+	{
         dwStyle = WS_OVERLAPPEDWINDOW | WS_SYSMENU;
+		window_rect.left = 0;
+		window_rect.top = 0;
+		window_rect.right = static_cast<int>(wdesc.Width);
+		window_rect.bottom = static_cast<int>(wdesc.Height);
+		AdjustWindowRect(&window_rect, dwStyle, false);
+		window_rect.right -= window_rect.left;
+		window_rect.bottom -= window_rect.top;
+		window_rect.left = 0;
+		window_rect.top = 0;
+	}
+
+    m_WindowInformation.Width = wdesc.Width;
+    m_WindowInformation.Height = wdesc.Height;
 
     m_Window = CreateWindowEx(0, "TempestWindow", wdesc.Title.c_str(), dwStyle,
-                              0, 0, static_cast<int>(wdesc.Width), static_cast<int>(wdesc.Height),
+                               window_rect.left, window_rect.top, window_rect.right, window_rect.bottom, 
                               parent, 0, (HINSTANCE)GetModuleHandle(NULL), this);
     if(!m_Window)
     {
@@ -134,7 +155,7 @@ bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescri
         return false;
     }
     
-    SetWindowLongPtr(m_Window, GWLP_USERDATA, reinterpret_cast<LONG>(&m_WindowInformation));
+    SetWindowLongPtr(m_Window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&m_WindowInformation));
 
     return true;
 }
@@ -144,9 +165,40 @@ void GLWindow::show()
     ShowWindow(m_Window, SW_SHOW);
 }
 
-void GLWindow::swapBuffers()
+// Doesn't make sense for child window
+void GLWindow::resize(uint32_t width, uint32_t height)
+{
+	RECT window_rect;
+	DWORD dwStyle = WS_OVERLAPPEDWINDOW | WS_SYSMENU;
+	window_rect.left = 0;
+	window_rect.top = 0;
+	window_rect.right = static_cast<int>(width);
+	window_rect.bottom = static_cast<int>(height);
+	AdjustWindowRect(&window_rect, dwStyle, false);
+	window_rect.right -= window_rect.left;
+	window_rect.bottom -= window_rect.top;
+	window_rect.left = 0;
+	window_rect.top = 0;
+
+    SetWindowPos(m_Window, NULL, window_rect.left, window_rect.top, window_rect.right, window_rect.bottom, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void GLWindow::captureMouse() { SetCapture(m_Window); }
+void GLWindow::releaseMouse() { ReleaseCapture(); }
+
+void GLWindow::swapBuffers(int swap_interval)
 {
     m_WindowInformation.MouseDeltaX = m_WindowInformation.MouseDeltaY = 0;
+
+    // Yeah, just process all events
+    m_WindowInformation.EventQueue.erase(m_WindowInformation.EventQueue.begin(), m_WindowInformation.EventQueue.begin() + m_ProcessedEvent);
+	m_ProcessedEvent = 0;
+
+    if(swap_interval != m_SwapInterval)
+    {
+        wglSwapIntervalEXT(swap_interval);
+        m_SwapInterval = swap_interval;
+    }
 
     MSG msg;
     SwapBuffers(m_DC);

@@ -139,6 +139,8 @@ bool GLWindow::init(OSWindowSystem& wnd_sys, OSWindow parent, const WindowDescri
     swa.colormap = m_XColormap = XCreateColormap(display, parent, vi->visual, AllocNone);
     XInstallColormap(display, m_XColormap);
 
+    m_WindowInformation.Width = wdesc.Width;
+    m_WindowInformation.Height = wdesc.Height;
     m_Window = XCreateWindow(display, parent,
                              0, 0, wdesc.Width, wdesc.Height, 0, vi->depth, InputOutput,
                              vi->visual, CWColormap | CWEventMask, &swa);
@@ -156,10 +158,50 @@ void GLWindow::show()
     XMapWindow(m_Display->nativeHandle(), m_Window);
 }
 
-void GLWindow::swapBuffers()
+void GLWindow::captureMouse() {}
+void GLWindow::releaseMouse() {}
+
+void GLWindow::resize(uint32_t width, uint32_t height)
+{
+    XMoveResizeWindow(m_Display->nativeHandle(), m_Window, 0, 0, width, height);
+}
+
+void GLWindow::swapBuffers(int)
 {
     auto display = m_Display->nativeHandle();
     glXSwapBuffers(display, m_Window);
     XFlush(display);
+    XEvent ev;
+    m_WindowInformation.MouseDeltaX = m_WindowInformation.MouseDeltaY = 0;
+    while(XEventsQueued(display, QueuedAlready))
+    {
+        XNextEvent(display, &ev);
+        switch(ev.type)
+        {
+        case ConfigureNotify:
+        {
+            if(m_Window == ev.xconfigure.window)
+            {
+                m_WindowInformation.Width = ev.xconfigure.width,
+                m_WindowInformation.Height = ev.xconfigure.height;
+            }
+        } break;
+        case MotionNotify:
+        {
+            auto prev_mouse_x = m_WindowInformation.MouseX;
+            auto prev_mouse_y = m_WindowInformation.MouseY;
+
+            m_WindowInformation.MouseX = (int32_t)ev.xmotion.x;
+            m_WindowInformation.MouseY = m_WindowInformation.Height - (int32_t)ev.xmotion.y;
+            m_WindowInformation.MouseDeltaX = m_WindowInformation.MouseX - prev_mouse_x;
+            m_WindowInformation.MouseDeltaY = m_WindowInformation.MouseY - prev_mouse_y;
+        } break;
+        case DestroyNotify:
+        {
+            m_WindowInformation.Flags |= TEMPEST_WINDOW_STATE_DEAD;
+        } break;
+        default: break;
+        }
+    }
 }
 }

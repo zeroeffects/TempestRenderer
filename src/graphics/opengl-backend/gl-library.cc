@@ -49,16 +49,17 @@ namespace Tempest
 #ifdef _WIN32
     PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = nullptr;
     PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB = nullptr;
+    PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = nullptr;
 #endif
 
-static uint64 GLCaps = ~0ULL;
+static uint64_t GLCaps = ~0ULL;
 
-bool IsGLCapabilitySupported(uint64 caps)
+bool IsGLCapabilitySupported(uint64_t caps)
 {
     return (GLCaps & caps) == caps;
 }
 
-string ConvertGLErrorToString(GLErrorCode err)
+std::string ConvertGLErrorToString(GLErrorCode err)
 {
     switch(err)
     {
@@ -139,6 +140,7 @@ bool InitDummyContext(HDC hDC)
 
         Tempest::wglCreateContextAttribsARB = reinterpret_cast<decltype(wglCreateContextAttribsARB)>(GL_GET_PROC_ADDRESS("wglCreateContextAttribsARB"));
         Tempest::wglChoosePixelFormatARB = reinterpret_cast<decltype(wglChoosePixelFormatARB)>(GL_GET_PROC_ADDRESS("wglChoosePixelFormatARB"));
+        Tempest::wglSwapIntervalEXT = reinterpret_cast<decltype(wglSwapIntervalEXT)>(GL_GET_PROC_ADDRESS("wglSwapIntervalEXT"));
     }
     return true;
 }

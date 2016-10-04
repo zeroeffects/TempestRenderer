@@ -25,17 +25,35 @@
 #ifndef _TEMPEST_VOLUME_HH_
 #define _TEMPEST_VOLUME_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
+#include "tempest/math/functions.hh"
 #include "tempest/math/vector3.hh"
 
 namespace Tempest
 {
 struct Box
 {
-    int32 X, Y, Z;
+    int32_t X, Y, Z;
 };
 
-enum class GridDataType: uint32
+inline Vector3 ToVector3(const Box& box)
+{
+    return Vector3{static_cast<float>(box.X), static_cast<float>(box.Y), static_cast<float>(box.Z)};
+}
+
+inline bool operator==(const Box& lhs, const Box& rhs)
+{
+    return lhs.X == rhs.X &&
+           lhs.Y == rhs.Y &&
+           lhs.Z == rhs.Z;
+}
+
+inline Vector3 operator*(const Box& box, const Vector3& scale)
+{
+    return Vector3{box.X*scale.x, box.Y*scale.y, box.Z*scale.z};
+}
+
+enum class GridDataType: uint32_t
 {
     Invalid = 0,
     Float32 = 1,
@@ -46,8 +64,8 @@ enum class GridDataType: uint32
 
 struct Volume
 {
-    Box   Dimensions;
-    void* GridData;
+    Box     Dimensions;
+    void*   Data = nullptr;
 
     ~Volume();
 };
@@ -57,15 +75,14 @@ struct VolumeRoot
     Vector3         MinCorner;
     Vector3         MaxCorner;
     Box             Dimensions = Box{ 0, 0, 0 };
-    uint32          Channels = 0;
-    GridDataType    FileFormat = GridDataType::Invalid;
     
-    Volume* Volumes = nullptr;
+    Volume*         Volumes;
 
     ~VolumeRoot();
 };
 
-VolumeRoot* ParseVolume(const string& name);
+VolumeRoot* ParseVolumeHierarchy(const std::string& name);
+VolumeRoot* ParseVolume(const std::string& density, const std::string& orientation);
 }
 
 #endif // _TEMPEST_VOLUME_HH_

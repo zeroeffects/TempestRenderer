@@ -23,16 +23,16 @@ TGE_TEST("Tests for proper execution of the logging functionality")
         auto str = LogFile::read();
         
         auto idx = str.find("standard output");
-        TGE_ASSERT(idx == std::string::npos, "The previous message should not appear. It was printed to the standard output only.");
+        TGE_CHECK(idx == std::string::npos, "The previous message should not appear. It was printed to the standard output only.");
         
         idx = str.find(app_str);
-        TGE_ASSERT(idx != std::string::npos, "This message should appear because it was also appended to the log file.");
+        TGE_CHECK(idx != std::string::npos, "This message should appear because it was also appended to the log file.");
     }
     
     std::fstream fs("test-log.txt", std::ios::in);
         std::istreambuf_iterator<char> start_iter(fs.rdbuf());
         std::istreambuf_iterator<char> end_iter;
         auto iter = std::search(start_iter, end_iter, app_str.begin(), app_str.end());
-        TGE_ASSERT(iter != end_iter, "Logged string not found");
+        TGE_CHECK(iter != end_iter, "Logged string not found");
     fs.close();
 }

@@ -111,7 +111,7 @@ Controller& Controller::operator=(Controller&& ctr)
     ctr.m_FD = -1;
 }
 
-static void SetButtonState(ControllerState* state, size_t button_mask, uint16 button_state)
+static void SetButtonState(ControllerState* state, size_t button_mask, uint16_t button_state)
 {
     if(button_state)
         state->ButtonMask |= button_mask;
@@ -171,8 +171,8 @@ bool Controller::getState(ControllerState* state)
             case 1: state->LeftThumbY = abs(evt.value) > TEMPEST_GAMEPAD_LEFT_THUMB_DEADZONE ? evt.value : 0; break;
             case 2: state->RightThumbX = abs(evt.value) > TEMPEST_GAMEPAD_RIGHT_THUMB_DEADZONE ? evt.value : 0; break;
             case 3: state->RightThumbY = abs(evt.value) > TEMPEST_GAMEPAD_RIGHT_THUMB_DEADZONE ? evt.value : 0; break;
-            case 4: state->RightTrigger = evt.value > TEMPEST_GAMEPAD_TRIGGER_THRESHOLD ? evt.value : std::numeric_limits<int16>::min(); break;
-            case 5: state->LeftTrigger = evt.value > TEMPEST_GAMEPAD_TRIGGER_THRESHOLD ? evt.value : std::numeric_limits<int16>::min(); break;
+            case 4: state->RightTrigger = evt.value > TEMPEST_GAMEPAD_TRIGGER_THRESHOLD ? evt.value : std::numeric_limits<int16_t>::min(); break;
+            case 5: state->LeftTrigger = evt.value > TEMPEST_GAMEPAD_TRIGGER_THRESHOLD ? evt.value : std::numeric_limits<int16_t>::min(); break;
             case 6:
             {
                 if(evt.value == 0)

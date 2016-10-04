@@ -25,7 +25,9 @@
 namespace Tempest
 {
 class Texture;
+struct TextureDescription;
 class Path;
 
 Texture* LoadTGAImage(const Path& file_path);
+bool SaveTGAImage(const TextureDescription& tex, const void* data, const Path& file_path);
 }

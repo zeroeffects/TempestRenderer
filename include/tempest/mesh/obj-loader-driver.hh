@@ -27,7 +27,7 @@
 
 #include <cstddef>
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/parser/driver-base.hh"
 #include "tempest/mesh/obj-mtl-loader.hh"
 
@@ -39,90 +39,71 @@
 
 namespace Tempest
 {
-class FileLoader;
-    
 namespace ObjLoader
 {
 struct GroupHeader
 {
-    string Name;
-    uint32 PositionStart,
-           TexCoordStart,
-           NormalStart,
-           MaterialIndex;
+    std::string Name;
+    uint32_t    PositionStart,
+                TexCoordStart,
+                NormalStart,
+                MaterialIndex;
 };
     
 class Driver: public DriverBase
 {
 protected:
-    size_t                   m_ErrorCount = 0,
-                             m_WarningCount = 0;
-                            
+            
     std::vector<Vector3>     m_Position;
     std::vector<Vector2>     m_TexCoord;
     std::vector<Vector3>     m_Normal;
     
-    std::vector<int32>       m_PositionIndices;
-    std::vector<int32>       m_TexCoordIndices;
-    std::vector<int32>       m_NormalIndices;
+    std::vector<int32_t>     m_PositionIndices;
+    std::vector<int32_t>     m_TexCoordIndices;
+    std::vector<int32_t>     m_NormalIndices;
     std::vector<GroupHeader> m_Groups;
     
-    uint32                   m_CurrentMaterial = 0;
+    uint32_t                 m_CurrentMaterial = 0;
     
     std::vector<ObjMtlLoader::Material> m_Materials;
     
-    FileLoader*              m_FileLoader;
-    string                   m_Path;
+    std::string              m_Path;
     
 public:
-    Driver(string path, FileLoader* loader)
-        :   m_FileLoader(loader),
+    Driver(std::string path, FileLoader* loader)
+        :   DriverBase(loader),
             m_Path(path) {}
      ~Driver()=default;
 
     FileLoader* getFileLoader() { return m_FileLoader; }
      
-    void pushPosition(float px, float py, float pz, float pw = 1.0f) { float factor = 1.0f / pw; m_Position.emplace_back(px * factor, py * factor, pz * factor); }
-    void pushTexCoord(float tx, float ty) { m_TexCoord.push_back(Tempest::Vector2(tx, ty)); }
-    void pushNormal(float nx, float ny, float nz) { m_Normal.push_back(Tempest::Vector3(nx, ny, nz)); }
+    void pushPosition(float px, float py, float pz, float pw = 1.0f) { float factor = 1.0f / pw; m_Position.emplace_back(Vector3{px * factor, py * factor, pz * factor}); }
+    void pushTexCoord(float tx, float ty) { m_TexCoord.push_back(Tempest::Vector2{tx, ty}); }
+    void pushNormal(float nx, float ny, float nz) { m_Normal.push_back(Tempest::Vector3{nx, ny, nz}); }
     
-    void pushMaterial(const Location& loc, const string& name);
-    void pushGroup(const string& name) { m_Groups.push_back(GroupHeader{ name, (uint32)m_PositionIndices.size(), (uint32)m_TexCoordIndices.size(), (uint32)m_NormalIndices.size(), m_CurrentMaterial }); }
-    void pushPositionIndex(int32 idx) { m_PositionIndices.push_back(idx); }
-    void pushTexCoordIndex(int32 idx) { m_TexCoordIndices.push_back(idx); }
-    void pushNormalIndex(int32 idx) { m_NormalIndices.push_back(idx); }
+    void pushMaterial(const Location& loc, const std::string& name);
+    void pushGroup(const std::string& name) { m_Groups.push_back(GroupHeader{ name, (uint32_t)m_PositionIndices.size(), (uint32_t)m_TexCoordIndices.size(), (uint32_t)m_NormalIndices.size(), m_CurrentMaterial }); }
+    void pushPositionIndex(int32_t idx) { m_PositionIndices.push_back(idx >= 0 ? idx - 1: ((int32_t)m_Position.size() + idx)); }
+    void pushTexCoordIndex(int32_t idx) { m_TexCoordIndices.push_back(idx >= 0 ? idx - 1: ((int32_t)m_TexCoord.size() + idx)); }
+    void pushNormalIndex(int32_t idx) { m_NormalIndices.push_back(idx >= 0 ? idx - 1: ((int32_t)m_Normal.size() + idx)); }
     
     const std::vector<Vector3>& getPositions() const { return m_Position; }
     const std::vector<Vector2>& getTexCoords() const { return m_TexCoord; }
     const std::vector<Vector3>& getNormals() const { return m_Normal; }
     
-    const std::vector<int32>& getPositionIndices() const { return m_PositionIndices; }
-    const std::vector<int32>& getTexCoordIndices() const { return m_TexCoordIndices; }
-    const std::vector<int32>& getNormalIndices() const { return m_NormalIndices; }
+    const std::vector<int32_t>& getPositionIndices() const { return m_PositionIndices; }
+    const std::vector<int32_t>& getTexCoordIndices() const { return m_TexCoordIndices; }
+    const std::vector<int32_t>& getNormalIndices() const { return m_NormalIndices; }
     
     const std::vector<ObjMtlLoader::Material>& getMaterials() const { return m_Materials; }
     
-    void parseMaterialFile(const Location& loc, const string& name);
-    
-	void normalizeIndices()
-	{
-		normalizeIndices((int32)m_Position.size(), m_PositionIndices);
-		normalizeIndices((int32)m_TexCoord.size(), m_TexCoordIndices);
-		normalizeIndices((int32)m_Normal.size(), m_NormalIndices);
-	}
+    void parseMaterialFile(const Location& loc, const std::string& name);
     
     const std::vector<GroupHeader>& getGroups() const { return m_Groups; }
     
-    bool parseFile(const string& filename);
-    bool parseString(const char* str, size_t size, const string& filename);
+    bool parseFile(const std::string& filename);
+    bool parseString(const char* str, size_t size, const std::string& filename);
 private:
-    void normalizeIndices(int32 elems, std::vector<int32>& vec)
-    {
-        for(auto& ind : vec)
-        {
-            ind = ind < 0 ? elems + ind : ind - 1;
-        }
-    }
 };
 }
 }

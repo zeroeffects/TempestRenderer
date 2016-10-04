@@ -41,11 +41,11 @@ namespace Tempest
 {
 struct DrawElementsIndirectCommand
 {
-    uint32  count;
-    uint32  instanceCount;
-    uint32  firstIndex;
-    uint32  baseVertex;
-    uint32  baseInstance;
+    uint32_t  count;
+    uint32_t  instanceCount;
+    uint32_t  firstIndex;
+    uint32_t  baseVertex;
+    uint32_t  baseInstance;
 };
 
 struct BindlessPtrNV
@@ -86,7 +86,7 @@ static GLDrawMode TranslateDrawMode(DrawModes mode)
 GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
     :   m_CommandBuffer(new GLDrawBatch[desc.CommandCount]),
         m_ConstantBufferSize(desc.ConstantsBufferSize),
-        m_CommandBufferSize(desc.ConstantsBufferSize)
+        m_CommandBufferSize(desc.CommandCount)
 {
     memset(m_GPUFence, 0, sizeof(m_GPUFence));
     memset(m_ConstantBuffer, 0, sizeof(m_ConstantBuffer));
@@ -100,7 +100,7 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
 
     GLuint buffers[2 * BufferCount];
     glGenBuffers(2 * BufferCount, buffers);
-    for(uint32 i = 0; i < BufferCount; ++i)
+    for(uint32_t i = 0; i < BufferCount; ++i)
     {
 #ifndef TEMPEST_DISABLE_MDI
         if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
@@ -147,7 +147,7 @@ GLCommandBuffer::GLCommandBuffer(const CommandBufferDescription& desc)
 
 GLCommandBuffer::~GLCommandBuffer()
 {
-    for(uint32 i = 0; i < BufferCount; ++i)
+    for(uint32_t i = 0; i < BufferCount; ++i)
     {
         if(m_GPUFence[i])
         {
@@ -190,12 +190,12 @@ bool GLCommandBuffer::enqueueBatch(const GLDrawBatch& draw_batch)
         #ifndef TEMPEST_DISABLE_MDI
             if(IsGLCapabilitySupported(TEMPEST_GL_CAPS_440))
             {
-                m_ConstantBufferReqSize += static_cast<uint32>(draw_batch.ResourceTable->getSize());
+                m_ConstantBufferReqSize += static_cast<uint32_t>(draw_batch.ResourceTable->getSize());
             }
             else
         #endif
             {
-                m_ConstantBufferReqSize += AlignAddress(static_cast<uint32>(draw_batch.ResourceTable->getSize()), m_Alignment);
+                m_ConstantBufferReqSize += AlignAddress(static_cast<uint32_t>(draw_batch.ResourceTable->getSize()), m_Alignment);
             }
     }
 
@@ -214,7 +214,7 @@ void GLCommandBuffer::prepareCommandBuffer()
               });
 }
 
-static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLvoid* gpu_cmd_buf_ptr, size_t alignment, GLuint const_buf_ring, GLvoid* const_buf_ptr)
+static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32_t cpu_cmd_buf_size, GLvoid* gpu_cmd_buf_ptr, size_t alignment, GLuint const_buf_ring, GLvoid* const_buf_ptr)
 {
     // Naive to start with. TODO: Ring buffer.
     char *cmd_buf = reinterpret_cast<char*>(gpu_cmd_buf_ptr),
@@ -238,7 +238,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
     
     prev_state->setup(nullptr, nullptr);
     
-    for(uint32 cmd_idx = 0; cmd_idx < cpu_cmd_buf_size; ++cmd_idx)
+    for(uint32_t cmd_idx = 0; cmd_idx < cpu_cmd_buf_size; ++cmd_idx)
     {
         auto& cpu_cmd = cpu_cmd_buf[cmd_idx];
         auto& gpu_cmd = *reinterpret_cast<DrawElementsIndirectBindlessCommandNV*>(cmd_buf);
@@ -364,7 +364,7 @@ static void ExecuteCommandBufferNV(GLRenderingBackend* backend, GLDrawBatch* cpu
     }
 }
 
-static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size,
+static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cpu_cmd_buf, uint32_t cpu_cmd_buf_size,
                                     GLvoid* gpu_cmd_buf_ptr, size_t alignment, GLuint const_buf_ring, GLvoid* const_buf_ptr)
 {
     char *cmd_buf = reinterpret_cast<char*>(gpu_cmd_buf_ptr),
@@ -399,7 +399,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
     
     prev_state->setup(nullptr, buffer_table);
 
-    for(uint32 cmd_idx = 0; cmd_idx < cpu_cmd_buf_size; ++cmd_idx)
+    for(uint32_t cmd_idx = 0; cmd_idx < cpu_cmd_buf_size; ++cmd_idx)
     {
         auto& cpu_cmd = cpu_cmd_buf[cmd_idx];
         bool vb_not_equal = !std::equal(prev_vert_buffers, prev_vert_buffers + MAX_VERTEX_BUFFERS, cpu_cmd.VertexBuffers,
@@ -498,7 +498,7 @@ static void ExecuteCommandBufferARB(GLRenderingBackend* backend, GLDrawBatch* cp
     }
 }
 
-static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 alignment, GLDrawBatch* cpu_cmd_buf, uint32 cpu_cmd_buf_size, GLuint const_buf_ring)
+static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32_t alignment, GLDrawBatch* cpu_cmd_buf, uint32_t cpu_cmd_buf_size, GLuint const_buf_ring)
 {
     auto& first = *cpu_cmd_buf;
     auto* prev_state = first.PipelineState;
@@ -529,7 +529,7 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 ali
 
     GLintptr offset = 0;
 
-    for(uint32 cmd_idx = 0; cmd_idx < cpu_cmd_buf_size; ++cmd_idx)
+    for(uint32_t cmd_idx = 0; cmd_idx < cpu_cmd_buf_size; ++cmd_idx)
     {
         auto& cpu_cmd = cpu_cmd_buf[cmd_idx];
         bool vb_not_equal = !std::equal(prev_vert_buffers, prev_vert_buffers + MAX_VERTEX_BUFFERS, cpu_cmd.VertexBuffers,
@@ -574,14 +574,22 @@ static void ExecuteCommandBufferOldStyle(GLRenderingBackend* backend, uint32 ali
         if(cpu_cmd.ResourceTable)
         {
             auto real_size = cpu_cmd.ResourceTable->getSize();
-            auto size = AlignAddress(static_cast<uint32>(real_size), alignment);
+            auto size = AlignAddress(static_cast<uint32_t>(real_size), alignment);
             glBindBufferRange(GLBufferTarget::GL_UNIFORM_BUFFER, TEMPEST_GLOBALS_BUFFER, const_buf_ring, offset, real_size);
             offset += size;
         }
 
         auto mode = TranslateDrawMode(prev_state->getPrimitiveType());
-        glDrawElementsBaseVertex(mode, cpu_cmd.VertexCount, GLType::GL_UNSIGNED_SHORT,
-                                 reinterpret_cast<char*>(0) + cpu_cmd.BaseIndex*sizeof(GLushort), cpu_cmd.BaseVertex);
+
+        if(prev_index_buffer)
+        {
+            glDrawElementsBaseVertex(mode, cpu_cmd.VertexCount, GLType::GL_UNSIGNED_SHORT,
+                                     reinterpret_cast<char*>(0) + cpu_cmd.BaseIndex*sizeof(GLushort), cpu_cmd.BaseVertex);
+        }
+        else
+        {
+            glDrawArrays(mode, cpu_cmd.BaseVertex, cpu_cmd.VertexCount);
+        }
         CheckOpenGL();
     }
 }
@@ -601,7 +609,7 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
         // Well, we pretty much wait forever, so don't bother with loops.
         if(m_GPUFence[m_Index])
         {
-            glClientWaitSync(m_GPUFence[m_Index], GL_SYNC_FLUSH_COMMANDS_BIT, std::numeric_limits<uint64>::max());
+            glClientWaitSync(m_GPUFence[m_Index], GL_SYNC_FLUSH_COMMANDS_BIT, std::numeric_limits<uint64_t>::max());
             glDeleteSync(m_GPUFence[m_Index]);
         }
 #ifndef TEMPEST_DISABLE_MDI_BINDLESS
@@ -621,21 +629,25 @@ void GLCommandBuffer::_executeCommandBuffer(GLRenderingBackend* backend)
 #endif
     {
         // Complete state dump for this version before scheduling
-        glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBuffer[m_Index]);
-        auto* res_buf = reinterpret_cast<char*>(glMapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, GLAccessMode::GL_WRITE_ONLY));
-        auto* cpu_cmd_buf = m_CommandBuffer.get();
-        for(uint32 cmd_idx = 0, cmd_idx_end = m_CommandCount; cmd_idx < cmd_idx_end; ++cmd_idx)
+        if(m_ConstantBufferReqSize)
         {
-            auto& cpu_cmd = cpu_cmd_buf[cmd_idx];
-            if(cpu_cmd.ResourceTable)
+            glBindBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, m_ConstantBuffer[m_Index]);
+            auto* res_buf = reinterpret_cast<char*>(glMapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER, GLAccessMode::GL_WRITE_ONLY));
+            auto* cpu_cmd_buf = m_CommandBuffer.get();
+            for(uint32_t cmd_idx = 0, cmd_idx_end = m_CommandCount; cmd_idx < cmd_idx_end; ++cmd_idx)
             {
-                auto real_size = cpu_cmd.ResourceTable->getSize();
-                auto offset = AlignAddress(real_size, (size_t)m_Alignment);
-                std::copy_n(cpu_cmd.ResourceTable->get(), real_size, res_buf);
-                res_buf += offset;
+                auto& cpu_cmd = cpu_cmd_buf[cmd_idx];
+                if(cpu_cmd.ResourceTable)
+                {
+                    auto real_size = cpu_cmd.ResourceTable->getSize();
+                    auto offset = AlignAddress(real_size, (size_t)m_Alignment);
+                    std::copy_n(cpu_cmd.ResourceTable->get(), real_size, res_buf);
+                    res_buf += offset;
+                }
             }
+            glUnmapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER);
+            CheckOpenGL();
         }
-        glUnmapBuffer(GLBufferTarget::GL_UNIFORM_BUFFER);
 
         ExecuteCommandBufferOldStyle(backend, m_Alignment, m_CommandBuffer.get(), m_CommandCount, m_ConstantBuffer[m_Index]);
     }

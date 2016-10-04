@@ -75,7 +75,7 @@ enum NodeType
     TGE_EFFECT_OPTION
 };
 
-enum class BinaryOperatorType: uint32
+enum class BinaryOperatorType: uint32_t
 {
     Unknown,
     Assign,
@@ -109,7 +109,7 @@ enum class BinaryOperatorType: uint32
     Comma
 };
 
-enum class UnaryOperatorType: uint32
+enum class UnaryOperatorType: uint32_t
 {
     Unknown,
     Positive,
@@ -123,7 +123,7 @@ enum class UnaryOperatorType: uint32
 };
 
 class Type;
-typedef Value<string> Identifier;
+typedef Value<std::string> Identifier;
 template<class TLhs, class TRhs> class Intermediate;
 typedef Intermediate<const Type*, AST::Node> Expression;
 class FunctionDeclaration;
@@ -156,7 +156,7 @@ class VisitorInterface;
 class Buffer;
 class Option;
 class ShaderDeclaration;
-typedef Value<string> Identifier;
+typedef Value<std::string> Identifier;
 
 typedef AST::Reference<FunctionSet> FunctionSetRef;
 typedef AST::Reference<Variable> VariableRef;
@@ -235,7 +235,7 @@ public:
     TypeImpl() {}
     virtual ~TypeImpl() {}
     
-    virtual string getNodeName() const=0;
+    virtual std::string getNodeName() const=0;
     
     virtual bool hasBase(const Type* _type) const=0;
 
@@ -246,7 +246,7 @@ public:
     virtual const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const=0;
     virtual const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const=0;
 
-    virtual const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const=0;
+    virtual const Type* getMemberType(Driver& driver, const Type* this_type, const std::string& name) const=0;
     virtual const Type* getArrayElementType() const=0;
     virtual bool hasValidConstructor(const List* var_list) const=0;
     
@@ -261,7 +261,7 @@ struct TypeImplModel: public TypeImpl
         :   m_Data(std::forward<TArgs>(args)...) {}
     virtual ~TypeImplModel() {}
         
-    virtual string getNodeName() const override { return m_Data.getNodeName(); }
+    virtual std::string getNodeName() const override { return m_Data.getNodeName(); }
 
     virtual bool hasBase(const Type* _type) const override { return m_Data.hasBase(_type); }
 
@@ -272,7 +272,7 @@ struct TypeImplModel: public TypeImpl
     virtual const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const override { return m_Data.binaryOperatorResultType(driver, this_type, binop, operandB); }
     virtual const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const override { return m_Data.unaryOperatorResultType(driver, this_type, uniop); }
 
-    virtual const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const override { return m_Data.getMemberType(driver, this_type, name); }
+    virtual const Type* getMemberType(Driver& driver, const Type* this_type, const std::string& name) const override { return m_Data.getMemberType(driver, this_type, name); }
     virtual const Type* getArrayElementType() const override { return m_Data.getArrayElementType(); }
     virtual bool hasValidConstructor(const List* var_list) const override { return m_Data.hasValidConstructor(var_list); }
 
@@ -308,7 +308,7 @@ public:
     Type(const Type&)=delete;
     Type& operator=(const Type&)=delete;
 
-    string getNodeName() const { return m_Impl->getNodeName(); }
+    std::string getNodeName() const { return m_Impl->getNodeName(); }
 
     size_t getNodeType() const { return TGE_EFFECT_TYPE; }
     bool isBlockStatement() const { return false; }
@@ -330,7 +330,7 @@ public:
     const Type* binaryOperatorResultType(Driver& driver, BinaryOperatorType binop, const Type* operandB) const { return m_Impl->binaryOperatorResultType(driver, this, binop, operandB); }
     const Type* unaryOperatorResultType(Driver& driver, UnaryOperatorType uniop) const { return m_Impl->unaryOperatorResultType(driver, this, uniop); }
 
-    const Type* getMemberType(Driver& driver, const string& name) const { return m_Impl->getMemberType(driver, this, name); }
+    const Type* getMemberType(Driver& driver, const std::string& name) const { return m_Impl->getMemberType(driver, this, name); }
     const Type* getArrayElementType() const { return m_Impl->getArrayElementType(); }
     bool hasValidConstructor(const List* var_list) const { return m_Impl->hasValidConstructor(var_list); }
     NodeT<ConstructorCall> createConstructorCall(Location loc, NodeT<List> arg_list) const { return hasValidConstructor(arg_list.get()) ? CreateNodeTyped<ConstructorCall>(loc, this, std::move(arg_list)) : NodeT<ConstructorCall>(); }
@@ -344,13 +344,13 @@ AST::Node CreateTypeNode(TArgs&&... args)
 
 class Typedef
 {
-    string        m_Name;
+    std::string        m_Name;
     Type*         m_Type;
 public:
-    Typedef(Type* _type, string name);
+    Typedef(Type* _type,std::string name);
     ~Typedef();
 
-    string getNodeName() const { return m_Name; }
+    std::string getNodeName() const { return m_Name; }
     
     Type* getType(); // For compilation-related reasons
     const Type* getType() const;
@@ -365,7 +365,7 @@ public:
     Parentheses(AST::Node _node);
     ~Parentheses();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "()"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "()"; }
     
     AST::Node* getExpression();
     const AST::Node* getExpression() const;
@@ -378,16 +378,16 @@ class FunctionCall;
 class FunctionDeclaration
 {
     const Type*     m_ReturnType;
-    string          m_Name;
+    std::string          m_Name;
     NodeT<List>     m_VarList;
 public:
     typedef ListIterator<const AST::Node>  const_parameter_iterator;
     typedef ListIterator<AST::Node>        parameter_iterator;
 
-    FunctionDeclaration(const Type* return_type, string name, NodeT<List> var_list);
+    FunctionDeclaration(const Type* return_type,std::string name, NodeT<List> var_list);
     ~FunctionDeclaration();
 
-    string getNodeName() const { return m_Name; }
+    std::string getNodeName() const { return m_Name; }
     
     parameter_iterator getParametersBegin() { return parameter_iterator(m_VarList.get()); }
     parameter_iterator getParametersEnd() { return parameter_iterator(); }
@@ -418,7 +418,7 @@ public:
     List* getBody() { return m_Body.get(); }
     const List* getBody() const { return m_Body.get(); }
     
-    string getNodeName() const { return m_Declaration->getNodeName(); }
+    std::string getNodeName() const { return m_Declaration->getNodeName(); }
     
     bool isBlockStatement() const;
 };
@@ -431,7 +431,7 @@ public:
     FunctionCall(const FunctionDeclaration* func, AST::NodeT<List> arg_list);
     ~FunctionCall();
 
-    string getNodeName() const { return m_Function->getNodeName(); }
+    std::string getNodeName() const { return m_Function->getNodeName(); }
     
     const FunctionDeclaration* getFunction() const;
 
@@ -444,13 +444,13 @@ public:
 class FunctionSet
 {
     typedef std::vector<AST::NodeT<FunctionDeclaration>> FunctionList;
-    string                      m_Name;
+    std::string                      m_Name;
     FunctionList                m_Func;
 public:
-    FunctionSet(string name);
+    FunctionSet(std::string name);
     ~FunctionSet();
 
-    string getNodeName() const { return m_Name; }
+    std::string getNodeName() const { return m_Name; }
     
     void pushFunction(AST::NodeT<FunctionDeclaration> func);
 
@@ -471,7 +471,7 @@ public:
     ConstructorCall(const Type* _type, NodeT<List> arg_list);
      ~ConstructorCall();
 
-    string getNodeName() const { return m_Type->getNodeName(); }
+    std::string getNodeName() const { return m_Type->getNodeName(); }
      
     const Type* getType() const;
 
@@ -484,14 +484,14 @@ public:
 class ScalarType
 {
     bool                    m_Integer;
-    string                  m_Name;
+    std::string                  m_Name;
 public:
-    ScalarType(bool is_integer, string name);
+    ScalarType(bool is_integer,std::string name);
     ~ScalarType();
 
     bool isInteger() const { return m_Integer; }
     
-    string getNodeName() const { return m_Name; }
+    std::string getNodeName() const { return m_Name; }
     
     bool hasBase(const Type* _type) const { return false; }
     
@@ -500,21 +500,21 @@ public:
     const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const;
     const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const;
 
-    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
+    const Type* getMemberType(Driver& driver, const Type* this_type, const std::string& name) const;
     const Type* getArrayElementType() const;
     bool hasValidConstructor(const List* var_list) const;
 };
 
 class VectorType
 {
-    string                  m_Name;
+    std::string                  m_Name;
     const Type*             m_Type;
     size_t                  m_VecDim;
 public:
-    VectorType(const Type* _type, size_t vec_dim, string name);
+    VectorType(const Type* _type, size_t vec_dim,std::string name);
     ~VectorType();
 
-    string getNodeName() const { return m_Name; }
+    std::string getNodeName() const { return m_Name; }
     
     bool hasBase(const Type* _type) const { return false; }
     
@@ -526,24 +526,24 @@ public:
     const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const;
     const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const;
 
-    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
+    const Type* getMemberType(Driver& driver, const Type* this_type, const std::string& name) const;
     const Type* getArrayElementType() const;
     bool hasValidConstructor(const List* var_list) const;
 };
 
 class MatrixType
 {
-    string                  m_Name;
+    std::string                  m_Name;
     size_t                  m_Rows;
     const Type*             m_RowType;
 public:
-    MatrixType(size_t rows, const Type* row_type, string name);
+    MatrixType(size_t rows, const Type* row_type,std::string name);
      ~MatrixType();
 
     size_t getRows() const;
     size_t getColumns() const;
 
-    string getNodeName() const { return m_Name; }
+    std::string getNodeName() const { return m_Name; }
     
     bool hasBase(const Type* _type) const { return false; }
     
@@ -554,19 +554,19 @@ public:
     const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const;
     const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const;
 
-    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
+    const Type* getMemberType(Driver& driver, const Type* this_type, const std::string& name) const;
     const Type* getArrayElementType() const;
     bool hasValidConstructor(const List* var_list) const;
 };
 
 class SamplerType
 {
-    string      m_Name;
+    std::string      m_Name;
 public:
-    SamplerType(string name);
+    SamplerType(std::string name);
     ~SamplerType();
     
-    string getNodeName() const { return m_Name; }
+    std::string getNodeName() const { return m_Name; }
     
     bool hasBase(const Type* _type) const { return false; }
     
@@ -575,7 +575,7 @@ public:
     const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const;
     const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const;
 
-    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
+    const Type* getMemberType(Driver& driver, const Type* this_type, const std::string& name) const;
     const Type* getArrayElementType() const;
     bool hasValidConstructor(const List* var_list) const;
 };
@@ -588,7 +588,7 @@ public:
     ArrayType(const Type* _type, AST::Node _size);
      ~ArrayType();
 
-    string getNodeName() const { return m_Type->getNodeName() + "[]"; }
+    std::string getNodeName() const { return m_Type->getNodeName() + "[]"; }
      
     const Type* getBasicType() const { return m_Type; }
     
@@ -602,7 +602,7 @@ public:
     const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const;
     const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const;
 
-    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
+    const Type* getMemberType(Driver& driver, const Type* this_type, const std::string& name) const;
     const Type* getArrayElementType() const { return m_Type; }
     bool hasValidConstructor(const List* var_list) const;
 };
@@ -610,7 +610,7 @@ public:
 class StructType: public AST::NamedList<StructType>
 {
 public:
-    StructType(string name, NodeT<List> body)
+    StructType(std::string name, NodeT<List> body)
         :   AST::NamedList<StructType>(name, std::move(body)) {}
      ~StructType()=default;
     
@@ -621,12 +621,12 @@ public:
     const Type* binaryOperatorResultType(Driver& driver, const Type* this_type, BinaryOperatorType binop, const Type* operandB) const { return nullptr; }
     const Type* unaryOperatorResultType(Driver& driver, const Type* this_type, UnaryOperatorType uniop) const { return nullptr; }
 
-    const Type* getMemberType(Driver& driver, const Type* this_type, const string& name) const;
+    const Type* getMemberType(Driver& driver, const Type* this_type, const std::string& name) const;
     const Type* getArrayElementType() const { return nullptr; }
     bool hasValidConstructor(const List* var_list) const { return false; }
 };
 
-enum class InterpolationQualifier: uint32
+enum class InterpolationQualifier: uint32_t
 {
     Default,
     Smooth,
@@ -634,7 +634,7 @@ enum class InterpolationQualifier: uint32
     Noperspective
 };
 
-enum class StorageQualifier: uint32
+enum class StorageQualifier: uint32_t
 {
     Default,
     Const,
@@ -648,14 +648,14 @@ enum class StorageQualifier: uint32
     StructBuffer
 };
 
-enum class PrecisionQualifier: uint32
+enum class PrecisionQualifier: uint32_t
 {
     HighPrecision,
     MediumPrecision,
     LowPrecision
 };
 
-enum class JumpStatementType: uint32
+enum class JumpStatementType: uint32_t
 {
     Continue,
     Break
@@ -664,7 +664,7 @@ enum class JumpStatementType: uint32
 
 class Variable
 {
-    string                          m_Name;
+    std::string                          m_Name;
     InterpolationQualifier          m_Interpolation;
     StorageQualifier                m_Storage;
     bool                            m_Invariant;
@@ -672,8 +672,8 @@ class Variable
     AST::NodeT<List>                m_Layout;
     const Type*                     m_Type;
 public:
-    Variable(StorageQualifier _storage, const Type* _type, string name);
-    Variable(const Type* type, string name);
+    Variable(StorageQualifier _storage, const Type* _type,std::string name);
+    Variable(const Type* type,std::string name);
      ~Variable();
 
     void setLayout(AST::NodeT<List> _list);
@@ -687,7 +687,7 @@ public:
     StorageQualifier getStorage() const;
     bool getInvariant() const;
 
-    string getNodeName() const { return m_Name; }
+    std::string getNodeName() const { return m_Name; }
     
     const Type* getType() const;
     void setType(const Type* _type);
@@ -702,7 +702,7 @@ public:
     Declaration(AST::Node var);
      ~Declaration();
 
-    string getNodeName() const { TGE_ASSERT(false, "That should not get called"); return ""; }
+    std::string getNodeName() const { TGE_ASSERT(false, "That should not get called"); return ""; }
      
     AST::Node* getVariables();
     const AST::Node* getVariables() const;
@@ -717,10 +717,10 @@ class MemberVariable
     Variable                  m_Variable;
     AST::Node                 m_Parent;
 public:
-    MemberVariable(AST::Node parent, const Type* type, string name);
+    MemberVariable(AST::Node parent, const Type* type,std::string name);
     ~MemberVariable();
 
-    string getNodeName() const { return m_Variable.getNodeName(); }
+    std::string getNodeName() const { return m_Variable.getNodeName(); }
     
     bool isBlockStatement() const;
     
@@ -740,7 +740,7 @@ public:
     ArrayElementVariable(AST::Node parent, const Type* type, AST::Node expr);
     ~ArrayElementVariable();
 
-    string getNodeName() const { return m_Variable.getNodeName(); }
+    std::string getNodeName() const { return m_Variable.getNodeName(); }
     
     AST::Node* getParent() { return &m_Parent; }
     const AST::Node* getParent() const { return &m_Parent; }
@@ -761,7 +761,7 @@ public:
     InvariantDeclaration(Variable* var);
     ~InvariantDeclaration();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "invariant"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "invariant"; }
     
     Variable* getVariable() { return m_Variable; }
     const Variable* getVariable() const { return m_Variable; }
@@ -780,7 +780,7 @@ public:
 
     void setSecond(AST::Node _node) { m_Second = std::move(_node); }
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "binary operation"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "binary operation"; }
     
     BinaryOperatorType getOperation() const;
 
@@ -799,7 +799,7 @@ public:
     UnaryOperator(UnaryOperatorType _type, AST::Node _operand);
     ~UnaryOperator();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "unary operation"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "unary operation"; }
 
     AST::Node* getOperand();
     const AST::Node* getOperand() const;
@@ -818,7 +818,7 @@ public:
     TernaryIf(AST::Node cond, AST::Node true_expr, AST::Node false_expr);
     ~TernaryIf();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "?"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "?"; }
 
     AST::Node* getCondition() { return &m_Condition; }
     const AST::Node* getCondition() const { return &m_Condition; }
@@ -841,7 +841,7 @@ public:
     IfStatement(AST::Node condition_statement, AST::Node true_statement, AST::Node false_statement = AST::Node());
     ~IfStatement();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "if"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "if"; }
 
     AST::Node* getCondition() { return &m_Condition; }
     const AST::Node* getCondition() const { return &m_Condition; }
@@ -864,7 +864,7 @@ public:
     WhileStatement(AST::Node condition_statement, AST::Node statement, bool do_while = false);
     ~WhileStatement();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "while"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "while"; }
 
     AST::Node* getCondition() { return &m_Condition; }
     const AST::Node* getCondition() const { return &m_Condition; }
@@ -887,7 +887,7 @@ public:
     ForStatement(AST::Node init_statement, AST::Node condition_statement, AST::Node loop_statement, AST::Node statement);
     ~ForStatement();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "for"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "for"; }
 
     AST::Node* getInitStatement() { return &m_Init; }
     const AST::Node* getInitStatement() const { return &m_Init; }
@@ -912,7 +912,7 @@ public:
     SwitchStatement(AST::Node condition_statement, NodeT<List> cases);
     ~SwitchStatement();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "switch"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "switch"; }
 
     AST::Node* getCondition() { return &m_Condition; }
     const AST::Node* getCondition() const { return &m_Condition; }
@@ -931,7 +931,7 @@ public:
     CaseStatement(AST::Node label, NodeT<List> statement);
     ~CaseStatement();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "case"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "case"; }
 
     AST::Node* getLabel() { return &m_Label; }
     const AST::Node* getLabel() const { return &m_Label; }
@@ -949,7 +949,7 @@ public:
     JumpStatement(JumpStatementType jump_type);
     ~JumpStatement();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "jump"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "jump"; }
     
     JumpStatementType getJumpType() const { return m_JumpType; }
 
@@ -963,7 +963,7 @@ public:
     ReturnStatement(AST::Node retexpr=AST::Node());
     ~ReturnStatement();
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "return"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "return"; }
     
     AST::Node* getReturnExpression() { return &m_ReturnExpression; }
     const AST::Node* getReturnExpression() const { return &m_ReturnExpression; }
@@ -993,7 +993,7 @@ public:
             m_Value2(std::move(t2)) {}
      ~Intermediate() {}
 
-    string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "intermediate"; }
+    std::string getNodeName() const { TGE_ASSERT(false, "Should not get called"); return "intermediate"; }
      
     first_value_type& getFirst() { return m_Value1; }
 	first_value_const_type& getFirst() const { return m_Value1; }
@@ -1008,7 +1008,7 @@ public:
 class Import: public AST::NamedList<Import>
 {
 public:
-    Import(string name, NodeT<List> body);
+    Import(std::string name, NodeT<List> body);
      ~Import();
 };
 
@@ -1016,7 +1016,7 @@ class Buffer: public AST::NamedList<Buffer>
 {
     BufferType         m_BufferType = BufferType::Regular;
 public:
-    Buffer(string name, NodeT<List> body);
+    Buffer(std::string name, NodeT<List> body);
      ~Buffer();
      
     void setBufferType(BufferType buffer_type) { m_BufferType = buffer_type; }
@@ -1035,7 +1035,7 @@ public:
 
     ShaderType getType() const { return m_Type; }
     bool isBlockStatement() const { return true; }
-    virtual string getNodeName() const { return "shader"; }
+    virtual std::string getNodeName() const { return "shader"; }
 
     List* getBody() { return m_Body.get(); }
     const List* getBody() const { return m_Body.get(); }
@@ -1043,30 +1043,30 @@ public:
 
 class Option
 {
-    string m_Name;
+    std::string m_Name;
 public:
-    Option(string name)
+    Option(std::string name)
         : m_Name(name) {}
     ~Option() {}
 
     bool isBlockStatement() const { return false; }
-    virtual string getNodeName() const { return m_Name; }
+    virtual std::string getNodeName() const { return m_Name; }
 };
 
 class Optional
 {
-    const Option*    m_Option;
+    AST::Node        m_Option;
     AST::Node        m_Content;
 public:
-    Optional(const Option* _opt, AST::Node _content)
-        :   m_Option(_opt),
+    Optional(AST::Node _opt, AST::Node _content)
+        :   m_Option(std::move(_opt)),
             m_Content(std::move(_content)) {}
     ~Optional() = default;
 
-    const Option* getOption() const { return m_Option; }
+    const AST::Node* getOption() const { return &m_Option; }
 
     bool isBlockStatement() const { return true; }
-    string getNodeName() const { return m_Option->getNodeName(); }
+    std::string getNodeName() const { return "optional"; }
 
     AST::Node* getContent() { return &m_Content; }
     const AST::Node* getContent() const { return &m_Content; }
@@ -1082,12 +1082,12 @@ public:
     ~OptionsDeclaration() = default;
 
     bool isBlockStatement() const { return true; }
-    virtual string getNodeName() const { return "options"; }
+    virtual std::string getNodeName() const { return "options"; }
     
     void addOption(const Option* opt) { m_Options.push_back(opt); }
-    string getOption(size_t idx) const { return m_Options[idx]->getNodeName(); }
+    std::string getOption(size_t idx) const { return m_Options[idx]->getNodeName(); }
     size_t getOptionCount() const { return m_Options.size(); }
-    size_t getOptionIndex(const string& name) const
+    size_t getOptionIndex(const std::string& name) const
     {
         auto begin_iter = std::begin(m_Options),
              end_iter = std::end(m_Options);
@@ -1170,10 +1170,48 @@ void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, c
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct);
 void PrintNode(VisitorInterface* visitor, const Type* type_stmt);
 void PrintNode(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const IfStatement* if_stmt);
-void PrintOptional(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Optional* _opt, const string* opts, size_t opts_count);
+void PrintOptional(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const Shader::Optional* _opt, const std::string* opts, size_t opts_count);
 inline void PrintNode(AST::PrinterInfrastructure* printer, const Shader::Option* _opt) { printer->stream() << _opt->getNodeName(); }
 
 void PrintDeclaration(VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const StructType* _struct);
+
+inline const char* BinaryOperationToString(BinaryOperatorType binop)
+{
+    switch(binop)
+    {
+    case BinaryOperatorType::Assign: return "=";
+    case BinaryOperatorType::AddAssign: return "+=";
+    case BinaryOperatorType::SubtractAssign: return "-=";
+    case BinaryOperatorType::MultiplyAssign: return "*=";
+    case BinaryOperatorType::DivideAssign: return "/=";
+    case BinaryOperatorType::ModulusAssign: return "%=";
+    case BinaryOperatorType::BitwiseAndAssign: return "&=";
+    case BinaryOperatorType::BitwiseXorAssign: return "^=";
+    case BinaryOperatorType::BitwiseOrAssign: return "|=";
+    case BinaryOperatorType::Add: return "+";
+    case BinaryOperatorType::Subtract: return "-";
+    case BinaryOperatorType::Multiply: return "*";
+    case BinaryOperatorType::Divide: return "/";
+    case BinaryOperatorType::Modulus: return "%";
+    case BinaryOperatorType::BitwiseAnd: return "&";
+    case BinaryOperatorType::BitwiseOr: return "|";
+    case BinaryOperatorType::BitwiseXor: return "^";
+    case BinaryOperatorType::BitwiseShiftRight: return ">>";
+    case BinaryOperatorType::BitwiseShiftLeft: return "<<";
+    case BinaryOperatorType::Less: return "<";
+    case BinaryOperatorType::Greater: return ">";
+    case BinaryOperatorType::LessEqual: return "<=";
+    case BinaryOperatorType::GreaterEqual: return ">=";
+    case BinaryOperatorType::Or: return "||";
+    case BinaryOperatorType::And: return "&&";
+    case BinaryOperatorType::Xor: return "^^";
+    case BinaryOperatorType::Equal: return "==";
+    case BinaryOperatorType::NotEqual: return "!=";
+    case BinaryOperatorType::Comma: return ",";
+    }
+
+    return "";
+}
 
 /*! \brief Outputs the content of the AST graph in formatted fashion.
  *
@@ -1185,7 +1223,7 @@ class Printer: public VisitorInterface
 {
     AST::PrinterInfrastructure m_Printer;
 public:
-    Printer(std::ostream& os, uint32 flags);
+    Printer(std::ostream& os, uint32_t flags);
     virtual ~Printer();
 
     std::ostream& stream() { return m_Printer.stream(); }
@@ -1195,7 +1233,7 @@ public:
     virtual void visit(const AST::Value<int>* value) override { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<unsigned>* value) override { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<bool>* value) override { AST::PrintNode(&m_Printer, value); }
-    virtual void visit(const AST::Value<string>* value) override { AST::PrintNode(&m_Printer, value); }
+    virtual void visit(const AST::Value<std::string>* value) override { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::ListElement* lst) override { AST::PrintNode(this, &m_Printer, lst); }
     virtual void visit(const AST::Block* _block) override { AST::PrintNode(this, &m_Printer, _block);}
     virtual void visit(const AST::StringLiteral* value) override { AST::PrintNode(&m_Printer, value); }

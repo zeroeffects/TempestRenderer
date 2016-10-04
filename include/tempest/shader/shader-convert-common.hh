@@ -25,7 +25,7 @@
 #ifndef _SHADER_CONVERT_COMMON_HH_
 #define _SHADER_CONVERT_COMMON_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/graphics/rendering-definitions.hh"
 
 namespace Tempest
@@ -33,13 +33,16 @@ namespace Tempest
 namespace Shader
 {
 class Type;
+class Optional;
 class Buffer;
 class Variable;
 class BufferDescription;
 class EffectDescription;
 
-uint32 ConvertStructBuffer(const string* opts, size_t opts_count, uint64 settings, const Variable* var, Shader::EffectDescription* fx_desc);
-void ConvertBuffer(const string* opts, size_t opts_count, uint64 settings, const Buffer* buffer, Shader::EffectDescription* fx_desc);
+bool IsOptionEnabled(const std::string* opts, size_t opts_count, const Optional* sub);
+uint32_t ConvertStructBuffer(const std::string* opts, size_t opts_count, uint64_t settings, const Variable* var, Shader::EffectDescription* fx_desc);
+void ConvertBuffer(const std::string* opts, size_t opts_count, uint64_t settings, const Buffer* buffer, Shader::EffectDescription* fx_desc);
+uint32_t CountElements(const Variable* var);
 }
 }
 

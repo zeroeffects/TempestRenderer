@@ -31,6 +31,8 @@
 #endif
 
 #ifdef _WIN32
+#	define WIN32_LEAN_AND_MEAN 1
+#	include <Windows.h>
 #   include <DbgHelp.h>
 #   pragma comment(lib, "Dbghelp.lib")
 #endif
@@ -54,9 +56,13 @@
 
 namespace Tempest
 {
+#ifndef NDEBUG
+AssertMessageBoxFunction g_CustomAssertMessage = nullptr;
+#endif
+
 #ifdef TGE_LOG_ASSERTS
 // These ones are for testing purposes only. They are a little bit too aggressive
-DialogAnswer AssertMessageBox(const string& title, const string& doc_msg)
+DialogAnswer AssertMessageBox(const std::string& title, const std::string& doc_msg)
 {
     Log(TGE_LOG_ERROR, title, ": ", doc_msg);
     FlustLog();
@@ -64,15 +70,22 @@ DialogAnswer AssertMessageBox(const string& title, const string& doc_msg)
     return TGE_ANSWER_ABORT;
 }
 
-void CrashMessageBox(const string& title, const string& doc_msg)
+void CrashMessageBoxImpl(const std::string& title, const std::string& doc_msg)
 {
     Tempest::Log::stream(TGE_LOG_ERROR) << title << ": " << doc_msg << std::endl;
     Tempest::Log::getSingleton().flush();
     TGE_TRAP();
 }
 #elif defined(_WIN32)
-DialogAnswer AssertMessageBox(const string& title, const string& doc_msg)
+DialogAnswer AssertMessageBox(const std::string& title, const std::string& doc_msg)
 {
+#ifndef NDEBUG
+    if(g_CustomAssertMessage)
+    {
+        return g_CustomAssertMessage(title, doc_msg);
+    }
+#endif
+
     auto res = MessageBox(nullptr, doc_msg.c_str(), title.c_str(), MB_ABORTRETRYIGNORE|MB_ICONERROR|MB_SYSTEMMODAL);
     switch(res)
     {
@@ -83,14 +96,14 @@ DialogAnswer AssertMessageBox(const string& title, const string& doc_msg)
     }
 }
 
-void CrashMessageBox(const string& title, const string& doc_msg)
+void CrashMessageBoxImpl(const std::string& title, const std::string& doc_msg)
 {
     MessageBox(nullptr, doc_msg.c_str(), title.c_str(), MB_OK|MB_ICONERROR|MB_SYSTEMMODAL);
 }
 
 #elif defined(LINUX)
 // Qt because it is used for development in the other parts of the toolkit 
-DialogAnswer AssertMessageBox(const string& title, const string& doc_msg)
+DialogAnswer AssertMessageBox(const std::string& title, const std::string& doc_msg)
 {
 #ifdef QT_DEBUG_GUI
     QMessageBox mb(QMessageBox::Critical, title.c_str(), doc_msg.c_str(), QMessageBox::Abort|QMessageBox::Retry|QMessageBox::Ignore);
@@ -109,7 +122,7 @@ DialogAnswer AssertMessageBox(const string& title, const string& doc_msg)
 #endif
 }
 
-void CrashMessageBox(const string& title, const string& doc_msg)
+void CrashMessageBoxImpl(const std::string& title, const std::string& doc_msg)
 {
 #ifdef QT_DEBUG_GUI
     QMessageBox mb(QMessageBox::Critical, title.c_str(), doc_msg.c_str(), QMessageBox::Ok);
@@ -122,11 +135,15 @@ void CrashMessageBox(const string& title, const string& doc_msg)
 #else
 #   error "Unsupported platform"
 #endif
-    
+
 #if defined(_WIN32)
-string Backtrace(size_t start_frame, size_t end_frame)
+static std::mutex g_BacktraceMutex;
+
+std::string Backtrace(size_t start_frame, size_t end_frame)
 {
-    auto stack_array = reinterpret_cast<void**>(TGE_ALLOCA(sizeof(void*)*end_frame));
+    std::lock_guard<std::mutex> lock(g_BacktraceMutex);
+
+    auto stack_array = TGE_TYPED_ALLOCA(void*, end_frame);
     auto process = GetCurrentProcess();
     SymInitialize(process, NULL, TRUE);
 
@@ -141,7 +158,8 @@ string Backtrace(size_t start_frame, size_t end_frame)
     
     for(USHORT i = 0; i < frames; i++)
     {
-        SymFromAddr(process, reinterpret_cast<DWORD64>(stack_array[i]), 0, symbol);
+        if(!SymFromAddr(process, reinterpret_cast<DWORD64>(stack_array[i]), 0, symbol))
+            continue;
 
         symbol->Name[symbol->NameLen] = 0;
         result << symbol->Name << " - 0x" << std::hex << symbol->Address << "\n";
@@ -150,11 +168,11 @@ string Backtrace(size_t start_frame, size_t end_frame)
     return result.str();
 }
 #elif defined(LINUX)
-string Backtrace(size_t start_frame, size_t end_frame)
+std::string Backtrace(size_t start_frame, size_t end_frame)
 {
-    string result = "Backtrace:\n"
+    std::string result = "Backtrace:\n"
                     "==========\n";
-    void** array = reinterpret_cast<void**>(TGE_ALLOCA(end_frame*sizeof(void*)));
+    void** array = (void**)TGE_ALLOCA(end_frame);
     size_t size;
     int status;
     
@@ -176,7 +194,7 @@ string Backtrace(size_t start_frame, size_t end_frame)
         auto* end = ::strchr(begin, '+');
         if(!end)
             end = ::strchr(begin, ')');
-        string mangled_name(begin, end);
+        std::string mangled_name(begin, end);
         realname = abi::__cxa_demangle(mangled_name.c_str(), 0, 0, &status);
         result.insert(result.end(), strings[i], begin);
         if(realname)

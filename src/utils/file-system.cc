@@ -58,7 +58,7 @@ Path::Path()
 {
 }
 
-Path::Path(const string& path)
+Path::Path(const std::string& path)
 {
     this->set(path);
 }
@@ -77,7 +77,7 @@ bool operator==(const Path& lhs, const Path& rhs)
     return lhs.get() == rhs.get();
 }
 
-void Path::set(const string& path)
+void Path::set(const std::string& path)
 {
     m_Path = path;
     for(size_t i = 0; i < m_Path.size(); ++i)
@@ -87,56 +87,51 @@ void Path::set(const string& path)
     }
 }
 
-string Path::get() const
-{
-    return m_Path;
-}
-
-string Path::relativePath(const Path& p) const
+std::string Path::relativePath(const Path& p) const
 {
     if(m_Path.size() >= p.m_Path.size() ||
        p.m_Path.compare(0, m_Path.size(), m_Path) != 0)
-        return string();
+        return std::string();
     size_t sep = m_Path.size();
     if(p.m_Path[sep] == TGE_PATH_DELIM)
         ++sep;
     return p.m_Path.substr(sep);
 }
 
-string Path::directoryPath() const
+std::string Path::directoryPath() const
 {
     size_t idx = m_Path.find_last_of(TGE_PATH_DELIM);
-    return idx != string::npos ? m_Path.substr(0, idx) : "";
+    return idx !=std::string::npos ? m_Path.substr(0, idx) : "";
 }
 
-string Path::filename() const
+std::string Path::filename() const
 {
     size_t idx = m_Path.find_last_of(TGE_PATH_DELIM);
-    return idx != string::npos ? m_Path.substr(idx+1) : m_Path;
+    return idx !=std::string::npos ? m_Path.substr(idx+1) : m_Path;
 }
 
-string Path::filenameWOExt() const
+std::string Path::filenameWOExt() const
 {
     size_t first_char = m_Path.find_last_of(TGE_PATH_DELIM);
-    first_char = first_char == string::npos ? 0 : first_char + 1;
-    size_t last_char = string::npos;
+    first_char = first_char ==std::string::npos ? 0 : first_char + 1;
+    size_t last_char =std::string::npos;
     for(size_t i = m_Path.size()-1; i >= first_char; --i)
         if(m_Path[i] == '.')
         {
             last_char = i;
             break;
         }
-    return m_Path.substr(first_char, last_char);
+    return m_Path.substr(first_char, last_char - first_char);
 }
 
-string Path::extension() const
+std::string Path::extension() const
 {
-    for(size_t i = m_Path.size()-1; i >= 0 && m_Path[i] != TGE_PATH_DELIM; --i)
+    for(int i = (int)m_Path.size()-1; i >= 0 && m_Path[i] != TGE_PATH_DELIM; --i)
         if(m_Path[i] == '.')
         {
-            return m_Path.substr(i + 1, string::npos); 
+            return m_Path.substr(i + 1,std::string::npos); 
         }
-    return string();
+    return std::string();
 }
 
 #ifdef _WIN32
@@ -198,7 +193,7 @@ bool Directory::open(const Path& path)
     if(!path.isDirectory())
         return false;
 
-    string path_str = path.get() + "\\*";
+    std::string path_str = path.get() + "\\*";
     WIN32_FIND_DATA find_data;
     HANDLE hnd = FindFirstFile(path_str.c_str(), &find_data);
     if(hnd == INVALID_HANDLE_VALUE)
@@ -247,7 +242,7 @@ Path Directory::getPath() const
     return m_DirNode;
 }
 
-FSOpResult Directory::mkdir(const string& name)
+FSOpResult Directory::mkdir(const std::string& name)
 {
 #ifdef _WIN32
     int res = ::_mkdir(name.c_str());
@@ -261,7 +256,7 @@ FSOpResult Directory::mkdir(const string& name)
     return TGE_FS_NO_ERROR;
 }
 
-FSOpResult Directory::rmdir(const string& name)
+FSOpResult Directory::rmdir(const std::string& name)
 {
 #ifdef _WIN32
     int res = ::_rmdir(name.c_str());
@@ -276,9 +271,9 @@ FSOpResult Directory::rmdir(const string& name)
 }
 
 #ifdef _WIN32
-extern string GetLastErrorString();
+extern std::string GetLastErrorString();
 
-FSPollingService::MonitoredDirectory::MonitoredDirectory(string _name)
+FSPollingService::MonitoredDirectory::MonitoredDirectory(std::string _name)
     :	name(_name),
         handle(INVALID_HANDLE_VALUE)
 {
@@ -408,7 +403,7 @@ bool FSPollingService::poll(FSEvents& evts)
             next = next + fni->NextEntryOffset;
 
             int size = WideCharToMultiByte(CP_UTF8, 0, fni->FileName, (int)fni->FileNameLength/sizeof(wchar_t), nullptr, 0, nullptr, nullptr);
-            string str(size, 0);
+            std::string str(size, 0);
             WideCharToMultiByte(CP_UTF8, 0, fni->FileName, (int)fni->FileNameLength/sizeof(wchar_t), &str[0], size, nullptr, nullptr);
 
             FSEvent fsevent;

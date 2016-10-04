@@ -28,7 +28,7 @@
 
 namespace Tempest
 {
-GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* data)
+GLTexture::GLTexture(const TextureDescription& desc, uint32_t flags, const void* data)
     :   m_Description(desc),
         m_Flags(flags)
 #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
@@ -95,7 +95,7 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
                            *neg_z_map = nullptr;
                 if(data)
                 {
-                    auto* data_u8 = reinterpret_cast<const uint8*>(data);
+                    auto* data_u8 = reinterpret_cast<const uint8_t*>(data);
                     size_t depth_slice = desc.Width*desc.Height*DataFormatElementSize(desc.Format);
                     pos_x_map = data_u8;
                     neg_x_map = data_u8 + depth_slice;
@@ -135,7 +135,9 @@ GLTexture::GLTexture(const TextureDescription& desc, uint32 flags, const void* d
     glTexParameteri(m_Target, GLTextureParameter::GL_TEXTURE_MAX_LEVEL, 0);
     glTexParameteri(m_Target, GLTextureParameter::GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(m_Target, GLTextureParameter::GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
+    glTexParameteri(m_Target, GLTextureParameter::GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(m_Target, GLTextureParameter::GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
     if(data && (flags & RESOURCE_GENERATE_MIPS))
     {
         glGenerateMipmap(GLTextureTarget::GL_TEXTURE_2D);
@@ -168,12 +170,12 @@ void GLTexture::setFilter(FilterMode min_filter, FilterMode mag_filter, FilterMo
     default: TGE_ASSERT(false, "Unsupported filter mode"); break;
     }
     
-    switch((uint32)min_filter | ((uint32)mip_filter << 4))
+    switch((uint32_t)min_filter | ((uint32_t)mip_filter << 4))
     {
-    case (uint32)FilterMode::Nearest | ((uint32)FilterMode::Nearest << 4): gl_min_filter = GL_NEAREST_MIPMAP_NEAREST; break;
-    case (uint32)FilterMode::Nearest | ((uint32)FilterMode::Linear << 4): gl_min_filter = GL_NEAREST_MIPMAP_LINEAR; break;
-    case (uint32)FilterMode::Linear  | ((uint32)FilterMode::Nearest << 4): gl_min_filter = GL_LINEAR_MIPMAP_NEAREST; break;
-    case (uint32)FilterMode::Linear  | ((uint32)FilterMode::Linear << 4): gl_min_filter = GL_LINEAR_MIPMAP_LINEAR; break;
+    case (uint32_t)FilterMode::Nearest | ((uint32_t)FilterMode::Nearest << 4): gl_min_filter = GL_NEAREST_MIPMAP_NEAREST; break;
+    case (uint32_t)FilterMode::Nearest | ((uint32_t)FilterMode::Linear << 4): gl_min_filter = GL_NEAREST_MIPMAP_LINEAR; break;
+    case (uint32_t)FilterMode::Linear  | ((uint32_t)FilterMode::Nearest << 4): gl_min_filter = GL_LINEAR_MIPMAP_NEAREST; break;
+    case (uint32_t)FilterMode::Linear  | ((uint32_t)FilterMode::Linear << 4): gl_min_filter = GL_LINEAR_MIPMAP_LINEAR; break;
     }
     
     glTextureParameteriEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_MIN_FILTER, gl_min_filter);
@@ -211,7 +213,7 @@ void GLTexture::setMipLODBias(float lod_bias)
     glTextureParameterfEXT(m_Texture, m_Target, GLTextureParameter::GL_TEXTURE_LOD_BIAS, lod_bias);
 }
 
-void GLTexture::setMaxAnisotrophy(uint32 max_anisotropy)
+void GLTexture::setMaxAnisotrophy(uint32_t max_anisotropy)
 {
 #ifndef TEMPEST_DISABLE_TEXTURE_BINDLESS
     TGE_ASSERT(m_GPUHandle == 0, "Texture sampler state changes won't be done because this texture is already in use by resource table.");
@@ -292,5 +294,12 @@ GLuint64 GLTexture::getHandle() const
         bind_info.handle = m_Texture;
         return bind_info.handle64;
     }
+}
+
+// Render target
+GLRenderTarget::GLRenderTarget(const TextureDescription& desc, uint32_t flags)
+    :   GLTexture(desc, flags, nullptr)
+{
+
 }
 }

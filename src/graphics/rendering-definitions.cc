@@ -29,10 +29,10 @@
 
 namespace Tempest
 {
-DataFormat TranslateDataFormat(const string& name)
+DataFormat TranslateDataFormat(const std::string& name)
 {
     #define ELEMENT(fmt) { #fmt, DataFormat::fmt }
-    static std::unordered_map<string, DataFormat> fmt_map
+    static std::unordered_map<std::string, DataFormat> fmt_map
     {
         ELEMENT(R32F),
         ELEMENT(RG32F),

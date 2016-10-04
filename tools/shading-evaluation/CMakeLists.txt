@@ -34,7 +34,6 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                    )
 
 ADD_DEFINITIONS("-DCURRENT_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\""
-                "-DSOURCE_SHADING_DIR=\"${CMAKE_SOURCE_DIR}/shading\""
                 "-DTEST_ASSETS_DIR=\"${CMAKE_SOURCE_DIR}/share/test_assets\"")
 
 SET(SHADING_EVALUATION_UI shading-evaluation.ui)
@@ -42,10 +41,9 @@ SET(SHADING_EVALUATION_UI shading-evaluation.ui)
 QT5_WRAP_UI(SHADING_EVALUATION_UI_H ${SHADING_EVALUATION_UI})
 
 SET(SHADING_EVALUATION_SRC
-    shading-evaluation.cc
-    color-picker.hh
-    color-picker.cc)
+    shading-evaluation.cc)
 
-ADD_EXECUTABLE(ShadingEvaluation WIN32 ${SHADING_EVALUATION_SRC} ${SHADING_EVALUATION_UI} ${SHADING_EVALUATION_UI_H})
+ADD_EXECUTABLE(shading-evaluation WIN32 ${SHADING_EVALUATION_SRC} ${SHADING_EVALUATION_UI} ${SHADING_EVALUATION_UI_H})
+SET_PROPERTY(TARGET shading-evaluation PROPERTY FOLDER "Tools")
 
-TARGET_LINK_LIBRARIES(ShadingEvaluation tempest-qt-widgets tempest-static tempest-main)
+TARGET_LINK_LIBRARIES(shading-evaluation tempest-qt-widgets tempest-main tempest-static)

@@ -38,8 +38,8 @@ namespace Tempest
 {
 namespace DXFX
 {
-typedef std::unordered_map<string, string> SamplerTextureAssociation;
-typedef std::vector<string> ShaderSignature;
+typedef std::unordered_map<std::string,std::string> SamplerTextureAssociation;
+typedef std::vector<std::string> ShaderSignature;
 
 void PrintBuffer(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* m_Printer, const Shader::Buffer* buffer);
 
@@ -56,16 +56,16 @@ class ShaderPrinter: public Shader::VisitorInterface
     ShaderSignature            m_InputSignature;
     ShaderSignature            m_OutputSignature;
     
-    const string*              m_Options;
+    const std::string*              m_Options;
     size_t                     m_OptionCount;
 
     typedef bool (ShaderPrinter::*TranslationFunction)(const Shader::FunctionCall* func_call);
-    std::unordered_map<string, TranslationFunction> m_FunctionTranslator;
+    std::unordered_map<std::string, TranslationFunction> m_FunctionTranslator;
 public:
-    ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, const string* opts, size_t opts_count, uint32 flags);
+    ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, const std::string* opts, size_t opts_count, uint32_t flags);
     virtual ~ShaderPrinter();
 
-    void setSamplerTextureAssociation(string texture, string sampler)
+    void setSamplerTextureAssociation(std::string texture,std::string sampler)
     {
         m_SamplerAssoc[texture] = sampler;
     }
@@ -87,7 +87,7 @@ public:
     virtual void visit(const AST::Value<int>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<unsigned>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::Value<bool>* value) final { AST::PrintNode(&m_Printer, value); }
-    virtual void visit(const AST::Value<string>* value) final { AST::PrintNode(&m_Printer, value); }
+    virtual void visit(const AST::Value<std::string>* value) final { AST::PrintNode(&m_Printer, value); }
     virtual void visit(const AST::ListElement* lst) final { AST::PrintNode(this, &m_Printer, lst); }
     virtual void visit(const AST::Block* _block) final { AST::PrintNode(this, &m_Printer, _block);}
     virtual void visit(const AST::StringLiteral* value) final { AST::PrintNode(&m_Printer, value); }
@@ -148,7 +148,7 @@ public:
     virtual void visit(const AST::Value<int>* value) final;
     virtual void visit(const AST::Value<unsigned>* value) final;
     virtual void visit(const AST::Value<bool>* value) final;
-    virtual void visit(const AST::Value<string>* value) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
+    virtual void visit(const AST::Value<std::string>* value) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const AST::ListElement* lst) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const AST::Block* _block) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
     virtual void visit(const AST::StringLiteral* value) final { TGE_ASSERT(false, "Unsupported. Probably you have made a mistake. Check your code"); }
@@ -403,7 +403,7 @@ bool ShaderPrinter::TranslateTexelFetch(const Shader::FunctionCall* func_call)
     return true;
 }
 
-ShaderPrinter::ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, const string* opts, size_t opts_count, uint32 flags)
+ShaderPrinter::ShaderPrinter(Shader::Driver& driver, const char* filename, std::ostream& os, const std::string* opts, size_t opts_count, uint32_t flags)
     :   m_Printer(os, flags),
         m_Driver(driver),
         m_Filename(filename),
@@ -460,7 +460,7 @@ void ShaderPrinter::visit(const Shader::MatrixType* matrix_type)
 
 void ShaderPrinter::visit(const Shader::Variable* var)
 {
-    string var_name = var->getNodeName();
+    std::string var_name = var->getNodeName();
     if(var->getNodeName() == "tge_DrawID")
     {
         m_Printer.stream() << "shader_in__.InstanceID__";
@@ -520,10 +520,10 @@ class Generator: public Shader::VisitorInterface
     bool                       m_Valid;
     Shader::EffectDescription& m_Effect;
     FileLoader*                m_FileLoader;
-    const string*              m_Options;
+    const std::string*              m_Options;
     size_t                     m_OptionCount;
 public:
-    Generator(Shader::Driver& driver, const string* opts, size_t count, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader);
+    Generator(Shader::Driver& driver, const std::string* opts, size_t count, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader);
     virtual ~Generator();
 
     virtual void visit(const Location& loc) final { m_RawImport.visit(loc); }
@@ -531,7 +531,7 @@ public:
     virtual void visit(const AST::Value<int>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<unsigned>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::Value<bool>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
-    virtual void visit(const AST::Value<string>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
+    virtual void visit(const AST::Value<std::string>* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::ListElement* lst) final;
     virtual void visit(const AST::Block* _block) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
     virtual void visit(const AST::StringLiteral* value) final { TGE_ASSERT(false, "Unexpected. This node shouldn't appear at top level"); }
@@ -576,7 +576,7 @@ public:
     bool isValid() const { return m_Valid; }
 };
 
-Generator::Generator(Shader::Driver& driver, const string* opts, size_t opts_count, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader)
+Generator::Generator(Shader::Driver& driver, const std::string* opts, size_t opts_count, Shader::EffectDescription& effect, const char* filename, FileLoader* include_loader)
     :   m_Driver(driver),
         m_Effect(effect),
         m_RawImport(driver, filename, m_RawImportStream, opts, opts_count, AST::TGE_AST_PRINT_LINE_LOCATION),
@@ -587,9 +587,9 @@ Generator::Generator(Shader::Driver& driver, const string* opts, size_t opts_cou
 
 Generator::~Generator() {}
 
-string ConvertHLSLVersion(Shader::ShaderType _type)
+std::string ConvertHLSLVersion(Shader::ShaderType _type)
 {
-    string shader_type;
+    std::string shader_type;
     switch(_type)
     {
     case Shader::ShaderType::VertexShader: shader_type = "vs_"; break;
@@ -674,7 +674,7 @@ void Generator::visit(const Shader::Import* _import)
     // get parsed. It is also possible to place some definitions that would
     // be automatically prepended before this block and undefined afterwards
     // to protect from polluting the global space.
-    string name = _import->getNodeName();
+    std::string name = _import->getNodeName();
     TGE_ASSERT(name[0] == '"' && name.back() == '"', "unexpected import layout");
     name.erase(name.begin());
     name.erase(name.end()-1);
@@ -759,7 +759,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
             Shader::VertexAttributeDescription vert_attr;
             bool vb_attrs = false;
 
-            string prefix, suffix;
+            std::string prefix, suffix;
             if(layout)
             {
                 for(auto k = layout->current(); k != layout->end(); ++k)
@@ -773,7 +773,7 @@ void Generator::visit(const Shader::ShaderDeclaration* _shader)
                     }
                     else if(layout_id == "vb_format")
                     {
-                        vert_attr.Format = TranslateDataFormat(binop->getRHSOperand()->extract<Shader::Value<string>>()->getValue());
+                        vert_attr.Format = TranslateDataFormat(binop->getRHSOperand()->extract<Shader::Value<std::string>>()->getValue());
                         vb_attrs = true;
                     }
                     else
@@ -1015,9 +1015,9 @@ void Generator::visit(const Shader::FunctionDeclaration* func_decl)
     m_RawImportStream << ";\n";
 }
 
-bool LoadEffect(const string& filename, FileLoader* loader, const string* opts, size_t opts_count, uint32 flags, Shader::EffectDescription& effect)
+bool LoadEffect(const std::string& filename, FileLoader* loader, const std::string* opts, size_t opts_count, uint32_t flags, Shader::EffectDescription& effect)
 {
-    Shader::Driver  effect_driver;
+    Shader::Driver  effect_driver(loader);
     auto            parse_ret = effect_driver.parseFile(filename);
     if(!parse_ret)
     {

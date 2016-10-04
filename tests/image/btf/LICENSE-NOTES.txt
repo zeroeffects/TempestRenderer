@@ -1,0 +1,12 @@
+The BTF sample is licensed under the following license:
+
+All datasets are free to use, modify and re-distribute for research and scholarship purposes.
+Furthermore, permission is granted to publish images made using the BTF data in a scholarly
+article or book, as long as proper credit is given to the University of Bonn's BTF Database.
+Any usage of the datasets for commercial purposes is not allowed without our permission and
+in some cases the permission of third parties. For more information about the databases,
+please refer to:
+
+Michael Weinmann, externJuergen Gall and Reinhard Klein. extern"Material Classification
+based on Training Data Synthesized Using a BTF Database", accepted at ECCV 2014. Please
+externcite this work when using the datasets.

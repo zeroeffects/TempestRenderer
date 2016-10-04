@@ -36,7 +36,7 @@
 
 namespace Tempest
 {
-string ConvertGLErrorToString(GLErrorCode err);
+std::string ConvertGLErrorToString(GLErrorCode err);
 
 inline GLComparisonFunction TranslateComparisonFunction(ComparisonFunction compare_func)
 {

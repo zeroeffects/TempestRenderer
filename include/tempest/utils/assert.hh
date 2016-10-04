@@ -26,7 +26,7 @@
 #define _TEMPEST_ENGINE_ASSERT_HH_
 
 #include "tempest/utils/macros.hh"
-#include "tempest/utils/types.hh"
+#include <cstdint>
 
 #include <iostream>
 #include <sstream>
@@ -53,7 +53,13 @@ enum DialogAnswer
     TGE_ANSWER_IGNORE //!< Ignore all errors of this type.
 };
 
+// If you have some sort of GUI application that goes berserk when you show the default message box
+typedef DialogAnswer (*AssertMessageBoxFunction)(const std::string& title, const std::string& doc_msg);
+
 #ifndef NDEBUG
+extern AssertMessageBoxFunction g_CustomAssertMessage;
+#endif
+
 //! The actual implementation of TGE_ASSERT.
 #   define _TGE_ASSERT(statement, doc_msg, ignore_var) \
          do { \
@@ -64,13 +70,17 @@ enum DialogAnswer
                     TGE_TRAP(); \
             } \
          } while(0)
+
+#if !defined(NDEBUG) && !defined(__CUDA_ARCH__)
 /*! \brief The recommended way to place assertions. It includes additional information over the basic standard function.
 *  \param statement    the asserted condition.
 *  \param doc_msg      documentation string that would potentially help the developer that is going to debug it in the future and determine why this should not be the case.
 */
 #   define TGE_ASSERT(statement, doc_msg) _TGE_ASSERT(statement, doc_msg, CONCAT_MACRO(__ignoreAssert, __COUNTER__))
+#   define TGE_STUB() TGE_ASSERT(false, "STUB: The functionality is not implemeneted!");
 #else
 #   define TGE_ASSERT(statement, doc_msg)
+#   define TGE_STUB()
 #endif
 
 /*! \brief Used internally for displaying message boxes about failed assertions under all supported platforms.
@@ -82,7 +92,7 @@ enum DialogAnswer
  *  \param doc_msg  a short description of the circumstances which caused this unexpected behavior.
  *  \returns The answer given by the user/developer.
  */
-DialogAnswer AssertMessageBox(const string& title, const string& doc_msg);
+DialogAnswer AssertMessageBox(const std::string& title, const std::string& doc_msg);
 
 /*! \brief Used internally for displaying message boxes about application crashes under all supported platforms.
  * 
@@ -93,7 +103,24 @@ DialogAnswer AssertMessageBox(const string& title, const string& doc_msg);
  *  \param doc_msg  a short description of the circumstances which caused this unexpected behavior.
  *  \returns The answer given by the user/developer.
  */
-void CrashMessageBox(const string& title, const string& doc_msg);
+void CrashMessageBoxImpl(const std::string& title, const std::string& doc_msg);
+
+inline void StringifyArgs(std::ostream& os) {}
+
+template<class T, class... TArgs>
+inline void StringifyArgs(std::ostream& os, T&& arg, TArgs&&... args)
+{
+    os << arg;
+    StringifyArgs(os, args...);
+}
+
+template<class... TArgs>
+void CrashMessageBox(const std::string& title, TArgs&&... args)
+{
+    std::stringstream ss;
+    StringifyArgs(ss, args...);
+    CrashMessageBoxImpl(title, ss.str());
+}
 
 /*! \brief Returns a backtrace for debugging purposes.
  * 
@@ -104,14 +131,14 @@ void CrashMessageBox(const string& title, const string& doc_msg);
  *  
  *  \returns A list of the functions that have led to this call.
  */
-string Backtrace(size_t start_frame = 1, size_t end_frame = 11);
+std::string Backtrace(size_t start_frame = 1, size_t end_frame = 11);
 
 /*! \brief Intermediate platform-independent assertion.
  *  
  *  \param statement the actual statement which caused the failure.
  *  \param doc_msg   a short description why this statement is unexpected, what could happen and whether there is another way to resolve this issue.
  */
-inline DialogAnswer Assert(const char* statement, const string& doc_msg)
+inline DialogAnswer Assert(const char* statement, const std::string& doc_msg)
 {
     std::stringstream ss;
     ss << statement << "\n\n"

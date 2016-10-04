@@ -44,7 +44,7 @@ MemoryDebugger::~MemoryDebugger()
     }
 }
 
-bool MemoryDebugger::registerPointer(void* ptr, const string& info)
+bool MemoryDebugger::registerPointer(void* ptr, const std::string& info)
 {
     for(PointerMap::iterator i = m_Allocated.begin(),
                              iend = m_Allocated.end(); i != iend; ++i)
@@ -73,7 +73,7 @@ bool MemoryDebugger::registerPointer(void* ptr, const string& info)
     return true;
 }
 
-bool MemoryDebugger::unregisterPointer(void* ptr, const string& info)
+bool MemoryDebugger::unregisterPointer(void* ptr, const std::string& info)
 {
     for(PointerMap::iterator i = m_Allocated.begin(),
                              iend = m_Allocated.end(); i != iend; ++i)
@@ -118,7 +118,7 @@ string MemoryDebugger::getAllocatedInfo(void* ptr)
                              iend = m_Allocated.end(); i != iend; ++i)
         if(i->first == ptr)
             return i->second;
-    return string();
+    return std::string();
 }
 
 string MemoryDebugger::getDeallocatedInfo(void* ptr)
@@ -127,7 +127,7 @@ string MemoryDebugger::getDeallocatedInfo(void* ptr)
                              iend = m_Deallocated.end(); i != iend; ++i)
         if(i->first == ptr)
             return i->second;
-    return string();
+    return std::string();
 }
 #endif
 }

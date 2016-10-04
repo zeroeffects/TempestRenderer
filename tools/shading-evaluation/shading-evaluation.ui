@@ -28,6 +28,20 @@
     <item>
      <layout class="QVBoxLayout" name="ShadingDataLayout">
       <item>
+       <widget class="QComboBox" name="RenderMode">
+        <item>
+         <property name="text">
+          <string>Rasterizer</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Ray Tracer</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
        <widget class="QComboBox" name="ShadingModel">
         <item>
          <property name="text">
@@ -218,7 +232,7 @@
   <customwidget>
    <class>ColorPicker</class>
    <extends>QPushButton</extends>
-   <header>color-picker.hh</header>
+   <header>tempest/qt/color-picker.hh</header>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -22,7 +22,8 @@
  *   THE SOFTWARE.
  */
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
+#include <string>
 
 #ifdef _WIN32
     #include "tempest/utils/library.hh"
@@ -65,8 +66,8 @@ enum ControllerExtra
 
 struct ControllerDescription
 {
-    size_t          Identifier;
-    string          Name;
+    std::size_t          Identifier;
+    std::string     Name;
     ControllerType  Type;
     size_t          Extra;
 };
@@ -91,8 +92,8 @@ enum ControllerButtons
 
 struct ControllerState
 {
-    uint16          ButtonMask   = 0;
-    int16           LeftTrigger  = 0,
+    uint16_t        ButtonMask   = 0;
+    int16_t         LeftTrigger  = 0,
                     RightTrigger = 0,
                     LeftThumbX   = 0,
                     LeftThumbY   = 0,

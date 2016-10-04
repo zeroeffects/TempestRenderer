@@ -1,0 +1,7 @@
+Zdravko Velinov
+
+Core developer. He started the whole project. He works on fabrics rendering project.
+
+Sebastian Werner
+
+He works on wave optics related project.

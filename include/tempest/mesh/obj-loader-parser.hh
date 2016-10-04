@@ -22,13 +22,13 @@
 *   THE SOFTWARE.
 */
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 
 namespace Tempest
 {
 namespace ObjLoader
 {
-enum class ObjFileToken: uint32
+enum class ObjFileToken: uint32_t
 {
 #define OBJ_LOADER_TOKEN(token_enum, token_name) token_enum,
 #include "tempest/mesh/obj-loader-tokens.hh"
@@ -42,9 +42,9 @@ union SemanticType
     int IntegerValue;
     struct
     {
-        uint32 PositionIndex[2],
-            TexCoordIndex[2],
-            NormalIndex[2];
+        uint32_t PositionIndex[2],
+                 TexCoordIndex[2],
+                 NormalIndex[2];
     } TemporaryPair;
 };
 
@@ -55,6 +55,8 @@ union SemanticType
 class Parser
 {
     ObjLoader::Driver& m_Driver;
+
+    Location           m_CurrentLocation = Location{ nullptr, 1, 1 };
 public:
     Parser(ObjLoader::Driver& driver);
 

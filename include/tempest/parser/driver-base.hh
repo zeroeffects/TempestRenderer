@@ -25,7 +25,8 @@
 #ifndef _TEMPEST_DRIVER_BASE_HH_
 #define _TEMPEST_DRIVER_BASE_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
+#include "tempest/parser/file-loader.hh"
 
 #include <iostream>
 
@@ -45,29 +46,39 @@ struct Location
  */
 #define TGE_DEFAULT_LOCATION Tempest::Location()
 
+#ifdef _MSC_VER
+inline std::ostream& operator<<(std::ostream& os, const Location& loc)
+{
+    return os << *loc.filename << "(" << loc.startLine << ")";
+}
+#else
 inline std::ostream& operator<<(std::ostream& os, const Location& loc)
 {
     return os << *loc.filename << ":" << loc.startLine << ":" << loc.startColumn;
 }
+#endif
 
 class DriverBase
 {
 protected:
+    FileLoader*             m_FileLoader;
+
     size_t                  m_ErrorCount = 0,
                             m_WarningCount = 0;
 public:
-    DriverBase()=default;
+    DriverBase(FileLoader* loader)
+        :   m_FileLoader(loader) {}
      ~DriverBase()=default;
 
-    string getFileName() const { return __FileName; }
+    std::string getFileName() const { return __FileName; }
 
-    void warning(const Location& loc, const string& filename);
-    void warning(const string& filename);
+    void warning(const Location& loc, const std::string& filename);
+    void warning(const std::string& filename);
 
-    void error(const Location& loc, const string& filename);
-    void error(const string& filename);
+    void error(const Location& loc, const std::string& filename);
+    void error(const std::string& filename);
     
-    string                  __FileName;
+    std::string                  __FileName;
 };
 }
 

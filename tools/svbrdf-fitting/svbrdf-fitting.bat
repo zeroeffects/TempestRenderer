@@ -1,0 +1,1 @@
+sggxfit.exe -n 1.0 -x 0 -y 0 -w 100 -h 100 -s brushed_alcantara_dfmf500.btf -o brushed_alcantara_sggx

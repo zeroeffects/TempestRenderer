@@ -47,8 +47,8 @@ class GLBuffer;
 struct GLVertexBufferDescription
 {
     GLBuffer*               VertexBuffer = nullptr;
-    uint32                  Stride = 0;
-    uint32                  Offset = 0;
+    uint32_t                Stride = 0;
+    uint32_t                Offset = 0;
 };
 
 const size_t BufferCount = 2;
@@ -56,10 +56,10 @@ const size_t BufferCount = 2;
 // TODO: make it cache friendlier, by pool allocating and using offsets instead
 struct GLDrawBatch
 {
-    uint64                    SortKey = 0;
-    uint32                    VertexCount = 0;
-    uint32                    BaseVertex = 0;
-    uint32                    BaseIndex = 0;
+    uint64_t                  SortKey = 0;
+    uint32_t                  VertexCount = 0;
+    uint32_t                  BaseVertex = 0;
+    uint32_t                  BaseIndex = 0;
     BakedResourceTable*       ResourceTable = nullptr;
     GLStateObject*            PipelineState = nullptr;
     GLBuffer*                 IndexBuffer = nullptr;
@@ -70,11 +70,11 @@ class GLCommandBuffer
 {
     std::unique_ptr<GLDrawBatch[]> m_CommandBuffer;
 
-    uint32                         m_CommandBufferSize     = 0;
-    uint32                         m_ConstantBufferSize    = 0;
+    uint32_t                       m_CommandBufferSize     = 0;
+    uint32_t                       m_ConstantBufferSize    = 0;
 
-    uint32                         m_CommandCount          = 0;
-    uint32                         m_ConstantBufferReqSize = 0;
+    uint32_t                       m_CommandCount          = 0;
+    uint32_t                       m_ConstantBufferReqSize = 0;
 
     GLsync                         m_GPUFence[BufferCount];
 
@@ -84,13 +84,15 @@ class GLCommandBuffer
     GLuint                         m_GPUCommandBuffer[BufferCount];
     GLvoid*                        m_GPUCommandBufferPtr[BufferCount];
 
-    uint32                         m_Index                 = 0;
-    uint32                         m_Alignment             = 0;
+    uint32_t                       m_Index                 = 0;
+    uint32_t                       m_Alignment             = 0;
 public:
     typedef GLDrawBatch DrawBatchType;
     
     explicit GLCommandBuffer(const CommandBufferDescription& cmd_buf_desc);
      ~GLCommandBuffer();
+
+    CommandBufferDescription getDescription() const { return { m_CommandBufferSize, m_ConstantBufferSize }; }
     
     //! \remarks Can be used outside of the rendering thread.
     void clear();

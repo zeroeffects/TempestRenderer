@@ -28,12 +28,22 @@
 #include "tempest/utils/memory.hh"
 #include "tempest/graphics/texture.hh"
 
-#include <png.h>
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb/stb_image.h"
+#include "stb/stb_image_write.h"
+
+//#define LIBPNG_SUPPORT
+
+#ifdef LIBPNG_SUPPORT
+#   include <png.h>
+#endif
 #include <cstring>
 #include <fstream>
 
 namespace Tempest
 {
+#ifdef LIBPNG_SUPPORT
 static void LogErrorFunction(png_structp png_ptr, png_const_charp error_msg)
 {
     Log(LogLevel::Error, "Fatal error has occurred while trying to load an png file: ", error_msg);
@@ -56,9 +66,65 @@ static void PNGReadData(png_structp png_ptr, png_bytep data, png_size_t length)
         png_error(png_ptr, "Read Error");
     }
 }
+#endif
 
 Texture* LoadPNGImage(const Path& file_path)
 {
+#ifndef LIBPNG_SUPPORT
+	auto filename = file_path.get();
+	int x, y, comp;
+
+	stbi_set_flip_vertically_on_load(true);
+	auto result = CREATE_SCOPED(stbi_uc*, free);
+	result = stbi_load(filename.c_str(), &x, &y, &comp, 0);
+	if(!result)
+		return nullptr;
+
+	int final_comp = NextPowerOf2(comp);
+
+	std::unique_ptr<uint8_t[]> imgdata(new uint8_t[x*y*final_comp]); 
+
+	TextureDescription tex_desc;
+	tex_desc.Width = x;
+	tex_desc.Height = y;
+	switch(comp)
+	{
+	case 1:
+	{
+		memcpy(imgdata.get(), result, x*y*comp);
+		tex_desc.Format = DataFormat::R8UNorm;
+	} break;
+	case 2:
+	{
+		memcpy(imgdata.get(), result, x*y*comp);
+		tex_desc.Format = DataFormat::RG8UNorm;
+	} break;
+	case 3:
+	{
+		for(int idx = 0, idx_end = x*y; idx < idx_end; ++idx)
+		{
+			auto* src = result + idx*comp;
+			auto* dst = imgdata.get() + idx*final_comp;
+
+			dst[0] = src[0];
+			dst[1] = src[1];
+			dst[2] = src[2];
+			dst[3] = 0xFF;
+		}
+		tex_desc.Format = DataFormat::RGBA8UNorm;
+	} break;
+	case 4:
+	{
+		memcpy(imgdata.get(), result, x*y*comp);
+		tex_desc.Format = DataFormat::RGBA8UNorm;
+	} break;
+	default:
+		Log(LogLevel::Error, "Unsupported png format: ", filename);
+		return nullptr;
+	}
+	
+	return new Texture(tex_desc, imgdata.release());
+#else
     const std::streamsize num = 4;
     png_byte header[num];
     std::fstream fs;
@@ -115,17 +181,17 @@ Texture* LoadPNGImage(const Path& file_path)
     png_read_update_info(data.PNGStruct, data.PNGInfo);
     color_type = png_get_color_type(data.PNGStruct, data.PNGInfo);
     bit_depth = png_get_bit_depth(data.PNGStruct, data.PNGInfo);
-    int rowbytes = png_get_rowbytes(data.PNGStruct, data.PNGInfo);
-    std::unique_ptr<uint8[]> imgdata(new uint8[height*rowbytes]);
-    std::unique_ptr<uint8*[]> p_imgdata(new uint8*[height]);
+    auto rowbytes = png_get_rowbytes(data.PNGStruct, data.PNGInfo);
+    std::unique_ptr<uint8_t[]> imgdata(new uint8_t[height*rowbytes]);
+    std::unique_ptr<uint8_t*[]> p_imgdata(new uint8_t*[height]);
     for(size_t i = 0; i < height; ++i)
         p_imgdata[i] = imgdata.get() + i*rowbytes;
     png_read_image(data.PNGStruct, reinterpret_cast<png_bytepp>(p_imgdata.get()));
     png_read_end(data.PNGStruct, data.PNGEndInfo);
 
     TextureDescription tex_desc;
-    tex_desc.Width = static_cast<uint16>(width);
-    tex_desc.Height = static_cast<uint16>(height);
+    tex_desc.Width = static_cast<uint16_t>(width);
+    tex_desc.Height = static_cast<uint16_t>(height);
     switch(color_type)
     {
     case PNG_COLOR_TYPE_GRAY:
@@ -141,9 +207,9 @@ Texture* LoadPNGImage(const Path& file_path)
     case PNG_COLOR_TYPE_GRAY_ALPHA:
     {
         size_t bpp = bit_depth/8;
-        std::unique_ptr<uint8[]> conv_data(new uint8[height*width*bpp]);
-        uint8* in_data = imgdata.get();
-        uint8* out_data = conv_data.get();
+        std::unique_ptr<uint8_t[]> conv_data(new uint8_t[height*width*bpp]);
+        uint8_t* in_data = imgdata.get();
+        uint8_t* out_data = conv_data.get();
         for(size_t y = 0; y < height; ++y)
         {
             in_data = imgdata.get() + y*rowbytes;
@@ -177,5 +243,39 @@ Texture* LoadPNGImage(const Path& file_path)
         Log(LogLevel::Error, "Unsupported format");
         return nullptr;
     }
+#endif
+}
+
+bool SavePNGImage(const TextureDescription& tex_hdr, const void* data, const Path& file_path)
+{
+	auto filename = file_path.get();
+	int ret = 1;
+	switch(tex_hdr.Format)
+	{
+	case DataFormat::R8UNorm:
+	{
+		ret = stbi_write_png(filename.c_str(), tex_hdr.Width, tex_hdr.Height, 1, reinterpret_cast<const uint8_t*>(data) + 1*tex_hdr.Width*(tex_hdr.Height - 1)*sizeof(uint8_t), -1*tex_hdr.Width*sizeof(uint8_t));
+	} break;
+	case DataFormat::RG8UNorm:
+	{
+		ret = stbi_write_png(filename.c_str(), tex_hdr.Width, tex_hdr.Height, 2, reinterpret_cast<const uint8_t*>(data) + 2*tex_hdr.Width*(tex_hdr.Height - 1)*sizeof(uint8_t), -2*tex_hdr.Width*sizeof(uint8_t));
+	} break;
+//  case DataFormat::RGB8UNorm:
+	case DataFormat::RGBA8UNorm:
+	{
+		ret = stbi_write_png(filename.c_str(), tex_hdr.Width, tex_hdr.Height, 4, reinterpret_cast<const uint8_t*>(data) + 4*tex_hdr.Width*(tex_hdr.Height - 1)*sizeof(uint8_t), -4*tex_hdr.Width*sizeof(uint8_t));
+	} break;
+	default:
+		Log(LogLevel::Error, "Unsupported format: ", filename);
+		return false;
+	}
+
+	if(ret == 0)
+	{
+		Log(LogLevel::Error, "Failed to write png file: ", filename);
+		return false;
+	}
+
+	return true;
 }
 }

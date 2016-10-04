@@ -25,13 +25,14 @@
 #ifndef _TEMPEST_AST_HH_
 #define _TEMPEST_AST_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/utils/assert.hh"
 #include "tempest/utils/memory.hh"
 #include "tempest/parser/driver-base.hh"
 
 #include <type_traits>
 #include <vector>
+#include <iomanip>
 
 using std::is_const;
 
@@ -71,7 +72,7 @@ template<class T> struct ASTNodeInfo;
     };
 TGE_AST_NODE_INFO(ListElement, TGE_AST_LIST_ELEMENT, AST::VisitorInterface)
 TGE_AST_NODE_INFO(Block, TGE_AST_BLOCK, AST::VisitorInterface)
-TGE_AST_NODE_INFO(Value<string>, TGE_AST_IDENTIFIER, AST::VisitorInterface)
+TGE_AST_NODE_INFO(Value<std::string>, TGE_AST_IDENTIFIER, AST::VisitorInterface)
 TGE_AST_NODE_INFO(Value<bool>, TGE_AST_BOOLEAN, AST::VisitorInterface)
 TGE_AST_NODE_INFO(Value<int>, TGE_AST_INTEGER, AST::VisitorInterface)
 TGE_AST_NODE_INFO(Value<unsigned>, TGE_AST_UNSIGNED, AST::VisitorInterface)
@@ -117,7 +118,7 @@ public:
         :   m_Data(ptr) {}
     
     bool isBlockStatement() const { return m_Data->isBlockStatement(); }
-    string getNodeName() const { return m_Data->getNodeName(); }
+    std::string getNodeName() const { return m_Data->getNodeName(); }
     
     T* get() { return m_Data; }
     const T* get() const { return m_Data; }
@@ -134,7 +135,7 @@ public:
     
     virtual size_t getNodeType() const=0;
     virtual bool isBlockStatement() const=0;
-    virtual string getNodeName() const=0;
+    virtual std::string getNodeName() const=0;
 
     virtual void accept(VisitorInterface* visitor) const=0;
 
@@ -163,7 +164,7 @@ struct NodeImplModel: public NodeImpl
 
     virtual size_t getNodeType() const override { return ASTNodeInfo<T>::node_enum; }
     virtual bool isBlockStatement() const override { return m_Data.isBlockStatement(); }
-    virtual string getNodeName() const override { return m_Data.getNodeName(); }
+    virtual std::string getNodeName() const override { return m_Data.getNodeName(); }
 
     virtual void accept(VisitorInterface* visitor) const override { static_cast<typename ASTNodeInfo<T>::visitor_type*>(visitor)->visit(&m_Data); }
 private:
@@ -185,7 +186,7 @@ struct NodeImplModel<Reference<T>>: public NodeImpl
 
     virtual size_t getNodeType() const override { return ASTNodeInfo<Reference<T>>::node_enum; }
     virtual bool isBlockStatement() const override { return m_Data.isBlockStatement(); }
-    virtual string getNodeName() const override { return m_Data.getNodeName(); }
+    virtual std::string getNodeName() const override { return m_Data.getNodeName(); }
     
     virtual void accept(VisitorInterface* visitor) const override { static_cast<typename ASTNodeInfo<T>::visitor_type*>(visitor)->visit(m_Data.get()); }
 private:
@@ -360,7 +361,7 @@ struct NodeT
     size_t getNodeType() const { return m_Impl->getNodeType() & ~TGE_AST_REFERENCE; }
     bool isBlockStatement() const { return m_Impl->isBlockStatement(); }
 
-    string getNodeName() const { return m_Impl->getNodeName(); }
+    std::string getNodeName() const { return m_Impl->getNodeName(); }
 
     /*! \brief Get the AST::Location at which this node was declared.
      * 
@@ -469,7 +470,7 @@ public:
         :   m_Value(t) {}
      ~Value() {}
 
-    string getNodeName() const { return "<literal>"; }
+    std::string getNodeName() const { return "<literal>"; }
      
     T getValue() const { return m_Value; }
     bool isBlockStatement() const { return false; }
@@ -480,14 +481,14 @@ private:
 
 class StringLiteral
 {
-    string                  m_Value;
+    std::string                  m_Value;
 public:
-    StringLiteral(string str);
+    StringLiteral(std::string str);
      ~StringLiteral();
 
-    string getNodeName() const { return "<string>"; }
+    std::string getNodeName() const { return "<std::string>"; }
         
-    string getValue() const { return m_Value; }
+    std::string getValue() const { return m_Value; }
         
     bool isBlockStatement() const;
 private:
@@ -506,7 +507,7 @@ public:
     virtual void visit(const Value<int>* value)=0;
     virtual void visit(const Value<unsigned>* value)=0;
     virtual void visit(const Value<bool>* value)=0;
-    virtual void visit(const Value<string>* value)=0;
+    virtual void visit(const Value<std::string>* value)=0;
     virtual void visit(const ListElement* lst)=0;
     virtual void visit(const Block* _block)=0;
     virtual void visit(const StringLiteral* value)=0;
@@ -528,7 +529,7 @@ private:
     std::ostream&   m_OutputStream;
     size_t          m_Flags;
 public:
-    PrinterInfrastructure(std::ostream& os, uint32 flags);
+    PrinterInfrastructure(std::ostream& os, uint32_t flags);
      ~PrinterInfrastructure();
     
     std::ostream& stream() { return m_OutputStream; }
@@ -538,13 +539,13 @@ public:
     void setIndentation(size_t indentation) { m_Indentation = indentation; }
     size_t getIndentation() const { return m_Indentation; }
     
-    bool hasFlags(uint32 flags) { return (m_Flags & flags) != 0; }
+    bool hasFlags(uint32_t flags) { return (m_Flags & flags) != 0; }
 };
 
 // When you want to build your own printer. Just pick what functions out of these you are going to use and
 // wrap them behind a visitor. You are going to need printing infrastructure also for convenience.
 template<class T>
-void PrintNode(PrinterInfrastructure* printer, const Value<T>* value) { printer->stream() << value->getValue(); }
+void PrintNode(PrinterInfrastructure* printer, const Value<T>* value) { printer->stream() << std::scientific << value->getValue(); }
 void PrintNode(AST::VisitorInterface* visitor, PrinterInfrastructure* printer, const ListElement* lst);
 void PrintNode(AST::VisitorInterface* visitor, PrinterInfrastructure* printer, const Block* _block);
 void PrintNode(PrinterInfrastructure* printer, const StringLiteral* value);
@@ -562,7 +563,7 @@ inline void PrintLocation(PrinterInfrastructure* printer, const Location& loc, c
 
 template<class T> class ListIterator;
 
-enum class ListType: uint32
+enum class ListType: uint32_t
 {
     CommaSeparated,
     SemicolonSeparated
@@ -577,8 +578,17 @@ public:
     typedef ListIterator<AST::Node>       iterator;
     typedef ListIterator<const AST::Node> const_iterator;
 
-    ListElement(ListType lt, AST::Node node, AST::NodeT<ListElement> next=AST::NodeT<ListElement>());
-    ~ListElement();
+    ListElement(ListType lt, AST::Node node, AST::NodeT<ListElement> next=AST::NodeT<ListElement>())
+	    :   m_Current(std::move(node)),
+		    m_Next(std::move(next)),
+			m_Type(lt)
+	{
+		TGE_ASSERT(!m_Current || m_Current.getNodeType() != AST::TGE_AST_LIST_ELEMENT, "Don't build list of lists. That's too unspecific and bug prone."
+																					 "What if you actually intended to insert another node in the list"
+																					 "and instead you have set the current one incidentally.");
+	}
+
+    ~ListElement()=default;
 
     void set(ListType _type, AST::Node _node)
     {
@@ -586,10 +596,17 @@ public:
         m_Current = std::move(_node);
     }
 
-    ListType getFormat() const;
+    ListType getFormat() const { return m_Type; }
 
-    AST::NodeT<ListElement>* next();
-    const AST::NodeT<ListElement>* next() const;
+    AST::NodeT<ListElement>* next()
+	{
+		return &m_Next;
+	}
+
+	const NodeT<List>* next() const
+	{
+		return &m_Next;
+	}
 
     void erase_next();
 
@@ -607,7 +624,7 @@ public:
     void push_front(AST::Node&& ptr);
     void push_back(AST::Node&& ptr);
 
-    string getNodeName() const { return "<list>"; }
+    std::string getNodeName() const { return "<list>"; }
 
     bool isBlockStatement() const;
 private:
@@ -707,22 +724,22 @@ public:
 template<class T>
 class NamedList
 {
-    string           m_Name;
+    std::string           m_Name;
     AST::NodeT<List> m_List;
 public:
-    NamedList(string name, AST::NodeT<List> _list)
+    NamedList(std::string name, AST::NodeT<List> _list)
         :   m_Name(name),
             m_List(std::move(_list)) {}
     ~NamedList() {}
 
-    string getNodeName() const { return m_Name; }
+    std::string getNodeName() const { return m_Name; }
     
     List* getBody() { return m_List.get(); }
     const List* getBody() const { return m_List.get(); }
 
     bool isBlockStatement() const { return true; }
 
-    void printList(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const string& declaration) const
+    void printList(AST::VisitorInterface* visitor, AST::PrinterInfrastructure* printer, const std::string& declaration) const
     {
         std::ostream& os = printer->stream();
         if(declaration.empty())
@@ -760,7 +777,7 @@ public:
     List* getBody();
     const List* getBody() const;
 
-    string getNodeName() const { return "<block statement>"; }
+    std::string getNodeName() const { return "<block statement>"; }
     
      bool isBlockStatement() const;
 private:
@@ -782,11 +799,11 @@ protected:
     AST::Node               m_ASTRoot;
 
 public:
-    Driver();
+    Driver(FileLoader* loader);
      ~Driver();
 
     template<class T>
-    T* find(const string& name)
+    T* find(const std::string& name)
     {
         AST::Node* id = findIdentifier(name);
         return id->getNodeType() == ASTNodeInfo<T>::node_enum ?	id->extract<T>() : nullptr;
@@ -807,9 +824,9 @@ public:
     const AST::Node* getASTRoot() const;
 
     ///! \remarks Dangerous -- returns reference to object which is part of an array.
-    AST::Node* findIdentifier(const string& name);
+    AST::Node* findIdentifier(const std::string& name);
     
-    string                  __FileName;
+    std::string                  __FileName;
 };
 }
 }

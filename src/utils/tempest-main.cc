@@ -24,6 +24,9 @@
 
 int TempestMain(int argc, char** argv);
 
+#include "tempest/utils/system.hh"
+#include "tempest/utils/profiler.hh"
+
 #ifdef _WIN32
 #include <cctype>
 #include <cstdlib>
@@ -34,9 +37,20 @@ int TempestMain(int argc, char** argv);
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    int argc = 0;
-	char** argv = nullptr;
+    int argc = 1;
+	char** argv = reinterpret_cast<char**>(malloc(sizeof(char*)));
     char* end_ptr = lpCmdLine+strlen(lpCmdLine)+1;
+
+    char buffer[1024];
+    if(GetModuleFileName(nullptr, buffer, sizeof(buffer)) == 0)
+    {
+        fprintf(stderr, "Error: failed to get executable name");
+        return EXIT_FAILURE;
+    }
+
+    size_t exe_name_size = strlen(buffer) + 1;
+    argv[0] = reinterpret_cast<char*>(malloc(exe_name_size));
+    memcpy(argv[0], buffer, exe_name_size);
 
     for(char* ptr = lpCmdLine, *arg_ptr; *ptr;)
     {
@@ -80,13 +94,17 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         *arg_ptr = '\0';
     }
 
-    TempestMain(argc, argv);
+    Tempest::System::SetThreadName(Tempest::System::GetCurrentThreadNativeHandle(), "Main Thread");
+
+    Tempest::Profiler profiler;
+
+    auto ret = TempestMain(argc, argv);
 
     while(argc--)
         free(argv[argc]);
     free(argv);
 
-    return EXIT_SUCCESS;
+    return ret;
 }
 #elif defined(LINUX)
 
@@ -102,7 +120,11 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 int main(int argc, char* argv[])
 {
     TGE_INIT(argc, argv);
+
+    Tempest::System::SetThreadName(Tempest::System::GetCurrentThreadNativeHandle(), "Main Thread");
     
+    Tempest::Profiler profiler;
+
     TempestMain(argc, argv);
 }
 #else

@@ -24,6 +24,7 @@
 
 #include "tempest/utils/patterns.hh"
 #include "tempest/utils/logging.hh"
+#include "tempest/utils/assert.hh"
 
 #include <cstdlib>
 
@@ -58,3 +59,6 @@ int TestingEnvironment(const char* desc)
         return Tempest::TestingEnvironment(desc); \
     } \
     void _TestCaseFunction()
+
+//! \brief This macro does the same as TGE_ASSERT; however, it does not get optimized out in release builds
+#define TGE_CHECK(statement, doc_msg) _TGE_ASSERT(statement, doc_msg, CONCAT_MACRO(__ignoreAssert, __COUNTER__))

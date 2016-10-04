@@ -32,26 +32,26 @@ namespace Tempest
 {
 struct DataDescription
 {
-    string           Name;
+    std::string      Name;
     UniformValueType Type;
-    uint16           ElementSize;
-    uint16           ElementCount;
-    uint32           Offset;
+    uint16_t         ElementSize;
+    uint16_t         ElementCount;
+    uint32_t         Offset;
 };
 
 struct ResourceTableDescription
 {
-    string                       Name;
-    uint32                       BindPoint;
-    uint32                       BufferSize;
-    uint32                       ExtendablePart;
+    std::string                    Name;
+    uint32_t                       BindPoint;
+    uint32_t                       BufferSize;
+    uint32_t                       ExtendablePart;
     PACKED_DATA(DataDescription) Uniforms;
 
     ResourceTableDescription(const ResourceTableDescription&) = delete;
     ResourceTableDescription& operator=(const ResourceTableDescription&) = delete;
 
 private:
-    ResourceTableDescription(uint32 count, uint32 extendable_part, string name, uint32 bind_point)
+    ResourceTableDescription(uint32_t count, uint32_t extendable_part,std::string name, uint32_t bind_point)
         :   ExtendablePart(extendable_part),
             Name(name),
             BindPoint(bind_point),
@@ -61,8 +61,8 @@ private:
 
 struct ResourceIndex
 {
-    uint32 ResourceTableIndex = 0;
-    uint32 BaseOffset = 0;
+    uint32_t ResourceTableIndex = 0;
+    uint32_t BaseOffset = 0;
 };
 
 inline bool operator==(const ResourceIndex& lhs, const ResourceIndex& rhs)
@@ -127,7 +127,25 @@ public:
     size_t getSize() const { return m_Table ? m_Size : 0; }
 };
 
-const uint32 InvalidResourceIndex = std::numeric_limits<uint32>::max();
+const uint32_t InvalidResourceIndex = std::numeric_limits<uint32_t>::max();
+
+class Matrix4;
+union Vector4;
+union Vector3;
+union Vector2;
+
+template<class T> struct UniformValueBinding;
+#define UNIFORM_VALUE_BINDING(type, value) \
+    template<> struct UniformValueBinding<type> { \
+        static const UniformValueType value_type = value; };
+UNIFORM_VALUE_BINDING(Matrix4, UniformValueType::Matrix4);
+UNIFORM_VALUE_BINDING(Vector4, UniformValueType::Vector4);
+UNIFORM_VALUE_BINDING(Vector3, UniformValueType::Vector3);
+UNIFORM_VALUE_BINDING(Vector2, UniformValueType::Vector2);
+UNIFORM_VALUE_BINDING(float, UniformValueType::Float);
+UNIFORM_VALUE_BINDING(int32_t, UniformValueType::Integer);
+UNIFORM_VALUE_BINDING(uint32_t, UniformValueType::UnsignedInteger);
+UNIFORM_VALUE_BINDING(bool, UniformValueType::Boolean);
 }
 
 #endif // _TEMPEST_SHADER_HH_

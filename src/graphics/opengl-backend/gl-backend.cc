@@ -22,8 +22,14 @@
  *   THE SOFTWARE.
  */
 
+#include "tempest/utils/config.hh"
+
 #ifdef _MSC_VER
 #   pragma warning(disable : 4503)
+#endif
+
+#ifndef DISABLE_CUDA
+#   include <surface_types.h>
 #endif
 
 #include "tempest/graphics/opengl-backend/gl-library.hh"
@@ -38,6 +44,7 @@
 #include "tempest/graphics/opengl-backend/gl-utils.hh"
 #include "tempest/graphics/opengl-backend/gl-config.hh"
 #include "tempest/graphics/opengl-backend/gl-storage.hh"
+#include "tempest/graphics/opengl-backend/gl-framebuffer.hh"
 #include "tempest/graphics/opengl-backend/gl-io-command-buffer.hh"
 #include "tempest/graphics/state-object.hh"
 #include "tempest/utils/memory.hh"
@@ -49,6 +56,10 @@
 #include <cstring>
 
 #include "xxhash/xxhash.h"
+
+#undef GL_NO_ERROR
+#undef GL_TEXTURE_2D
+#undef GL_COLOR
 
 namespace Tempest
 {
@@ -256,23 +267,34 @@ void GLRenderingBackend::init()
     }
 }
 
-GLRenderTarget* GLRenderingBackend::createRenderTarget(const TextureDescription& desc, uint32 flags)
+GLRenderTarget* GLRenderingBackend::createRenderTarget(const TextureDescription& desc, uint32_t flags)
 {
-    TGE_ASSERT(false, "Stub");
-    return nullptr;
+    return new GLRenderTarget(desc, flags);
 }
-    
-GLFramebuffer* GLRenderingBackend::createFramebuffer()
+
+GLFramebuffer* GLRenderingBackend::createFramebuffer(GLRenderTarget** color, uint32_t color_rt_count, GLRenderTarget* depth)
 {
-    TGE_ASSERT(false, "Stub");
-    return nullptr;
+    return new GLFramebuffer(color, color_rt_count, depth);
 }
-    
-void GLRenderingBackend::setFramebuffer(GLFramebuffer* rt_batch)
+
+void GLRenderingBackend::destroyRenderResource(GLRenderTarget* render_target)
 {
-    TGE_ASSERT(false, "Stub");
+    delete render_target;
 }
-    
+
+void GLRenderingBackend::setFramebuffer(GLFramebuffer* framebuffer)
+{
+    if(framebuffer)
+		framebuffer->_bind();
+	else
+		glBindFramebuffer(GLFramebufferTarget::GL_FRAMEBUFFER, 0);
+}
+   
+void GLRenderingBackend::destroyRenderResource(GLFramebuffer* framebuffer)
+{
+    delete framebuffer;
+}
+
 GLCommandBuffer* GLRenderingBackend::createCommandBuffer(const CommandBufferDescription& cmd_buf_desc)
 {
     return new GLCommandBuffer(cmd_buf_desc);
@@ -303,7 +325,7 @@ void GLRenderingBackend::destroyRenderResource(GLCommandBuffer* buffer)
     delete buffer;
 }
 
-void GLRenderingBackend::setActiveTextures(uint32 num_textures)
+void GLRenderingBackend::setActiveTextures(uint32_t num_textures)
 {
     if(m_ActiveTextures == num_textures)
         return;
@@ -356,16 +378,17 @@ void GLRenderingBackend::setTextures(const BakedResourceTable* resource_table)
             }
             table_ptr += 4 * sizeof(GLfloat);
         }
+        CheckOpenGL();
     }
 }
 
-uint32 GLRenderingBackend::getTextureHandleSize()
+uint32_t GLRenderingBackend::getTextureHandleSize()
 {
     static_assert(sizeof(GLuint64) == sizeof(GLTextureBindInfo), "Invalid bind info size");
     return sizeof(GLuint64);
 }
 
-GLBuffer* GLRenderingBackend::createBuffer(size_t size, ResourceBufferType buffer_type, uint32 flags, const void* data)
+GLBuffer* GLRenderingBackend::createBuffer(size_t size, ResourceBufferType buffer_type, uint32_t flags, const void* data)
 {
     return new GLBuffer(size, buffer_type, flags, data);
 }
@@ -377,19 +400,19 @@ void GLRenderingBackend::destroyRenderResource(GLBuffer* buffer)
 
 void GLRenderingBackend::setConstantBuffer(size_t idx, const GLBuffer* buf)
 {
-    buf->bindConstantBuffer(TEMPEST_UBO_START + idx, 0, buf->getSize());
+    buf->bindConstantBuffer(TEMPEST_UBO_START + (GLint)idx, 0, buf->getSize());
 }
-    
-GLTexture* GLRenderingBackend::createTexture(const TextureDescription& desc, uint32 flags, const void* data)
+
+GLTexture* GLRenderingBackend::createTexture(const TextureDescription& desc, uint32_t flags, const void* data)
 {
     return new GLTexture(desc, flags, data);
 }
-    
+
 void GLRenderingBackend::destroyRenderResource(GLTexture* texture)
 {
     delete texture;
 }
-    
+
 GLStateObject* GLRenderingBackend::createStateObject(DataFormat*,
                                                      size_t,
                                                      DataFormat,
@@ -426,7 +449,7 @@ GLStateObject* GLRenderingBackend::createStateObject(DataFormat*,
     return m_StateObjects.emplace(new GLStateObject(shader_program, primitive_type, gl_rast_states, gl_blend_states, gl_depth_stencil_states)).first->get();
 }
 
-GLStorage* GLRenderingBackend::createStorageBuffer(StorageMode storage_type, uint32 size)
+GLStorage* GLRenderingBackend::createStorageBuffer(StorageMode storage_type, uint32_t size)
 {
     return new GLStorage(storage_type, size);
 }
@@ -436,25 +459,26 @@ void GLRenderingBackend::destroyRenderResource(GLStorage* storage)
     delete storage;
 }
 
-void GLRenderingBackend::setScissorRect(uint32 x, uint32 y, uint32 width, uint32 height)
+void GLRenderingBackend::setScissorRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
     glScissor(x, y, width, height);
 }
 
-void GLRenderingBackend::setViewportRect(uint32 x, uint32 y, uint32 w, uint32 h)
+void GLRenderingBackend::setViewportRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
-    glViewport(0, 0, w, h);
+    glViewport(x, y, w, h);
 }
-    
-void GLRenderingBackend::clearColorBuffer(uint32 idx, const Vector4& color)
+
+void GLRenderingBackend::clearColorBuffer(uint32_t idx, const Vector4& color)
 {
-    glClearBufferfv(GLBufferContentType::GL_COLOR, idx, color.elem);
+    glClearBufferfv(GLBufferContentType::GL_COLOR, idx, Array(color));
     CheckOpenGL();
 }
-    
-void GLRenderingBackend::clearDepthStencilBuffer(float depth, uint8 stencil)
+
+void GLRenderingBackend::clearDepthStencilBuffer(float depth, uint8_t stencil)
 {
     glClearBufferfi(GLBufferContentType::GL_DEPTH_STENCIL, 0, depth, stencil);
+    CheckOpenGL();
 }
 
 GLRenderingBackend::FenceType* GLRenderingBackend::createFence()
@@ -480,7 +504,84 @@ void GLRenderingBackend::waitFence(FenceType* fence)
 {
     if(*fence == 0)
         return;
-    glClientWaitSync(*fence, GL_SYNC_FLUSH_COMMANDS_BIT, std::numeric_limits<uint64>::max());
+    glClientWaitSync(*fence, GL_SYNC_FLUSH_COMMANDS_BIT, std::numeric_limits<uint64_t>::max());
     *fence = 0;
 }
+
+#undef GL_NEAREST
+#undef GL_LINEAR
+
+void GLRenderingBackend::blitAttachmentToScreen(AttachmentType att, uint32_t idx,
+												uint32_t src_x, uint32_t src_y, uint32_t dst_x, uint32_t dst_y, uint32_t w, uint32_t h)
+{
+	TGE_ASSERT(att != AttachmentType::Depth || idx == 0, "invalid attachment specified");
+	glReadBuffer(att == AttachmentType::Color ? UINT_TO_GL_BUFFER_COLOR_ATTACHMENT(idx) : static_cast<GLBufferMode>(GLAttachmentIndex::GL_DEPTH_ATTACHMENT));
+
+	glBindFramebuffer(GLFramebufferTarget::GL_DRAW_FRAMEBUFFER, 0);
+	glBlitFramebuffer(src_x, src_y, src_x + w, src_y + h, dst_x, dst_y, dst_x + w, dst_y + h, att == AttachmentType::Color ? GL_COLOR_BUFFER_BIT : GL_DEPTH_BUFFER_BIT, GLFilterMode::GL_NEAREST);
 }
+}
+
+#ifndef DISABLE_CUDA
+#include "cuda_gl_interop.h"
+#include "cuda_runtime_api.h"
+
+namespace Tempest
+{
+void GLRenderingBackend::mapToCudaTexture(GLTexture* tex, uint32_t flags, CUDATextureResource* cuda_tex)
+{
+    auto target = tex->getTarget();
+    auto handle = tex->getCPUHandle();
+    auto err = cudaGraphicsGLRegisterImage(&cuda_tex->Resource, handle, (GLenum)target, flags);
+    if(err != cudaSuccess)
+    {
+        Log(LogLevel::Error, "Failed to register image in CUDA: ", cudaGetErrorString(err));
+        cuda_tex->Resource = nullptr;
+        return;
+    }
+    cuda_tex->Description = tex->getDescription();
+    CheckOpenGL();
+}
+
+void GLRenderingBackend::unmapCudaTexture(CUDATextureResource* cuda_tex)
+{
+    
+}
+
+void GLRenderingBackend::mapToCudaSurface(GLTexture* tex, uint32_t flags, CUDASurfaceResource* cuda_tex)
+{
+    mapToCudaTexture(tex, flags, &cuda_tex->Texture);
+
+    auto err = cudaGraphicsMapResources(1, &cuda_tex->Texture.Resource, 0);
+    if(err != cudaSuccess)
+    {
+        Log(LogLevel::Error, "Failed to map graphics resource: ", cudaGetErrorString(err));
+        return;
+    }
+
+    err = cudaGraphicsSubResourceGetMappedArray(&cuda_tex->Array, cuda_tex->Texture.Resource, 0, 0);
+    if(err != cudaSuccess)
+    {
+        Log(LogLevel::Error, "Failed to create backbuffer surface: ", cudaGetErrorString(err));
+        return;
+    }
+
+    cudaResourceDesc res_desc{};
+    res_desc.res.array.array = cuda_tex->Array;
+    res_desc.resType = cudaResourceTypeArray;
+    err = cudaCreateSurfaceObject(&cuda_tex->Surface, &res_desc);
+    if(err != cudaSuccess)
+    {
+        Log(LogLevel::Error, "Failed to create backbuffer surface: ", cudaGetErrorString(err));
+        return;
+    }
+}
+
+void GLRenderingBackend::unmapCudaSurface(CUDASurfaceResource* cuda_tex)
+{
+    cudaDestroySurfaceObject(cuda_tex->Surface);
+    cudaGraphicsUnmapResources(1, &cuda_tex->Texture.Resource, 0);
+}
+}
+#endif
+

@@ -71,7 +71,7 @@ GLTextureTarget ConvertTo2DTarget(TextureTiling tiling)
 
 void GLIOCommandBuffer::_executeCommandBuffer()
 {
-    for(uint32 i = 0, iend = m_IOCurrentCommand; i < iend; ++i)
+    for(uint32_t i = 0, iend = m_IOCurrentCommand; i < iend; ++i)
     {
         auto& cmd = m_IOCommands[i];
         switch(cmd.CommandType)
@@ -98,7 +98,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            "Invalid coordinates specified");
                 GLTextureTarget dst_target = ConvertTo3DTarget(dst_desc.Tiling);
                 GLTextureTarget src_target = ConvertTo3DTarget(src_desc.Tiling);
-                for(uint16 cur_depth = 0, end_depth = cmd.Depth; cur_depth < end_depth; ++cur_depth)
+                for(uint16_t cur_depth = 0, end_depth = cmd.Depth; cur_depth < end_depth; ++cur_depth)
                 {
                     glFramebufferTexture3D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), src_target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip, cmd.SourceSlice + cur_depth);
 #ifndef NDEBUG
@@ -215,7 +215,7 @@ void GLIOCommandBuffer::_executeCommandBuffer()
                            cmd.DestinationOffset + cmd.Height*cmd.Depth*line_size <= cmd.Destination.Storage->getSize(),
                            "Invalid coordinates specified");
                 GLTextureTarget target = ConvertTo3DTarget(src_desc.Tiling);
-                for(uint16 cur_depth = 0, end_depth = cmd.Depth; cur_depth < end_depth; ++cur_depth)
+                for(uint16_t cur_depth = 0, end_depth = cmd.Depth; cur_depth < end_depth; ++cur_depth)
                 {
                     glFramebufferTexture3D(GLFramebufferTarget::GL_READ_FRAMEBUFFER, UINT_TO_GL_COLOR_ATTACHMENT(0), target, cmd.Source.Texture->getCPUHandle(), cmd.SourceMip, cmd.SourceSlice + cur_depth);
                     glReadBuffer(UINT_TO_GL_BUFFER_COLOR_ATTACHMENT(0));

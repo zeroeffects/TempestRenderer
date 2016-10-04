@@ -28,6 +28,8 @@
 #include "tempest/math/vector4.hh"
 #include "tempest/graphics/rendering-definitions.hh"
 
+struct cudaGraphicsResource;
+
 namespace Tempest
 {
 struct TextureDescription;
@@ -48,6 +50,11 @@ struct RasterizerStates;
 struct BlendStates;
 struct DepthStencilStates;
 
+enum class AttachmentType
+{
+    Depth,
+    Color
+};
 
 struct FramebufferDescription
 {
@@ -90,7 +97,7 @@ public:
      *  \returns returns a new render target or nullptr on error. The error is automatically written to
      *           logging stream, if applicable.
      */
-    virtual RenderTarget* createRenderTarget(const TextureDescription& desc, uint32 flags)=0;
+    virtual RenderTarget* createRenderTarget(const TextureDescription& desc, uint32_t flags)=0;
     
     /*! \brief Create a framebuffer that can be assigned in a single call.
      * 
@@ -139,7 +146,7 @@ public:
      *  \param data     data used for automatic initialization (can be nullptr).
      *  \returns Returns a new buffer object.
      */
-    virtual Buffer* createBuffer(size_t size, uint32 flags, const void* data)=0;
+    virtual Buffer* createBuffer(size_t size, uint32_t flags, const void* data)=0;
     
     /*! \brief Destroy a buffer object.
      * 
@@ -167,7 +174,7 @@ public:
      *  \param data     data used for automatic initialization (can be nullptr).
      *  
      */
-    virtual Texture* createTexture(const TextureDescription& desc, uint32 flags, const void* data = nullptr)=0;
+    virtual Texture* createTexture(const TextureDescription& desc, uint32_t flags, const void* data = nullptr)=0;
     
     /*! \brief Destroy a texture object.
      * 
@@ -197,7 +204,7 @@ public:
      *  \param width  the horizontal size of the rectangle.
      *  \param height the vertical size of the rectangle.
      */
-	virtual void setScissorRect(uint32 x, uint32 y, uint32 width, uint32 height) = 0;
+	virtual void setScissorRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
     
     /*! \brief Set up the drawing rectangle.
      * 
@@ -206,7 +213,7 @@ public:
      *  \param width  the horizontal size of the rectangle.
      *  \param height the vertical size of the rectangle.
      */
-	virtual void setViewportRect(uint32 x, uint32 y, uint32 width, uint32 height) = 0;
+	virtual void setViewportRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
     
     /*! \brief Clear up the color buffer with the specified color.
      * 
@@ -215,14 +222,14 @@ public:
      *  \param idx    the index of the color buffer (-1 for all buffers).
      *  \param color  the color that is going to fill the color buffer.
      */
-    virtual void clearColorBuffer(uint32 idx, const Vector4& color)=0;
+    virtual void clearColorBuffer(uint32_t idx, const Vector4& color)=0;
     
     /*! \brief Clear up the depth stencil buffer with the specified depth and stencil value.
      * 
      *  \param depth   the depth value in non-linear format.
      *  \param stencil the stencil value.
      */
-    virtual void clearDepthStencilBuffer(float depth=1.0f, uint8 stencil=0)=0;
+    virtual void clearDepthStencilBuffer(float depth=1.0f, uint8_t stencil=0)=0;
 };
 }
 

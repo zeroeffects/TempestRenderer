@@ -114,7 +114,7 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
                                                     TGE_ASSERT(false, "Unexpected type bound to identifier"); break;
                                                 }
                                             }
-                                            *yylval = CreateNode<Value<string>>(*yylloc, yytext);
+                                            *yylval = CreateNode<Value<std::string>>(*yylloc, yytext);
                                             return ShaderToken::Identifier;
                                         }
 "+="                                    *yylval = AST::Node(); return ShaderToken::AddAssign;
@@ -152,7 +152,7 @@ IDENTIFIER  [_a-zA-Z][_a-zA-Z0-9]*
 [ \t]+                                  
 [\r\n]+                                 yylloc->startLine += yyleng; yylloc->startColumn = 1;
 
-.                                       driver.error(*yylloc, string("invalid character: ") + yytext);
+.                                       driver.error(*yylloc, std::string("invalid character: ") + yytext);
 
 %%
 

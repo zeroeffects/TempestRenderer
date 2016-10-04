@@ -67,7 +67,7 @@ GLUsageMode TranslateAccess(StorageMode storage_type)
     }
 }
 
-GLStorage::GLStorage(StorageMode storage_type, uint32 size)
+GLStorage::GLStorage(StorageMode storage_type, uint32_t size)
     :   m_Size(size),
         m_Target(TranslateStorage(storage_type)),
         m_Access(TranslateAccessBit(storage_type))
@@ -84,42 +84,42 @@ GLStorage::~GLStorage()
     glDeleteBuffers(1, &m_Storage);
 }
 
-void GLStorage::storeLinearBuffer(uint32 offset, uint32 size, const void* data)
+void GLStorage::storeLinearBuffer(uint32_t offset, uint32_t size, const void* data)
 {
     glBindBuffer(m_Target, m_Storage);
-    auto* data_ptr = static_cast<uint8*>(glMapBufferRange(m_Target, offset, size,
+    auto* data_ptr = static_cast<uint8_t*>(glMapBufferRange(m_Target, offset, size,
                                                           m_Access));
         memcpy(data_ptr, data, size);
     glUnmapBuffer(m_Target);
     glBindBuffer(m_Target, 0);
 }
 
-void GLStorage::storeTexture(uint32 offset, const TextureDescription& tex_desc, const void* data)
+void GLStorage::storeTexture(uint32_t offset, const TextureDescription& tex_desc, const void* data)
 {
     GLsizeiptr size = tex_desc.Height*tex_desc.Width*tex_desc.Depth*DataFormatElementSize(tex_desc.Format);
     glBindBuffer(m_Target, m_Storage);
-    auto* data_ptr = static_cast<uint8*>(glMapBufferRange(m_Target, offset, size,
+    auto* data_ptr = static_cast<uint8_t*>(glMapBufferRange(m_Target, offset, size,
         m_Access));
         memcpy(data_ptr, data, size);
     glUnmapBuffer(m_Target);
     glBindBuffer(m_Target, 0);
 }
 
-void GLStorage::extractLinearBuffer(uint32 offset, uint32 size, void* data)
+void GLStorage::extractLinearBuffer(uint32_t offset, uint32_t size, void* data)
 {
     glBindBuffer(m_Target, m_Storage);
-    auto* data_ptr = static_cast<uint8*>(glMapBufferRange(m_Target, offset, size,
+    auto* data_ptr = static_cast<uint8_t*>(glMapBufferRange(m_Target, offset, size,
         m_Access));
         memcpy(data, data_ptr, size);
     glUnmapBuffer(m_Target);
     glBindBuffer(m_Target, 0);
 }
 
-void GLStorage::extractTexture(uint32 offset, const TextureDescription& tex_desc, void* data)
+void GLStorage::extractTexture(uint32_t offset, const TextureDescription& tex_desc, void* data)
 {
     glBindBuffer(m_Target, m_Storage);
     GLsizeiptr size = tex_desc.Height*tex_desc.Width*tex_desc.Depth*DataFormatElementSize(tex_desc.Format);
-    auto* data_ptr = static_cast<uint8*>(glMapBufferRange(m_Target, offset, size,
+    auto* data_ptr = static_cast<uint8_t*>(glMapBufferRange(m_Target, offset, size,
         m_Access));
         memcpy(data, data_ptr, size);
     glUnmapBuffer(m_Target);

@@ -92,12 +92,20 @@ void TempestWidget::paintEvent(QPaintEvent* event)
     {
         m_Backend->attach(GetWindowSystem(), m_Window);
     }
+
+    if(m_Rendering)
+    {
+        return;
+    }
+
+    m_Rendering = true;
 #ifndef NDEBUG
     TGE_ASSERT(DebugThreadID == std::this_thread::get_id(), "Should not be called from different thread");
 #endif
-    m_Backend->clearColorBuffer(0, Tempest::Vector4(1.0f, 0.0f, 1.0f, 1.0f));
+    m_Backend->clearColorBuffer(0, Tempest::Vector4{1.0f, 0.0f, 1.0f, 1.0f});
     emit rendering();
     m_Window.swapBuffers();
+    m_Rendering = false;
 }
 
 void TempestWidget::timerEvent(QTimerEvent* event)

@@ -28,16 +28,16 @@
 #include <utility>
 #include <vector>
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 
 namespace Tempest
 {
 void InterleaveVertices(const char** vert_arrays,
-                        const int32* strides,
-                        size_t subarrays,
-                        const int32** inds,
-                        size_t ind_count,
-                        std::vector<int32>* out_inds,
+                        const int32_t* strides,
+                        std::size_t subarrays,
+                        const int32_t** inds,
+                        std::size_t ind_count,
+                        std::vector<int32_t>* out_inds,
                         std::vector<char>* out_data);
 }
 

@@ -25,42 +25,39 @@
 #ifndef _TEMPEST_FILESYSTEM_HH_
 #define _TEMPEST_FILESYSTEM_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 
 #include <list>
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <iostream>
 
 #ifdef LINUX
 #   include <sys/epoll.h>
-#elif !defined(_WIN32)
+#elif defined(_WIN32)
+#	define WIN32_LEAN_AND_MEAN 1
+#	include <Windows.h>
+#else
 #	error "Unsupported platform"
 #endif
 
 #define TGE_PATH_DELIM '/'
-#ifdef _WIN32
-#   define TGE_INVALID_PATH_DELIM '/'
-#elif defined(LINUX)
-#   define TGE_INVALID_PATH_DELIM '\\'
-#else
-#   error "Unsupported platform"
-#endif
-
+#define TGE_INVALID_PATH_DELIM '\\'
 
 namespace Tempest
 {
 //! Represents a path to file system object.
 class Path
 {
-    //! The string that contains the actual path in native file format.
-    string m_Path;
+    //! Thestd::string that contains the actual path in native file format.
+    std::string m_Path;
 public:
     //! Default constructor.
     explicit Path();
 
     //! Constructor.
-    explicit Path(const string& path);
+    explicit Path(const std::string& path);
 
     //! Copy constructor.
     Path(const Path& path);
@@ -69,25 +66,27 @@ public:
     Path& operator=(const Path& path);
     
     //! Sets the path.
-    void set(const string& path);
+    void set(const std::string& path);
+
+	const char* c_str() const { return m_Path.c_str(); }
 
     //! Returns the current path.
-    string get() const;
+    std::string get() const { return m_Path; }
 
     //! Returns just the file name.
-    string filename() const;
+    std::string filename() const;
     
     //! Returns the file name without extension.
-    string filenameWOExt() const;
+    std::string filenameWOExt() const;
 
     //! Returns the file extension.
-    string extension() const;
+    std::string extension() const;
     
     //! Extracts a relative path to the specified one.
-    string relativePath(const Path& p) const;
+    std::string relativePath(const Path& p) const;
 
     //! Extracts just the directory part of the path.
-    string directoryPath() const;
+    std::string directoryPath() const;
 
     //! Returns whether the object contains a valid path.
     bool isValid() const;
@@ -95,6 +94,9 @@ public:
     //! Returns whether the path is pointing to a directory.
     bool isDirectory() const;
 };
+
+
+inline std::ostream& operator<<(std::ostream& os, const Path& path) { return os << path.c_str(); }
 
 //! Equal to operator.
 bool operator==(const Path& lhs, const Path& rhs);
@@ -148,10 +150,10 @@ public:
     Path getPath() const;
     
     //! Encapsulates the native function for creating a new directory.
-    static FSOpResult mkdir(const string& name);
+    static FSOpResult mkdir(const std::string& name);
     
     //! Encapsulates the native function for deleting a directory.
-    static FSOpResult rmdir(const string& name);
+    static FSOpResult rmdir(const std::string& name);
 };
 
 //! Describes a file system event, such as file modification, deletion, creation.
@@ -170,7 +172,7 @@ enum FSEventType
 struct FSEvent
 {
     int         type;
-    string      name;
+    std::string      name;
 };
 
 typedef std::vector<FSEvent> FSEvents;
@@ -187,18 +189,18 @@ class FSPollingService
 
     struct MonitoredDirectory
     {
-        string		name;
+        std::string		name;
         HANDLE		handle;
         char		buffer[16384];
         OVERLAPPED  overlapped;
 
-        MonitoredDirectory(string name);
+        MonitoredDirectory(std::string name);
             ~MonitoredDirectory();
 
         bool initMonitoredDirectory();
         bool restartMonitoring();
 
-        bool operator==(const string& val) { return name == val; }
+        bool operator==(const std::string& val) { return name == val; }
     };
 
     typedef std::unique_ptr<MonitoredDirectory> MonitoredDirectoryPtr;
@@ -222,7 +224,7 @@ class FSPollingService
     typedef int	HandleType;
 
     //! The type of the map between the monitored paths and their respective identifiers.
-    typedef std::unordered_map<string, HandleType> WatchMap;
+    typedef std::unordered_map<std::string, HandleType> WatchMap;
     //! Map between the monitored paths and their respective identifiers.
     WatchMap                  m_Watches;
 #endif

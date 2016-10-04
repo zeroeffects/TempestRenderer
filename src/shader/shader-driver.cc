@@ -148,6 +148,10 @@ enum BuiltInEnum
     TGE_EFFECT_BUILTIN_SMOOTHSTEP,
     TGE_EFFECT_BUILTIN_ISNAN,
     TGE_EFFECT_BUILTIN_ISINF,
+    TGE_EFFECT_BUILTIN_FLOATBITSTOINT,
+    TGE_EFFECT_BUILTIN_FLOATBITSTOUINT,
+    TGE_EFFECT_BUILTIN_INTBITSTOFLOAT,
+    TGE_EFFECT_BUILTIN_UINTBITSTOFLOAT,
     TGE_EFFECT_BUILTIN_FMA,
     TGE_EFFECT_BUILTIN_FREXP,
     TGE_EFFECT_BUILTIN_LDEXP,
@@ -793,7 +797,8 @@ struct BuiltInFunction<TRet(TArgs...)>
     }
 };
 
-Driver::Driver()
+Driver::Driver(FileLoader* loader)
+    :   AST::Driver(loader)
 {
 // Common Shader Built-ins
     m_ObjectPool.reserve(TGE_EFFECT_BUILTINS);
@@ -975,6 +980,14 @@ Driver::Driver()
     BuiltInFunction<GenBType (GenType)>::addTo(m_ObjectPool, m_ShaderBuiltIns, func_set);
     m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_ISINF] = createFunctionSet(&func_set, "isinf");
     BuiltInFunction<GenBType (GenType)>::addTo(m_ObjectPool, m_ShaderBuiltIns, func_set);
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_FLOATBITSTOINT] = createFunctionSet(&func_set, "floatBitsToInt");
+    BuiltInFunction<GenIType (GenType)>::addTo(m_ObjectPool, m_ShaderBuiltIns, func_set);
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_FLOATBITSTOUINT] = createFunctionSet(&func_set, "floatBitsToUint");
+    BuiltInFunction<GenUType (GenType)>::addTo(m_ObjectPool, m_ShaderBuiltIns, func_set);
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_INTBITSTOFLOAT] = createFunctionSet(&func_set, "intBitsToFloat");
+    BuiltInFunction<GenType (GenIType)>::addTo(m_ObjectPool, m_ShaderBuiltIns, func_set);
+    m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_UINTBITSTOFLOAT] = createFunctionSet(&func_set, "uintBitsToFloat");
+    BuiltInFunction<GenType (GenUType)>::addTo(m_ObjectPool, m_ShaderBuiltIns, func_set);
     m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_FMA] = createFunctionSet(&func_set, "fma");
     BuiltInFunction<GenType (GenType, GenType, GenType)>::addTo(m_ObjectPool, m_ShaderBuiltIns, func_set);
     m_ShaderBuiltIns[TGE_EFFECT_BUILTIN_FREXP] = createFunctionSet(&func_set, "frexp");
@@ -1477,6 +1490,42 @@ void Driver::endBlock()
 {
     m_Stack.erase(m_Stack.begin() + m_StackPointers.back(), m_Stack.end());
     m_StackPointers.pop_back();
+}
+
+bool Driver::isOptionEnabledRecursive(const AST::Node* sub)
+{
+    switch(sub->getNodeType())
+    {
+    case TGE_EFFECT_BINARY_OPERATOR:
+    {
+        auto* binary_operator = sub->extract<BinaryOperator>();
+
+        bool lhs = isOptionEnabledRecursive(binary_operator->getLHSOperand()),
+             rhs = isOptionEnabledRecursive(binary_operator->getRHSOperand());
+
+        switch(binary_operator->getOperation())
+        {
+        case BinaryOperatorType::Or: return lhs || rhs;
+        case BinaryOperatorType::And: return lhs && rhs;
+        case BinaryOperatorType::Xor: return lhs != rhs;
+        default: TGE_ASSERT(false, "Unsupported operation");
+        }
+    } break;
+    case TGE_EFFECT_OPTION:
+    {
+        auto opt = sub->extract<Option>();
+        auto begin_opt = std::begin(m_OptionStack),
+             end_opt = std::end(m_OptionStack);
+        return std::find(begin_opt, end_opt, opt) != end_opt;
+    } break;
+    }
+
+    return false;
+}
+
+bool Driver::isOptionEnabled(const Optional* _opt)
+{
+    return isOptionEnabledRecursive(_opt->getOption());
 }
 }
 }

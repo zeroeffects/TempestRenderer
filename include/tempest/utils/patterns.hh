@@ -26,6 +26,7 @@
 #define PATTERNS_HH_
 
 #include "tempest/utils/assert.hh"
+#include "tempest/utils/memory.hh"
 
 #ifdef _MSC_VER
 	#pragma warning(disable : 4200)
@@ -85,9 +86,9 @@ public:
 template<class T>
 struct PackedData
 {
-    const uint32    Count;
+    const uint32_t    Count;
     T               Values[];
-    PackedData(uint32 count)
+    PackedData(uint32_t count)
         :   Count(count)
     {
         for(size_t i = 0; i < count; ++i)
@@ -106,7 +107,7 @@ struct PackedData
 };
 
 template<class T, class... TArgs>
-T* CreatePackedData(uint32 count, TArgs&&... args)
+T* CreatePackedData(uint32_t count, TArgs&&... args)
 {
     return new (malloc(sizeof(T) + count*sizeof(typename T::PackType))) T(count, args...);
 }
@@ -120,13 +121,31 @@ void DestroyPackedData(T* ptr)
 
 #define PACKED_DATA(type) \
     typedef type PackType; \
-    template<class T, class... TArgs> friend T* Tempest::CreatePackedData(uint32 count, TArgs&&... args); \
+    template<class T, class... TArgs> friend T* Tempest::CreatePackedData(uint32_t count, TArgs&&... args); \
     template<class T> friend void Tempest::DestroyPackedData(T* ptr); \
     Tempest::PackedData<type>  
 
 template<class T> T* Singleton<T>::m_Instance = nullptr;
 
 template<class T, class TDeleter> class ScopedObject;
+
+template<class T>
+struct DefaultDeleter
+{
+    void operator()(T* t)
+    {
+        delete t;
+    }
+};
+
+template<class T>
+struct DefaultArrayDeleter
+{
+    void operator()(T* t)
+    {
+        delete[] t;
+    }
+};
 
 template<class T, class TDeleter> 
 class ScopedObject
@@ -148,14 +167,14 @@ public:
         :   m_Desc(std::move(obj.m_Desc)),
             m_Deleter(obj.m_Deleter)
     {
-        obj.m_Desc = T();
+        obj.m_Desc = {};
     }
     
     ScopedObject& operator=(ScopedObject&& obj)   
     {
         m_Desc = std::move(obj.m_Desc);
         m_Deleter = obj.m_Deleter;
-        obj.m_Ptr = nullptr;
+        obj.m_Desc = {};
         return *this;
     }
     
@@ -169,7 +188,11 @@ public:
     T get() { return m_Desc; }
     const T get() const { return m_Desc; }
     
-    T release() { auto tmp = m_Desc; m_Desc = T(); return tmp; }
+    T* operator&() { return &m_Desc; }
+
+	void reset() { if(m_Desc) m_Deleter(m_Desc); m_Desc = {}; }
+
+	T release() { auto tmp = m_Desc; m_Desc = {}; return tmp; }
 };
 
 template<class T, class TDeleter>
@@ -213,8 +236,12 @@ public:
     T* get() { return m_Ptr; }
     const T* get() const { return m_Ptr; }
 
-    T release() { auto tmp = m_Ptr; m_Ptr = nullptr; return tmp; }
+	void reset() { if(m_Ptr) m_Deleter(m_Ptr); m_Ptr = {}; }
+
+    T* release() { auto tmp = m_Ptr; m_Ptr = nullptr; return tmp; }
     
+    T& operator[](size_t idx) { return m_Ptr[idx]; }
+
     T** operator&(){ return &m_Ptr; }
     operator T*() const { return m_Ptr; }
     T& operator*() { return *m_Ptr; }
@@ -224,6 +251,9 @@ public:
     const T& operator*() const { return *m_Ptr; }
     const T* operator->() const { return m_Ptr; }
 };
+
+template<class T>
+using ScopedArray = ScopedObject<T*, DefaultArrayDeleter<T>>;
 
 template<class TRollback>
 class Transaction

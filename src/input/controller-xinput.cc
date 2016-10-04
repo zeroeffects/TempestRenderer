@@ -115,7 +115,7 @@ Controller& Controller::operator=(Controller&& ctr)
     return *this;
 }
 
-static void SetButtonState(ControllerState* state, size_t button_mask, uint16 button_state)
+static void SetButtonState(ControllerState* state, size_t button_mask, uint16_t button_state)
 {
 
 }
@@ -128,13 +128,13 @@ bool Controller::getState(ControllerState* state)
         return false;
     }
 
-    auto compute_trigger = [](int16 state)
+    auto compute_trigger = [](int16_t state)
     {
         if(state == 255)
-            return std::numeric_limits<int16>::max();
+            return std::numeric_limits<int16_t>::max();
         else if(state == 0)
-            return std::numeric_limits<int16>::min();
-        return static_cast<int16>((state - 127) * 256);
+            return std::numeric_limits<int16_t>::min();
+        return static_cast<int16_t>((state - 127) * 256);
     };
     state->LeftTrigger = compute_trigger(xstate.Gamepad.bLeftTrigger);
     state->RightTrigger = compute_trigger(xstate.Gamepad.bRightTrigger);

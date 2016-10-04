@@ -1,0 +1,37 @@
+struct GlobalsDesc
+{
+    vec4 Transform;
+};
+
+resource buffer Resources
+{
+    sampler2D Texture;
+}
+
+structbuffer GlobalsDesc Globals;
+
+vertex shader
+{
+    out vec2     TexCoord;
+
+    void main()
+    {
+        vec4 transform = Globals[tge_DrawID].Transform;
+        vec2 full_quad = vec2(float(gl_VertexID & 1), float(gl_VertexID & 2) * 0.5);
+        vec2 screen_quad = full_quad*transform.xy + transform.zw;
+        TexCoord = full_quad;
+        gl_Position = vec4(2.0*screen_quad - 1.0, 0.999999, 1.0); 
+    }
+}
+
+fragment shader
+{
+    in vec2     TexCoord;
+    
+    out vec4    FragmentColor;
+
+    void main()
+    {
+        FragmentColor = texture(Texture, TexCoord);
+    }
+}

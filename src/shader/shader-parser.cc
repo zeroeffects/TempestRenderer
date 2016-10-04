@@ -39,9 +39,9 @@ std::ostream& operator<<(std::ostream& os, ShaderToken token)
 {
     const char* name;
 
-    if((uint32)token > (uint32)ShaderToken::Count)
+    if((uint32_t)token > (uint32_t)ShaderToken::Count)
     {
-        char c = '!' + (uint32)token - (uint32)ShaderToken::Count;
+        char c = '!' + (uint32_t)token - (uint32_t)ShaderToken::Count;
         os << c;
         return os;
     }
@@ -335,7 +335,7 @@ bool Parser::jumpStatement()
         parseToken();
         AST::NodeT<Expression> expr = expression();
         auto status = expect(ToCharacterToken(';'));
-        if(status)
+        if(status && expr && expr->getSecond())
         {
             m_NodeStack.emplace_back(CreateNode<ReturnStatement>(statement_loc, std::move(expr->getSecond())));
         }
@@ -355,7 +355,7 @@ bool Parser::jumpStatement()
     auto status = expect(ToCharacterToken(';'));
     if(!status)
     {
-        m_Driver.error(statement_loc, string("Invalid ") + jump_statement_name + " statement");
+        m_Driver.error(statement_loc, std::string("Invalid ") + jump_statement_name + " statement");
         skipDeclarationOrDefinition();
         m_NodeStack.emplace_back(AST::Node());
         return HANDLED;
@@ -455,12 +455,13 @@ AST::NodeT<Expression> Parser::assignmentExpression()
 
         parseToken();
         auto expr = conditionalExpression();
+        TGE_ASSERT(!expr || (expr->getFirst() && expr->getSecond()), "Invalid expression");
         if(!expr)
         {
             m_Driver.error(expr_loc, "Invalid assignment expression");
             return AST::NodeT<Expression>();
         }
-
+        
         operations.emplace_back(AssignmentOperation{ expr_loc, oper });
         exprs.emplace_back(std::move(expr));
     }
@@ -472,8 +473,19 @@ AST::NodeT<Expression> Parser::assignmentExpression()
         auto& oper = operations[i];
         auto& lhs_expr = exprs[i];
 
-        auto* _type = lhs_expr->getFirst()->binaryOperatorResultType(m_Driver, oper.operation, rhs_expr->getFirst());
-        rhs_expr = CreateNodeTyped<Expression>(oper.location, _type, CreateNode<BinaryOperator>(oper.location, oper.operation, std::move(lhs_expr->getSecond()), std::move(rhs_expr->getSecond())));
+        if(lhs_expr && rhs_expr)
+        {
+            auto* _type = lhs_expr->getFirst()->binaryOperatorResultType(m_Driver, oper.operation, rhs_expr->getFirst());
+            if(!_type)
+            {
+                std::stringstream ss;
+                ss << "Invalid assignment operation (" << BinaryOperationToString(oper.operation) << ") with operands of type " << lhs_expr->getFirst()->getNodeName() << " and " << rhs_expr->getFirst()->getNodeName();
+                m_Driver.error(m_CurrentLocation, ss.str());
+                return {};
+            }
+
+            rhs_expr = CreateNodeTyped<Expression>(oper.location, _type, CreateNode<BinaryOperator>(oper.location, oper.operation, std::move(lhs_expr->getSecond()), std::move(rhs_expr->getSecond())));
+        }
     }
 
     return std::move(rhs_expr);
@@ -611,6 +623,9 @@ AST::NodeT<Expression> Parser::paranthesesExpression()
             m_Driver.error(par_loc, ss.str());
         }
 
+        if(!func)
+            return {};
+
         auto func_call = func->createFunctionCall(par_loc, std::move(arg_list));
         return CreateNodeTyped<Expression>(par_loc, func_call->getFunction()->getReturnType(), std::move(func_call));
     } break;
@@ -640,11 +655,11 @@ AST::NodeT<Expression> Parser::paranthesesExpression()
     } break;
     case ToCharacterToken('('):
     {
+        parseToken();
         auto expr = expression();
         bool status = expr;
         if(status)
         {
-            parseToken();
             auto status = expect(ToCharacterToken(')'));
         }
 
@@ -676,6 +691,10 @@ AST::NodeT<Expression> Parser::paranthesesExpression()
     {
         const Type* rt = m_Driver.find("bool"); 
         return CreateNodeTyped<Expression>(par_loc, rt, std::move(m_CurrentNode));
+    } break;
+    case ShaderToken::Identifier:
+    {
+        m_Driver.error(m_CurrentLocation, "Undefined identifier: " + m_CurrentNode.extract<Identifier>()->getValue());
     } break;
     default: break;
     }
@@ -716,6 +735,10 @@ AST::NodeT<Expression> Parser::suffixExpression()
             }
             auto value = member.extract<Identifier>()->getValue();
             const Type* t = expr->getFirst()->getMemberType(m_Driver, value);
+            if(!t)
+            {
+                m_Driver.error(m_CurrentLocation, "Undefined member: " + value);
+            }
             expr = CreateNodeTyped<Expression>(mem_expr, t, t ? CreateNode<MemberVariable>(mem_expr, std::move(expr->getSecond()), t, value) : AST::Node());
         } break;
         case ToCharacterToken('['):
@@ -723,7 +746,8 @@ AST::NodeT<Expression> Parser::suffixExpression()
             parseToken();
             auto idx_loc = m_CurrentLocation;
             auto idx_expr = expression();
-            if(!idx_expr || !expr->getFirst() || !idx_expr->getFirst())
+            TGE_ASSERT(expr->getFirst() || idx_expr->getSecond(), "Invalid expression");
+            if(!idx_expr)
             {
                 return AST::NodeT<Expression>();
             }
@@ -850,10 +874,10 @@ void BinaryOperatorInfo(ShaderToken op, BinaryOperatorType* _type, size_t* prece
     }
 }
 
-AST::NodeT<Expression> Parser::binaryExpression()
+AST::NodeT<Expression> Parser::binaryExpression(AST::NodeT<Expression> (Parser::*func)())
 {
     auto loc = m_CurrentLocation;
-    auto expr = prefixExpression();
+    auto expr = (this->*func)();
     if(!expr)
     {
         return AST::NodeT<Expression>();
@@ -887,7 +911,8 @@ AST::NodeT<Expression> Parser::binaryExpression()
     for(;;)
     {
         auto rhs_loc = m_CurrentLocation;
-        auto expr = prefixExpression();
+        auto expr = (this->*func)();
+        TGE_ASSERT(!expr || (expr->getFirst() && expr->getSecond()), "Invalid expression");
 
         if(!expr)
         {
@@ -906,7 +931,7 @@ AST::NodeT<Expression> Parser::binaryExpression()
                 auto lhs_expr = std::move(expr_stack.back());
                 const Type* _type = lhs_expr->getFirst()->binaryOperatorResultType(m_Driver, last_op, rhs_expr->getFirst());
                 auto binop_loc = lhs_expr.getDeclarationLocation();
-                rhs_expr = CreateNodeTyped<Expression>(binop_loc, _type, CreateNode<BinaryOperator>(binop_loc, last_op, std::move(lhs_expr->getSecond()), std::move(rhs_expr->getSecond())));
+                rhs_expr = _type ? CreateNodeTyped<Expression>(binop_loc, _type, CreateNode<BinaryOperator>(binop_loc, last_op, std::move(lhs_expr->getSecond()), std::move(rhs_expr->getSecond()))) : NodeT<Expression>();
                 expr_stack.pop_back();
                 if(!oper_stack.empty())
                 {
@@ -924,7 +949,7 @@ AST::NodeT<Expression> Parser::binaryExpression()
 
         if(precedence < last_prec)
         {
-            oper_stack.push_back(OperationStart{ expr_stack.size() - 1, precedence, _op });
+            oper_stack.push_back(OperationStart{ expr_stack.size() - 1, precedence, last_op });
         }
 
         expr_stack.push_back(std::move(expr));
@@ -947,13 +972,27 @@ AST::NodeT<Expression> Parser::binaryExpression()
 
     TGE_ASSERT(!expr_stack.empty(), "Broken stack");
     auto rhs_expr = std::move(expr_stack.back());
+    if(!rhs_expr)
+        return {};
+
     expr_stack.pop_back();
     while(!expr_stack.empty())
     {
         auto lhs_expr = std::move(expr_stack.back());
+        if(!lhs_expr)
+            return {};
+        TGE_ASSERT(lhs_expr->getFirst() && rhs_expr->getFirst(), "Invalid expression");
         const Type* _type = lhs_expr->getFirst()->binaryOperatorResultType(m_Driver, last_op, rhs_expr->getFirst());
+        if(!_type)
+        {
+            std::stringstream ss;
+            ss << "Invalid binary operation (" << BinaryOperationToString(last_op) << ") with operands of type " << lhs_expr->getFirst()->getNodeName() << " and " << rhs_expr->getFirst()->getNodeName();
+            m_Driver.error(m_CurrentLocation, ss.str());
+            return {};
+        }
         auto binop_loc = lhs_expr.getDeclarationLocation();
         rhs_expr = CreateNodeTyped<Expression>(binop_loc, _type, CreateNode<BinaryOperator>(binop_loc, last_op, std::move(lhs_expr->getSecond()), std::move(rhs_expr->getSecond())));
+
         expr_stack.pop_back();
         if(!oper_stack.empty())
         {
@@ -965,13 +1004,15 @@ AST::NodeT<Expression> Parser::binaryExpression()
             }
         }
     }
+
+    TGE_ASSERT(!rhs_expr || (rhs_expr->getFirst() && rhs_expr->getSecond()), "Invalid expression");
     return std::move(rhs_expr);
 }
 
 AST::NodeT<Expression> Parser::conditionalExpression()
 {
     auto expr_loc = m_CurrentLocation;
-    auto cond_expr = binaryExpression();
+    auto cond_expr = binaryExpression(&Parser::prefixExpression);
     bool status = cond_expr;
     if(!status)
         return AST::Node();
@@ -993,6 +1034,7 @@ AST::NodeT<Expression> Parser::conditionalExpression()
         status = expect(ToCharacterToken(':'));
         if(status)
         {
+            parseToken();
             false_expr = conditionalExpression();
         }
     }
@@ -1008,8 +1050,9 @@ AST::NodeT<Expression> Parser::conditionalExpression()
 
     NodeT<Expression>    result;
     const Type*          _type = nullptr;
-    if(cond_expr && true_expr->getFirst() && false_expr && false_expr->getFirst())
+    if(cond_expr && false_expr)
     {
+        TGE_ASSERT(true_expr->getFirst() && false_expr->getFirst(), "Invalid expression");
         if(true_expr->getFirst()->hasImplicitConversionTo(false_expr->getFirst()))
         {
             _type = false_expr->getFirst();
@@ -1064,7 +1107,7 @@ bool Parser::basicVariableDeclaration()
                 m_Driver.error(cond_loc, "Invalid assignment declaration");
             }
 
-            var_node = CreateNode<BinaryOperator>(var_loc, BinaryOperatorType::Assign, std::move(var_node), std::move(cond_node->getSecond()));
+            var_node = CreateNode<BinaryOperator>(var_loc, BinaryOperatorType::Assign, std::move(var_node), cond_node ? std::move(cond_node->getSecond()) : AST::Node());
             parseToken();
         }
 
@@ -1244,7 +1287,9 @@ bool Parser::function()
                 if(IsCharacterToken(m_CurrentToken, ')'))
                     break;
 
+                m_Reprocess = true;
                 status = expect(ToCharacterToken(','));
+                parseToken();
             }
 
             args = collapseStackToList(ListType::SemicolonSeparated, top_element);
@@ -1270,7 +1315,7 @@ bool Parser::function()
             block_push.rollback();
             if(ident_type == ShaderToken::Identifier)
             {
-                string func_name = ident.extract<Shader::Identifier>()->getValue();
+                std::string func_name = ident.extract<Shader::Identifier>()->getValue();
                 auto func_decl = CreateNodeTyped<FunctionDeclaration>(func_decl_loc, return_type,
                                                                       func_name,
                                                                       std::move(args));
@@ -1314,7 +1359,7 @@ bool Parser::function()
         {
             if(ident_type == ShaderToken::Identifier)
             {
-                string func_name = ident.extract<Shader::Identifier>()->getValue();
+                std::string func_name = ident.extract<Shader::Identifier>()->getValue();
                 auto func_decl = CreateNodeTyped<FunctionDeclaration>(func_decl_loc, return_type,
                                                                       func_name,
                                                                       std::move(args));
@@ -1377,10 +1422,11 @@ AST::Node Parser::expectRedefCheck(ShaderToken expected, ShaderToken redef)
 
     if(m_CurrentToken == redef)
     {
-        m_CurrentNode = AST::Node();
         std::stringstream ss;
         ss << "Redefinition of " << m_CurrentNode.getNodeName() << ". Previously declared at: " << m_CurrentNode.getDeclarationLocation();
         m_Driver.error(m_CurrentLocation, ss.str());
+        m_CurrentNode = AST::Node();
+        m_CurrentToken = ShaderToken::Error;
         return AST::Node();
     }
     
@@ -1833,7 +1879,7 @@ bool Parser::structDeclaration()
         child = structBody();
     }
 
-    m_NodeStack.emplace_back(CreateNode<Declaration>(struct_decl_loc, m_Driver.createStackType<StructType>(struct_decl_loc, ident ? ident.extract<Identifier>()->getValue() : string(), std::move(child))));
+    m_NodeStack.emplace_back(CreateNode<Declaration>(struct_decl_loc, m_Driver.createStackType<StructType>(struct_decl_loc, ident ? ident.extract<Identifier>()->getValue() : std::string(), std::move(child))));
 
     return HANDLED;
 }
@@ -1856,7 +1902,7 @@ void Parser::skipDefinition()
         }
         else if(m_CurrentToken == ShaderToken::EndOfFile)
         {
-            m_Driver.error(loc, string("Reached end of file before reaching }"));
+            m_Driver.error(loc, std::string("Reached end of file before reaching }"));
             return;
         }
         parseToken();
@@ -1881,7 +1927,7 @@ void Parser::skipDeclarationOrDefinition()
         }
         else if(m_CurrentToken == ShaderToken::EndOfFile)
         {
-            m_Driver.error(loc, string("Reached end of file before reaching ") + (block ? '}' : ';'));
+            m_Driver.error(loc, std::string("Reached end of file before reaching ") + (block ? '}' : ';'));
             return;
         }
         parseToken();
@@ -1895,7 +1941,7 @@ void Parser::skipToToken(char _c)
     {
         if(m_CurrentToken == ShaderToken::EndOfFile)
         {
-            m_Driver.error(loc, string("Reached end of file before reaching ") + _c);
+            m_Driver.error(loc, std::string("Reached end of file before reaching ") + _c);
             return;
         }
         parseToken();
@@ -2054,24 +2100,39 @@ bool Parser::buffer()
         || structBufferDeclaration();
 }
 
+AST::NodeT<Expression> Parser::option()
+{
+    if(m_CurrentToken != ShaderToken::Option)
+    {
+        return AST::NodeT<Expression>();
+    }
+
+    m_Driver.pushOptionOnStack(m_CurrentNode.extract<Shader::Option>());
+
+    return m_CurrentNode ? CreateNodeTyped<Expression>(m_CurrentLocation, m_Driver.find("bool"), AST::NodeT<OptionRef>(std::move(m_CurrentNode))) : AST::NodeT<Expression>();
+}
+
 bool Parser::optional(bool (Parser::*func)())
 {
     if(!IsCharacterToken(m_CurrentToken, '@'))
         return UNHANDLED;
 
     auto start_loc = m_CurrentLocation;
-    auto opt = expectNode(ShaderToken::Option);
-    if(!opt)
-    {
-        m_NodeStack.push_back(AST::Node());
-        return HANDLED;
-    }
 
+    AST::NodeT<Shader::Expression> opt;
     AST::Node child;
     {
-        m_Driver.beginOptionBlock(opt.extract<Shader::Option>());
+        m_Driver.beginOptionBlock();
         auto& driver = m_Driver;
         auto at_exit = CreateAtScopeExit([&driver]() { driver.endOptionBlock(); });
+
+        parseToken();
+        opt = binaryExpression(&Parser::option);
+        if(!opt)
+        {
+            m_NodeStack.push_back(AST::Node());
+            return HANDLED;
+        }
 
         parseToken();
         if(IsCharacterToken(m_CurrentToken, '{'))
@@ -2118,7 +2179,7 @@ bool Parser::optional(bool (Parser::*func)())
         }
     }
 
-    auto optional = CreateNode<Optional>(start_loc, opt.extract<Option>(), std::move(child));
+    auto optional = CreateNode<Optional>(start_loc, std::move(opt->getSecond()), std::move(child));
     m_NodeStack.emplace_back(std::move(optional));
 
     return HANDLED;
@@ -2165,7 +2226,7 @@ bool Parser::options()
         }
 
         {
-            auto option = m_Driver.createStackNode<Option>(m_CurrentLocation, ident.extract<Value<string>>()->getValue());
+            auto option = m_Driver.createStackNode<Option>(m_CurrentLocation, ident.extract<Value<std::string>>()->getValue());
             TGE_ASSERT(stack_size == m_NodeStack.size(), "Stack should not expand");
             _options->addOption(option.get());
         }

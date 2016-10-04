@@ -12,10 +12,10 @@ structbuffer GlobalsDesc Globals;
 
 vertex shader
 {
-    layout(vb_offset = 0, vb_format = RG32F) in vec2 VertexData;
+    layout(location = 0, vb_offset = 0, vb_format = RG32F) in vec2 VertexData;
 
-    flat out int DrawIndex;
-    out vec2     TexCoord;
+    layout(location = 0) flat out int DrawIndex;
+    layout(location = 1) out vec2     TexCoord;
     
     void main()
     {
@@ -27,15 +27,13 @@ vertex shader
 
 fragment shader
 {
-    flat in int DrawIndex;
-    in vec2     TexCoord;
+    layout(location = 0) flat in int DrawIndex;
+    layout(location = 1) in vec2     TexCoord;
 
-    out vec4    FragmentColor;
+    layout(location = 0) out vec4    FragmentColor;
 
     void main()
     {
-        uint tex_slot, tex_slice;
-        vec3 color = texture(Texture, TexCoord).xyz;
-        FragmentColor = vec4(color, 1.0);
+        FragmentColor = texture(Texture, TexCoord);
     }
 }

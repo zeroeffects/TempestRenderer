@@ -27,8 +27,11 @@
 namespace Tempest
 {
 class Texture;
+struct TextureDescription; 
 class Path;
 
 Texture* LoadImage(const Path& file_path);
+bool SaveImage(const TextureDescription& tex, const void* data, const Path& file_path);
+
 void ConvertImageToRGBA(Texture* tex);
 }

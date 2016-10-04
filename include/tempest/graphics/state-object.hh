@@ -22,24 +22,27 @@
 *   THE SOFTWARE.
 */
 
-#include "tempest/utils/types.hh"
+#ifndef _TEMPEST_STATE_OBJECT_HH_
+#define _TEMPEST_STATE_OBJECT_HH_
+
+#include <cstdint>
 
 namespace Tempest
 {
-enum class FillModeType: uint8
+enum class FillModeType: uint8_t
 {
     Wireframe,
     Solid
 };
 
-enum class CullModeType: uint8
+enum class CullModeType: uint8_t
 {
     FrontAndBack,
     Front,
     Back
 };
 
-enum class FrontFaceModeType: uint8
+enum class FrontFaceModeType: uint8_t
 {
     CounterClockwise,
     Clockwise
@@ -58,9 +61,9 @@ struct RasterizerStates
     FillModeType        FillMode             = FillModeType::Solid;
     CullModeType        CullMode             = CullModeType::Back;
     FrontFaceModeType   FrontFaceMode        = FrontFaceModeType::CounterClockwise;
-    int32               DepthBias            = 0;
+    int32_t             DepthBias            = 0;
     float               SlopeScaledDepthBias = 0.0f;
-    uint32              MiscModes            = 0;
+    uint32_t            MiscModes            = 0;
 };
 
 enum MiscBlendModesType
@@ -69,7 +72,7 @@ enum MiscBlendModesType
     TEMPEST_INDEPENDENT_BLEND_ENABLE = 1 << 1,
 };
 
-enum class BlendFactorType: uint16
+enum class BlendFactorType: uint16_t
 {
     Zero,
     One,
@@ -90,7 +93,7 @@ enum class BlendFactorType: uint16
     InvSrc1Alpha
 };
 
-enum class BlendOperationType: uint16
+enum class BlendOperationType: uint16_t
 {
     Add,
     Subtract,
@@ -108,12 +111,12 @@ struct RenderTargetBlendStates
     BlendFactorType     SrcBlendAlpha         = BlendFactorType::One,
                         DstBlendAlpha         = BlendFactorType::Zero;
     BlendOperationType  BlendOpAlpha          = BlendOperationType::Add;
-    uint8               RenderTargetWriteMask = 0xFF;
+    uint8_t             RenderTargetWriteMask = 0xFF;
 };
 
 struct BlendStates
 {
-    uint32                  MiscModes = 0;
+    uint32_t                MiscModes = 0;
     RenderTargetBlendStates RenderTargets[8];
 };
 
@@ -143,10 +146,12 @@ struct DepthStencilStates
     bool                    DepthWriteEnable = false;
     ComparisonFunction      DepthFunction    = ComparisonFunction::Less;
     bool                    StencilEnable    = false;
-    uint8                   StencilReadMask  = 0xFF;
-    uint8                   StencilWriteMask = 0xFF;
-    uint8                   StencilRef       = 0;
+    uint8_t                 StencilReadMask  = 0xFF;
+    uint8_t                 StencilWriteMask = 0xFF;
+    uint8_t                 StencilRef       = 0;
     StencilOperationStates  FrontFace,
                             BackFace;
 };
 }
+
+#endif // _TEMPEST_STATE_OBJECT_HH_

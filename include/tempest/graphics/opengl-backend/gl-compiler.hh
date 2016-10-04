@@ -25,7 +25,7 @@
 #ifndef _GL_SHADER_COMPILER_HH_
 #define _GL_SHADER_COMPILER_HH_
 
-#include "tempest/utils/types.hh"
+#include <cstdint>
 #include "tempest/graphics/rendering-definitions.hh"
 
 namespace Tempest
@@ -37,21 +37,21 @@ class GLRenderingBackend;
 
 class GLShaderCompiler
 {
-    uint32 m_Settings;
+    uint32_t m_Settings;
 public:
     typedef GLShaderProgram ShaderProgramType;
     
-    GLShaderCompiler(uint32 settings = 0);
+    GLShaderCompiler(uint32_t settings = 0);
     ~GLShaderCompiler() = default;
 
-    void setSettings(uint32 settings) { m_Settings = settings; }
+    void setSettings(uint32_t settings) { m_Settings = settings; }
 
-    GLShaderProgram* compileShaderProgram(const string& filename, FileLoader* file_loader,
-                                          const string* options = nullptr, uint32 options_count = 0);
+    GLShaderProgram* compileShaderProgram(const std::string& filename, FileLoader* file_loader,
+                                          const std::string* options = nullptr, uint32_t options_count = 0);
     void destroyRenderResource(GLShaderProgram* shader_program);
 
-    FileDescription* compileBinaryBlob(const string& filename, FileLoader* file_loader,
-                                       const string* options = nullptr, uint32 options_count = 0);
+    FileDescription* compileBinaryBlob(const std::string& filename, FileLoader* file_loader,
+                                       const std::string* options = nullptr, uint32_t options_count = 0);
     void destroyRenderResource(FileDescription* blob);
 };
 }

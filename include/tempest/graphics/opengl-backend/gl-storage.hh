@@ -34,23 +34,23 @@ struct TextureDescription;
 
 class GLStorage
 {
-    uint32          m_Size;
+    uint32_t        m_Size;
     GLuint          m_Storage;
     GLBufferTarget  m_Target;
     GLbitfield      m_Access;
 public:
-    GLStorage(StorageMode storage_type, uint32 size);
+    GLStorage(StorageMode storage_type, uint32_t size);
     ~GLStorage();
 
-    uint32 getSize() const { return m_Size; }
+    uint32_t getSize() const { return m_Size; }
 
     void bindToTarget(GLBufferTarget target) { glBindBuffer(target, m_Storage); }
 
-    void storeLinearBuffer(uint32 offset, uint32 size, const void* data);
-    void storeTexture(uint32 offset, const TextureDescription& tex_desc, const void* data);
+    void storeLinearBuffer(uint32_t offset, uint32_t size, const void* data);
+    void storeTexture(uint32_t offset, const TextureDescription& tex_desc, const void* data);
 
-    void extractLinearBuffer(uint32 offset, uint32 size, void* data);
-    void extractTexture(uint32 offset, const TextureDescription& tex_desc, void* data);
+    void extractLinearBuffer(uint32_t offset, uint32_t size, void* data);
+    void extractTexture(uint32_t offset, const TextureDescription& tex_desc, void* data);
 };
 }
 

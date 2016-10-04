@@ -33,32 +33,42 @@ namespace Tempest
 {
 namespace ObjLoader
 {
-void Driver::parseMaterialFile(const Location& loc, const string& name)
+void Driver::parseMaterialFile(const Location& loc, const std::string& name)
 {
-    ObjMtlLoader::Driver obj_mtl_driver(&m_Materials);
+    ObjMtlLoader::Driver obj_mtl_driver(m_FileLoader, &m_Materials);
+	bool parse_ret;
     if(m_FileLoader)
     {
-        auto* file_descr = m_FileLoader->loadFileContent(m_Path + TGE_PATH_DELIM + name);
-        auto* loader = m_FileLoader;
-        CreateAtScopeExit([loader, file_descr]() { loader->freeFileContent(file_descr); });
-        obj_mtl_driver.parseString(file_descr->Content, file_descr->ContentSize, name);
+        auto* file_descr = m_FileLoader->loadFileContent(name);
+		if(file_descr)
+		{
+			auto* loader = m_FileLoader;
+			auto at_exit = CreateAtScopeExit([loader, file_descr]() { loader->freeFileContent(file_descr); });
+			parse_ret = obj_mtl_driver.parseString(file_descr->Content, file_descr->ContentSize, name);
+		}
+		else
+		{
+			parse_ret = false;
+		}
     }
     else
     {
-        auto parse_ret = obj_mtl_driver.parseFile(m_Path + TGE_PATH_DELIM + name);
-        if(!parse_ret)
-        {
-            std::stringstream ss;
-            ss << "The application has failed to parse a material file (refer to the error log for more information): " << name << std::endl;
-            error(loc, ss.str());
-            TGE_ASSERT(parse_ret, ss.str());
-        }
+        parse_ret = obj_mtl_driver.parseFile(m_Path + TGE_PATH_DELIM + name);
+        
+    }
+
+	if(!parse_ret)
+    {
+        std::stringstream ss;
+        ss << "The application has failed to parse a material file (refer to the error log for more information): " << name << std::endl;
+        error(loc, ss.str());
+        TGE_ASSERT(parse_ret, ss.str());
     }
 }
 
-void Driver::pushMaterial(const Location& loc, const string& name)
+void Driver::pushMaterial(const Location& loc, const std::string& name)
 {
-    string trans_name;
+    std::string trans_name;
     trans_name.resize(name.size());
     std::transform(name.begin(), name.end(), trans_name.begin(), ::tolower);
     auto beg_iter = std::begin(m_Materials), end_iter = std::end(m_Materials);
@@ -68,7 +78,12 @@ void Driver::pushMaterial(const Location& loc, const string& name)
         error(loc, "Unknown material: " + name);
         return;
     }
-    m_CurrentMaterial = iter - beg_iter;
+    m_CurrentMaterial = static_cast<uint32_t>(iter - beg_iter);
+	if(!m_Groups.empty())
+	{
+		auto& last = m_Groups.back();
+		last.MaterialIndex = m_CurrentMaterial;
+	}
 }
 }
 }

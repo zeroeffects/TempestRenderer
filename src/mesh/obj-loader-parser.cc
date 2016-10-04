@@ -80,7 +80,10 @@ static bool ExpectEnd(ObjLoader::Driver& driver, const Location& loc, ObjFileTok
 }
 
 Parser::Parser(ObjLoader::Driver& driver)
-    :   m_Driver(driver) {}
+    :   m_Driver(driver)
+{
+    m_CurrentLocation.filename = &driver.__FileName;
+}
 
 void Parser::skipToEndOfLine(ObjFileToken cur_token)
 {
@@ -120,13 +123,12 @@ bool Parser::parseNumber(float* result, ObjFileToken* res_token)
 
 bool Parser::parseString(SemanticType* semantic, const char** result, ObjFileToken* res_token)
 {
-    Location location;
-    *res_token = ObjectLoaderLexer(semantic, &location, m_Driver);
+    *res_token = ObjectLoaderLexer(semantic, &m_CurrentLocation, m_Driver);
     if(*res_token != ObjFileToken::String)
     {
         std::stringstream ss;
         ss << "Unexpected \"" << TranslateToken(*res_token) << "\". Expecting string instead.";
-        m_Driver.error(location, ss.str());
+        m_Driver.error(m_CurrentLocation, ss.str());
         return false;
     }
     *result = semantic->StringValue;
@@ -136,13 +138,12 @@ bool Parser::parseString(SemanticType* semantic, const char** result, ObjFileTok
 bool Parser::parseIndex(int* result, ObjFileToken* res_token)
 {
     SemanticType semantic;
-    Location location;
-    *res_token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+    *res_token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
     if(*res_token != ObjFileToken::Integer)
     {
         std::stringstream ss;
         ss << "Unexpected \"" << TranslateToken(*res_token) << "\". Expecting number instead.";
-        m_Driver.error(location, ss.str());
+        m_Driver.error(m_CurrentLocation, ss.str());
         return false;
     }
     
@@ -153,13 +154,12 @@ bool Parser::parseIndex(int* result, ObjFileToken* res_token)
 bool Parser::expect(ObjFileToken token, ObjFileToken* res_token)
 {
     SemanticType semantic;
-    Location location;
-    *res_token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+    *res_token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
     if(*res_token != token)
     {
         std::stringstream ss;
         ss << "Unexpected \"" << TranslateToken(*res_token) << "\". Expecting \"" << TranslateToken(token) << "\" instead.";
-        m_Driver.error(location, ss.str());
+        m_Driver.error(m_CurrentLocation, ss.str());
         return false;
     }
     return true;
@@ -168,7 +168,6 @@ bool Parser::expect(ObjFileToken token, ObjFileToken* res_token)
 void Parser::parseIndices(const Location& declaration_location)
 {
     SemanticType semantic;
-    Location location;
     ObjFileToken token;
 
     int start_pos_ind, prev_pos_ind, cur_pos_ind,
@@ -179,14 +178,14 @@ void Parser::parseIndices(const Location& declaration_location)
 
     if(success)
     {
-        auto token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+        auto token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
 
         switch(token)
         {
         case ObjFileToken::Integer:
         {
             prev_pos_ind = semantic.IntegerValue;
-            success &= parseIndex(&prev_pos_ind, &token) && parseIndex(&cur_pos_ind, &token);
+            success &= parseIndex(&cur_pos_ind, &token);
             if(success)
             {
                 do
@@ -195,19 +194,22 @@ void Parser::parseIndices(const Location& declaration_location)
                     m_Driver.pushPositionIndex(prev_pos_ind);
                     m_Driver.pushPositionIndex(cur_pos_ind);
                     prev_pos_ind = cur_pos_ind;
-                } while(parseIndex(&cur_pos_ind, &token));
+                    token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
+                    cur_pos_ind = semantic.IntegerValue;
+                } while(token == ObjFileToken::Integer);
+
                 success &= IsEndToken(token);
             }
         } break;
         case static_cast<ObjFileToken>('/'):
         {
-            auto token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+            auto token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
             switch(token)
             {
             case ObjFileToken::Integer:
             {
                 start_tc_ind = semantic.IntegerValue;
-                auto token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+                auto token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
                 switch(token)
                 {
                 case ObjFileToken::Integer: // TODO: guarantee 3
@@ -236,7 +238,7 @@ void Parser::parseIndices(const Location& declaration_location)
                             prev_pos_ind = cur_pos_ind;
                             prev_tc_ind = cur_tc_ind;
 
-                            token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+                            token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
                             cur_pos_ind = semantic.IntegerValue;
                         } while(token == ObjFileToken::Integer);
                         success &= IsEndToken(token);
@@ -282,7 +284,7 @@ void Parser::parseIndices(const Location& declaration_location)
                                 prev_tc_ind = cur_tc_ind;
                                 prev_norm_ind = cur_norm_ind;
 
-                                token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+                                token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
                                 cur_pos_ind = semantic.IntegerValue;
                             } while(token == ObjFileToken::Integer);
                             success &= IsEndToken(token);
@@ -293,7 +295,7 @@ void Parser::parseIndices(const Location& declaration_location)
                 {
                     std::stringstream ss;
                     ss << "Unexpected \"" << TranslateToken(token) << ".";
-                    m_Driver.error(location, ss.str());
+                    m_Driver.error(m_CurrentLocation, ss.str());
                     success = false;
                 } break;
                 }                
@@ -315,7 +317,7 @@ void Parser::parseIndices(const Location& declaration_location)
                             success &=
                                 expect(static_cast<ObjFileToken>('/'), &token) &&
                                 expect(static_cast<ObjFileToken>('/'), &token) &&
-                                parseIndex(&cur_tc_ind, &token);
+                                parseIndex(&cur_norm_ind, &token);
 
                             if(!success)
                                 break;
@@ -331,7 +333,7 @@ void Parser::parseIndices(const Location& declaration_location)
 
                             prev_pos_ind = cur_pos_ind;
                             prev_norm_ind = cur_norm_ind;
-                            token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+                            token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
                             cur_pos_ind = semantic.IntegerValue;
                         } while(token == ObjFileToken::Integer);
                         success &= IsEndToken(token);
@@ -342,7 +344,7 @@ void Parser::parseIndices(const Location& declaration_location)
             {
                 std::stringstream ss;
                 ss << "Unexpected \"" << TranslateToken(token) << ".";
-                m_Driver.error(location, ss.str());
+                m_Driver.error(m_CurrentLocation, ss.str());
                 success = false;
             } break;
             } 
@@ -351,7 +353,7 @@ void Parser::parseIndices(const Location& declaration_location)
         {
             std::stringstream ss;
             ss << "Unexpected \"" << TranslateToken(token) << ".";
-            m_Driver.error(location, ss.str());
+            m_Driver.error(m_CurrentLocation, ss.str());
             success = false;
         } break;
         }
@@ -372,11 +374,16 @@ int Parser::parse()
 {
     ObjFileToken token;
     SemanticType semantic;
-    Location location;
-    while((token = ObjectLoaderLexer(&semantic, &location, m_Driver)) != ObjFileToken::EndOfFile)
+    while((token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver)) != ObjFileToken::EndOfFile)
     {
         switch(token)
         {
+        case ObjFileToken::Point:
+        case ObjFileToken::Line:
+		case ObjFileToken::SmoothingGroup:
+		{
+			skipToEndOfLine(token);
+		} break;
         case ObjFileToken::EndOfLine:
         {
             // --ignore
@@ -388,21 +395,21 @@ int Parser::parse()
 
             if(success)
             {
-                token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+                token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
                 if(IsNumberToken(token))
                 {
                     ConvertNumber(token, &semantic, &w);
                 }
                 else
                 {
-                    success &= ExpectEnd(m_Driver, location, token);
+                    success &= ExpectEnd(m_Driver, m_CurrentLocation, token);
                 }
             }
 
             if(!success)
             {
                 skipToEndOfLine(token);
-                m_Driver.error(location, "\tVertex position should be declared as follows: v <number> <number> <number> [ <number> ].");
+                m_Driver.error(m_CurrentLocation, "\tVertex position should be declared as follows: v <number> <number> <number> [ <number> ].");
                 break;
             }
 
@@ -415,14 +422,14 @@ int Parser::parse()
             auto success = parseNumber(&x, &token) && parseNumber(&y, &token) && parseNumber(&z, &token);
             if(success)
             {
-                token = ObjectLoaderLexer(&semantic, &location, m_Driver);
-                ExpectEnd(m_Driver, location, token);
+                token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
+                ExpectEnd(m_Driver, m_CurrentLocation, token);
             }
 
             if(!success)
             {
                 skipToEndOfLine(token);
-                m_Driver.error(location, "\tVertex normal should be declared as follows: vn <number> <number> <number>.");
+                m_Driver.error(m_CurrentLocation, "\tVertex normal should be declared as follows: vn <number> <number> <number>.");
                 break;
             }
 
@@ -435,24 +442,25 @@ int Parser::parse()
 
             if(success)
             {
-                token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+                token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
                 if(IsNumberToken(token))
                 {
-                    token = ObjectLoaderLexer(&semantic, &location, m_Driver);
+                    token = ObjectLoaderLexer(&semantic, &m_CurrentLocation, m_Driver);
                 }
 
-                success &= ExpectEnd(m_Driver, location, token);
+                success &= ExpectEnd(m_Driver, m_CurrentLocation, token);
             }
 
             if(!success)
             {
                 skipToEndOfLine(token);
-                m_Driver.error(location, "\tVertex texture coordinate should be declared as follows: vn <number> <number> [ <number> ].");
+                m_Driver.error(m_CurrentLocation, "\tVertex texture coordinate should be declared as follows: vn <number> <number> [ <number> ].");
                 break;
             }
 
             m_Driver.pushTexCoord(x, y);
         } break;
+		case ObjFileToken::ObjectName:
         case ObjFileToken::GroupName /* g */:
         {
             const char* str;
@@ -461,7 +469,7 @@ int Parser::parse()
             if(!success)
             {
                 skipToEndOfLine(token);
-                m_Driver.error(location, "\tMesh group should be defined as follows: g <string>.");
+                m_Driver.error(m_CurrentLocation, "\tMesh group should be defined as follows: g <string>.");
                 break;
             }
 
@@ -469,7 +477,7 @@ int Parser::parse()
         } break;
         case ObjFileToken::Face /* f */:
         {
-            parseIndices(location);
+            parseIndices(m_CurrentLocation);
         } break;
         case ObjFileToken::MaterialName /* usemtl */:
         {
@@ -479,11 +487,11 @@ int Parser::parse()
             if(!success)
             {
                 skipToEndOfLine(token);
-                m_Driver.error(location, "\tMaterial name should be defined as follows: usemtl <string>.");
+                m_Driver.error(m_CurrentLocation, "\tMaterial name should be defined as follows: usemtl <string>.");
                 break;
             }
 
-            m_Driver.pushMaterial(location, str);
+            m_Driver.pushMaterial(m_CurrentLocation, str);
         } break;
         case ObjFileToken::MaterialLibrary /* mtllib */:
         {
@@ -492,17 +500,17 @@ int Parser::parse()
 
             if(!success)
             {
-                m_Driver.error(location, "\tMaterial library should be defined as follows: usemtl <string>.");
+                m_Driver.error(m_CurrentLocation, "\tMaterial library should be defined as follows: usemtl <string>.");
                 break;
             }
 
-            m_Driver.parseMaterialFile(location, str);
+            m_Driver.parseMaterialFile(m_CurrentLocation, str);
         } break;
         default:
         {
             std::stringstream ss;
-            ss << "Unexpected \"", TranslateToken(token), "\". It is not a valid top level token or it is currently unsupported.";
-            m_Driver.error(location, ss.str());
+            ss << "Unexpected \"" << TranslateToken(token) << "\". It is not a valid top level token or it is currently unsupported.";
+            m_Driver.error(m_CurrentLocation, ss.str());
         }
         }
     }
