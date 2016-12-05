@@ -1,6 +1,6 @@
 /*   The MIT License
 *
-*   Tempest Engine
+*   Tempest Renderer
 *   Copyright (c) 2016 Zdravko Velinov
 *
 *   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -48,7 +48,7 @@ template<class TAABB>
 LBVH2Node<TAABB>* GenerateTriangleNodes(void* vertices, uint32_t vertex_count, uint32_t* indices, uint32_t triangle_count, uint32_t stride = sizeof(typename TAABB::BoundsType));
 
 template<class TAABB, class TFunc>
-inline EXPORT_CUDA void IntersectLBVHNode(const Tempest::LBVH2Node<TAABB>* bvh, uint32_t node_id, const Vector2& pos, TFunc& intersect_func)
+inline EXPORT_CUDA void IntersectLBVHNode(const LBVH2Node<TAABB>* bvh, uint32_t node_id, const Vector2& pos, TFunc& intersect_func)
 {
     auto& cur_node = bvh[node_id];
     if(cur_node.Bounds.MinCorner.x > pos.x || pos.x > cur_node.Bounds.MaxCorner.x ||

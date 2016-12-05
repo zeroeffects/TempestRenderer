@@ -1,6 +1,6 @@
 /*   The MIT License
 *
-*   Tempest Engine
+*   Tempest Renderer
 *   Copyright (c) 2016 Zdravko Velinov
 *
 *   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -54,9 +54,9 @@ static inline uint32_t GenerateHierarchy(const GenPatchNode* gen_nodes, const LB
 
     uint32_t split = FindSplitPlane(gen_nodes, first, last);
 
-    uint32_t child0_idx = out_node.Child1 = GenerateHierarchy(gen_nodes, leaf_nodes, cur_node, first, split, out_nodes, out_size);
+    uint32_t child0_idx = out_node.Child[0] = GenerateHierarchy(gen_nodes, leaf_nodes, cur_node, first, split, out_nodes, out_size);
     TGE_ASSERT(child0_idx == cur_node + 1, "Invalid depth-first tree");
-    uint32_t child1_idx = out_node.Child2 = GenerateHierarchy(gen_nodes, leaf_nodes, cur_node, split + 1, last, out_nodes, out_size);
+    uint32_t child1_idx = out_node.Child[1] = GenerateHierarchy(gen_nodes, leaf_nodes, cur_node, split + 1, last, out_nodes, out_size);
     TGE_ASSERT(child1_idx == child0_idx + 2*(split - first + 1) - 1, "Invalid depth-first hierarchy");
 
     auto& child0 = out_nodes[child0_idx];
@@ -69,7 +69,7 @@ static inline uint32_t GenerateHierarchy(const GenPatchNode* gen_nodes, const LB
 }
 
 template<class TAABB>
-EditableSSBVH2Node<TAABB>* GenerateESSBVH(LBVH2Node<TAABB>* interm_nodes, uint32_t total_node_count)
+void GenerateESSBVH(LBVH2Node<TAABB>* interm_nodes, uint32_t total_node_count, EditableSSBVH2Node<TAABB>* dst_addr)
 {
 	std::unique_ptr<GenPatchNode[]> gen_patch_nodes(new GenPatchNode[total_node_count]);
     TAABB set_bounds = ComputeCenterBounds(interm_nodes, total_node_count);
@@ -83,17 +83,11 @@ EditableSSBVH2Node<TAABB>* GenerateESSBVH(LBVH2Node<TAABB>* interm_nodes, uint32
 
     std::sort(gen_patch_nodes.get(), gen_patch_nodes.get() + total_node_count, [](const GenPatchNode& lhs, const GenPatchNode& rhs) { return lhs.MortonId < rhs.MortonId; });
     
-    // Because we are basically splitting a binary tree. There is a quite easy to compute upper bound
-    uint32_t max_node_count = 2*total_node_count - 1;
-    std::unique_ptr<EditableSSBVH2Node<TAABB>[]> nodes(new EditableSSBVH2Node<TAABB>[max_node_count]);
-
     uint32_t out_size = 0;
-    auto first_node = GenerateHierarchy(gen_patch_nodes.get(), interm_nodes, ESSBVH_INVALID_NODE, 0, total_node_count - 1, nodes.get(), &out_size);
+    auto first_node = GenerateHierarchy(gen_patch_nodes.get(), interm_nodes, ESSBVH_INVALID_NODE, 0, total_node_count - 1, dst_addr, &out_size);
     TGE_ASSERT(first_node == 0, "Invalid node");
-
-    return nodes.release();
 }
 
-template EditableSSBVH2Node<AABBUnaligned>* GenerateESSBVH(LBVH2Node<AABBUnaligned>* interm_nodes, uint32_t total_node_count);
-template EditableSSBVH2Node<AABB2>* GenerateESSBVH(LBVH2Node<AABB2>* interm_nodes, uint32_t total_node_count); 
+template void GenerateESSBVH(LBVH2Node<AABBUnaligned>* interm_nodes, uint32_t total_node_count, EditableSSBVH2Node<AABBUnaligned>*);
+template void GenerateESSBVH(LBVH2Node<AABB2>* interm_nodes, uint32_t total_node_count, EditableSSBVH2Node<AABB2>*); 
 }

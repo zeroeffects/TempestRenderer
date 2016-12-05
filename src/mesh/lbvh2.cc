@@ -1,6 +1,6 @@
 /*   The MIT License
 *
-*   Tempest Engine
+*   Tempest Renderer
 *   Copyright (c) 2016 Zdravko Velinov
 *
 *   Permission is hereby granted, free of charge, to any person obtaining a copy

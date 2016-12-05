@@ -1,6 +1,6 @@
 /*   The MIT License
 *
-*   Tempest Engine
+*   Tempest Renderer
 *   Copyright (c) 2016 Zdravko Velinov
 *
 *   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,47 +29,79 @@ namespace Tempest
 {
 struct RayIntersectData
 {
-	Vector3 Direction,
-			Origin;
-	float   Near,
-			Far;
+    Vector3 Direction,
+            Origin;
+    float   Near,
+            Far;
 };
 
 inline EXPORT_CUDA bool IntersectPrimBVH(const RayIntersectData& intersect, const AABBUnaligned& box)
 {
-	float tmin, tmax;
-	return IntersectRayAABB(intersect.Direction, intersect.Origin, intersect.Near, intersect.Far, box.MinCorner, box.MaxCorner, &tmin, &tmax);
+    float tmin, tmax;
+    return IntersectRayAABB(intersect.Direction, intersect.Origin, intersect.Near, intersect.Far, box.MinCorner, box.MaxCorner, &tmin, &tmax);
 }
 
 inline EXPORT_CUDA bool IntersectPrimBVH(const Vector3& pos, const AABBUnaligned& box)
 {
-	return IntersectPointAABB(pos, box);
+    return IntersectPointAABB(pos, box);
 }
 
 inline EXPORT_CUDA bool IntersectPrimBVH(const Vector2& pos, const AABB2& box)
 {
-	return IntersectPointAABB(pos, box);
+    return IntersectPointAABB(pos, box);
 }
 
 inline EXPORT_CUDA bool IntersectPrimBVH(const Sphere& pos, const AABBUnaligned& box)
 {
-	return IntersectSphereAABB(pos, box);
+    return IntersectSphereAABB(pos, box);
 }
 
 inline EXPORT_CUDA bool IntersectPrimBVH(const AABB2& lhs, const AABB2& rhs)
 {
-	return IntersectAABBAABB(lhs, rhs);
+    return IntersectAABBAABB(lhs, rhs);
 }
+
+struct IntersectRectSetQuery
+{
+    const Rect3*    Rects;
+    float           IntersectDistance;
+    uint32_t        PrimitiveID;
+    Vector3         Normal;
+    Vector2         BarycentricCoordinates;
+
+    inline EXPORT_CUDA bool operator()(uint32_t prim_id, const RayIntersectData& ray)
+    {
+        auto& rect = Rects[prim_id];
+
+        Vector2 barycentric;
+        Vector3 normal;
+        float dist;
+        auto status = IntersectRect3(ray.Direction, ray.Origin, rect, &dist, &barycentric.x, &barycentric.y, &normal);
+        if(status && dist < IntersectDistance && Dot(normal, ray.Direction) < 0.0f)
+        {
+            Normal = normal;
+            BarycentricCoordinates = barycentric;
+            IntersectDistance = dist;
+            PrimitiveID = prim_id;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+};
+
 
 struct IntersectTriangleQuery3DTwoSided
 {
     const uint8_t*  Vertices;
-	uint32_t        Stride;
+    uint32_t        Stride;
     const uint32_t* Indices;
+    float           IntersectDistance;
     uint32_t        PrimitiveID;
     Vector3         Normal;
     Vector2         BarycentricCoordinates;
-    float           IntersectDistance;
 
     inline EXPORT_CUDA bool operator()(uint32_t prim_id, const RayIntersectData& ray_intersect)
     {
@@ -82,16 +114,16 @@ struct IntersectTriangleQuery3DTwoSided
         auto& v1 = *reinterpret_cast<const Vector3*>(Vertices + i1*Stride);
         auto& v2 = *reinterpret_cast<const Vector3*>(Vertices + i2*Stride);
 
-		Vector3 normal;
-		Vector2 barycentric;
-		float   dist;
-        auto status = Tempest::IntersectRayTriangle(ray_intersect.Direction, ray_intersect.Origin, v0, v1, v2, &normal, &barycentric, &dist);
+        Vector3 normal;
+        Vector2 barycentric;
+        float   dist;
+        auto status = IntersectRayTriangle(ray_intersect.Direction, ray_intersect.Origin, v0, v1, v2, &normal, &barycentric, &dist);
         float epsilon = 1e-3f;
         if(status && epsilon < IntersectDistance && dist < IntersectDistance)
         {
-			Normal = Dot(normal, ray_intersect.Direction) < 0.0f ? normal : -normal;
-			BarycentricCoordinates = barycentric;
-			IntersectDistance = dist;
+            Normal = Dot(normal, ray_intersect.Direction) < 0.0f ? normal : -normal;
+            BarycentricCoordinates = barycentric;
+            IntersectDistance = dist;
             PrimitiveID = prim_id;
         }
         return status;
@@ -101,12 +133,12 @@ struct IntersectTriangleQuery3DTwoSided
 struct IntersectTriangleQuery3DCull
 {
     const uint8_t*  Vertices;
-	uint32_t        Stride;
+    uint32_t        Stride;
     const uint32_t* Indices;
+    float           IntersectDistance;
     uint32_t        PrimitiveID;
     Vector3         Normal;
     Vector2         BarycentricCoordinates;
-    float           IntersectDistance;
 
     inline EXPORT_CUDA bool operator()(uint32_t prim_id, const RayIntersectData& ray_intersect)
     {
@@ -119,15 +151,15 @@ struct IntersectTriangleQuery3DCull
         auto& v1 = *reinterpret_cast<const Vector3*>(Vertices + i1*Stride);
         auto& v2 = *reinterpret_cast<const Vector3*>(Vertices + i2*Stride);
 
-		Vector3 normal;
-		Vector2 barycentric;
-		float   dist;
-        auto status = Tempest::IntersectRayTriangle(ray_intersect.Direction, ray_intersect.Origin, v0, v1, v2, &normal, &barycentric, &dist);
+        Vector3 normal;
+        Vector2 barycentric;
+        float   dist;
+        auto status = IntersectRayTriangle(ray_intersect.Direction, ray_intersect.Origin, v0, v1, v2, &normal, &barycentric, &dist);
         if(status && dist < IntersectDistance && Dot(normal, ray_intersect.Direction) < 0.0f)
         {
-			Normal = normal;
-			BarycentricCoordinates = barycentric;
-			IntersectDistance = dist;
+            Normal = normal;
+            BarycentricCoordinates = barycentric;
+            IntersectDistance = dist;
             PrimitiveID = prim_id;
             return true;
         }
@@ -157,7 +189,7 @@ struct IntersectTriangleQuery2D
         auto& v2 = Vertices[i2];
 
         Vector3 barycentric;
-        auto status = Tempest::IntersectTriangle(pos, v0, v1, v2, &barycentric);
+        auto status = IntersectTriangle(pos, v0, v1, v2, &barycentric);
         if(status)
         {
             PrimitiveID = prim_id;
@@ -168,4 +200,4 @@ struct IntersectTriangleQuery2D
 };
 }
 
-#endif _BVH_INTERSECT_LEAF_HH_
+#endif // _BVH_INTERSECT_LEAF_HH_

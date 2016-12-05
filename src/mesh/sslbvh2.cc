@@ -1,6 +1,6 @@
 /*   The MIT License
 *
-*   Tempest Engine
+*   Tempest Renderer
 *   Copyright (c) 2016 Zdravko Velinov
 *
 *   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,63 +34,103 @@
 
 namespace Tempest
 {
-// Adapted from article by Tero Karras about LBVH
 template<class TAABB>
-static inline uint32_t GenerateHierarchy(const GenPatchNode* gen_nodes, const LBVH2Node<TAABB>* leaf_nodes, uint32_t parent, uint32_t first, uint32_t last, SimpleStacklessLBVH2Node<TAABB>* out_nodes, uint32_t* out_size)
+void GenerateSSLBVH(LBVH2Node<TAABB>* leaf_nodes, uint32_t total_node_count, SimpleStacklessLBVH2Node<TAABB>* out_nodes)
 {
-    // TODO: Replace with explicit stack - this thing tends to lead to stack overflows
-    uint32_t cur_node = *out_size;
-    auto& out_node = out_nodes[(*out_size)++];
-    out_node.Parent = parent;
-    if(first == last)
-    {
-        TGE_ASSERT((gen_nodes[first].PatchId & SSLBVH_LEAF_DECORATION) == 0, "Too many children");
-        auto patch_id = gen_nodes[first].PatchId;
-		auto& leaf_node = leaf_nodes[patch_id];
-        out_node.Patch = leaf_node.Patch;
-		out_node.Bounds = leaf_node.Bounds;
-        
-        return cur_node;
-    }
-
-    uint32_t split = FindSplitPlane(gen_nodes, first, last);
-
-    uint32_t child0_idx = GenerateHierarchy(gen_nodes, leaf_nodes, cur_node, first, split, out_nodes, out_size);
-    TGE_ASSERT(child0_idx == cur_node + 1, "Invalid depth-first tree");
-    uint32_t child1_idx = out_node.Child2 = GenerateHierarchy(gen_nodes, leaf_nodes, cur_node, split + 1, last, out_nodes, out_size);
-    TGE_ASSERT(child1_idx == child0_idx + 2*(split - first + 1) - 1, "Invalid depth-first hierarchy");
-
-    auto& child0 = out_nodes[child0_idx];
-    auto& child1 = out_nodes[child1_idx];
-
-    out_node.Bounds.MinCorner = GenericMin(child0.Bounds.MinCorner, child1.Bounds.MinCorner);
-    out_node.Bounds.MaxCorner = GenericMax(child0.Bounds.MaxCorner, child1.Bounds.MaxCorner);
-
-    return cur_node;
-}
-
-template<class TAABB>
-SimpleStacklessLBVH2Node<TAABB>* GenerateSSLBVH(LBVH2Node<TAABB>* interm_nodes, uint32_t total_node_count)
-{
-	std::unique_ptr<GenPatchNode[]> gen_patch_nodes(new GenPatchNode[total_node_count]);
-    TAABB set_bounds = ComputeCenterBounds(interm_nodes, total_node_count);
+    std::unique_ptr<GenPatchNode[]> gen_nodes(new GenPatchNode[total_node_count]);
+    TAABB set_bounds = ComputeCenterBounds(leaf_nodes, total_node_count);
 	for(uint32_t i = 0; i < total_node_count; ++i)
     {
-        auto& node = interm_nodes[i];
-        auto& interm_patch = gen_patch_nodes[i];
+        auto& node = leaf_nodes[i];
+        auto& interm_patch = gen_nodes[i];
         interm_patch.MortonId = ComputeAABBMortonCode(node.Bounds, set_bounds);
         interm_patch.PatchId = i;
     }
 
-    std::sort(gen_patch_nodes.get(), gen_patch_nodes.get() + total_node_count, [](const GenPatchNode& lhs, const GenPatchNode& rhs) { return lhs.MortonId < rhs.MortonId; });
+    std::sort(gen_nodes.get(), gen_nodes.get() + total_node_count, [](const GenPatchNode& lhs, const GenPatchNode& rhs) { return lhs.MortonId < rhs.MortonId; });
     
-    // Because we are basically splitting a binary tree. There is a quite easy to compute upper bound
-    uint32_t max_node_count = 2*total_node_count - 1;
+    std::unique_ptr<uint32_t[]> split_stack(new uint32_t[total_node_count]);
+
+    uint32_t cur_node = 0, split_stack_pointer = 0,
+             first = 0, last = total_node_count - 1,
+             parent = SSLBVH_INVALID_NODE;
+
+    for(;;)
+    {
+        auto& out_node = out_nodes[cur_node];
+        out_node.Parent = parent;
+        if(first == last)
+        {
+            TGE_ASSERT((gen_nodes[first].PatchId & SSLBVH_LEAF_DECORATION) == 0, "Too many children");
+            auto patch_id = gen_nodes[first].PatchId;
+		    auto& leaf_node = leaf_nodes[patch_id];
+            out_node.Patch = leaf_node.Patch;
+		    out_node.Bounds = leaf_node.Bounds;
+        
+            parent = out_nodes[cur_node].Parent;
+
+            while(parent != SSLBVH_INVALID_NODE)
+            {
+                --split_stack_pointer;
+
+                first = last + 1;
+                last = split_stack[split_stack_pointer];
+
+                if(parent + 1 == cur_node)
+                {
+                    ++split_stack_pointer;
+                    cur_node = out_nodes[parent].Child2;
+                    break;
+                }
+                else
+                {
+                    auto& parent_node = out_nodes[parent];
+                    auto& child0 = out_nodes[parent + 1],
+                        & child1 = out_nodes[cur_node];
+                    parent_node.Bounds.MinCorner = GenericMin(child0.Bounds.MinCorner, child1.Bounds.MinCorner);
+                    parent_node.Bounds.MaxCorner = GenericMax(child0.Bounds.MaxCorner, child1.Bounds.MaxCorner);
+                }
+
+                cur_node = parent;
+                parent = out_nodes[cur_node].Parent;
+            }
+            if(parent == SSLBVH_INVALID_NODE)
+            {
+                break;
+            }
+        }
+        else
+        {
+            uint32_t split = FindSplitPlane(gen_nodes.get(), first, last);
+
+            uint32_t child0_idx = cur_node + 1;
+            uint32_t child1_idx = out_node.Child2 = child0_idx + 2*(split - first + 1) - 1;
+
+            auto& child0 = out_nodes[child0_idx];
+            auto& child1 = out_nodes[child1_idx];
+
+            out_node.Bounds.MinCorner = GenericMin(child0.Bounds.MinCorner, child1.Bounds.MinCorner);
+            out_node.Bounds.MaxCorner = GenericMax(child0.Bounds.MaxCorner, child1.Bounds.MaxCorner);
+
+            TGE_ASSERT(split_stack_pointer < total_node_count, "Invalid stack element");
+            split_stack[split_stack_pointer] = last;
+
+            parent = cur_node;
+            ++cur_node;
+            ++split_stack_pointer;
+            last = split;
+        }
+    }
+}
+
+
+template<class TAABB>
+SimpleStacklessLBVH2Node<TAABB>* GenerateSSLBVH(LBVH2Node<TAABB>* leaf_nodes, uint32_t total_node_count)
+{
+    uint32_t max_node_count = SSLBVHMaxNodeCount(total_node_count);
     std::unique_ptr<SimpleStacklessLBVH2Node<TAABB>[]> nodes(new SimpleStacklessLBVH2Node<TAABB>[max_node_count]);
 
-    uint32_t out_size = 0;
-    auto first_node = GenerateHierarchy(gen_patch_nodes.get(), interm_nodes, SSLBVH_INVALID_NODE, 0, total_node_count - 1, nodes.get(), &out_size);
-    TGE_ASSERT(first_node == 0, "Invalid node");
+    GenerateSSLBVH(leaf_nodes, total_node_count, nodes.get());
 
     return nodes.release();
 }

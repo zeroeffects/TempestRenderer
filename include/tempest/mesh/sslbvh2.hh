@@ -1,6 +1,6 @@
 /*   The MIT License
 *
-*   Tempest Engine
+*   Tempest Renderer
 *   Copyright (c) 2016 Zdravko Velinov
 *
 *   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -129,8 +129,14 @@ inline EXPORT_CUDA bool IntersectSSLBVHNodeSingle(const SimpleStacklessLBVH2Node
     }
 }
 
+// Because we are basically splitting a binary tree. There is a quite easy to compute upper bound
+inline uint32_t SSLBVHMaxNodeCount(uint32_t total_node_count) { return 2*total_node_count - 1; }
+
 template<class TAABB>
 SimpleStacklessLBVH2Node<TAABB>* GenerateSSLBVH(LBVH2Node<TAABB>* interm_nodes, uint32_t total_node_count);
+
+template<class TAABB>
+void GenerateSSLBVH(LBVH2Node<TAABB>* interm_nodes, uint32_t total_node_count, SimpleStacklessLBVH2Node<TAABB>* out_nodes);
 }
 
 #endif // _TEMPEST_SSLBVH2_HH_
